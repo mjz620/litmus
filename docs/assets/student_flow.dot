@@ -1,0 +1,22 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", pad=0.2, nodesep=0.35, ranksep=0.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10.5, margin="0.12,0.08", color="#2C4A52", fillcolor="#F4FAF8"];
+  edge [color="#4D6F73", penwidth=1.4, arrowsize=0.75];
+  a [label="Home / class join"];
+  b [label="Experiment card\nobjectives + readiness"];
+  c [label="Pre-lab briefing\ncontrols + safety"];
+  d [label="3D lab workspace\nperform procedure"];
+  e [label="Contextual tutor\ntext or Hold to Ask"];
+  f [label="Lab report\ncalculation + reflection"];
+  g [label="Rubric feedback\nwith event evidence"];
+  h [label="Adaptive retry\n60–90 second micro-lab"];
+  i [label="Completion\nmastery + history"];
+  a->b->c->d;
+  d->e [label="as needed"];
+  e->d;
+  d->f [label="submit experiment"];
+  f->g;
+  g->h [label="targeted gap"];
+  h->i;
+  g->i [label="no retry needed"];
+}

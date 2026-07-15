@@ -1,0 +1,26 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", pad=0.25, nodesep=0.45, ranksep=0.7];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=12, margin="0.16,0.10", color="#2C4A52", fillcolor="#F4FAF8"];
+  edge [fontname="Arial", fontsize=10, color="#4D6F73", penwidth=1.6, arrowsize=0.8];
+
+  student [label="Student interacts\nwith 3D lab", fillcolor="#E8F6F3"];
+  engine [label="Deterministic\nchemistry engine", fillcolor="#FFF4D6"];
+  events [label="Semantic event\n+ skill evidence", fillcolor="#EEF2FF"];
+  model [label="In-memory\nStudentModel", fillcolor="#F3EEFF"];
+  coach [label="GPT-5.6 tutor\nchooses intervention", fillcolor="#FDECEF"];
+  persist [label="Checkpoint flush\nto Supabase", fillcolor="#EAF3FF"];
+  teacher [label="Teacher readiness\ndashboard", fillcolor="#E8F6F3"];
+  retry [label="Adaptive retry\nseeded scenario", fillcolor="#FFF4D6"];
+
+  student -> engine [label="action"];
+  engine -> events [label="pure step()"];
+  events -> model [label="applyEvidence()"];
+  events -> coach [label="meaningful trigger"];
+  model -> coach [label="mastery + history"];
+  model -> persist [label="async"];
+  events -> persist [label="append-only"];
+  persist -> teacher [label="aggregate"];
+  coach -> student [label="hint / question / answer"];
+  coach -> retry [label="create_targeted_retry"];
+  retry -> student [label="new seeded state"];
+}

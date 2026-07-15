@@ -1,0 +1,39 @@
+# dependencies
+/node_modules
+
+# Next.js
+/.next/
+/out/
+
+# test output
+/coverage/
+/playwright-report/
+/test-results/
+
+# local environment files
+.env*
+!.env.example
+
+# logs
+*.log
+
+# OS and editor files
+.DS_Store
+*.swp
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel/
+
+# generated exports / handoff bundles
+*.zip
+*.docx
+*.pdf
+
+# optional IDE
+.vscode/
+
+# codex workflow pack
+/labbench_codex_workflow_pack/

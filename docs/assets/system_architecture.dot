@@ -1,0 +1,48 @@
+digraph G {
+  graph [rankdir=TB, bgcolor="transparent", pad=0.25, nodesep=0.35, ranksep=0.65, compound=true];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11, margin="0.14,0.09", color="#2C4A52"];
+  edge [fontname="Arial", fontsize=9, color="#4D6F73", penwidth=1.4, arrowsize=0.75];
+
+  subgraph cluster_browser {
+    label="Chromebook browser — Next.js client"; fontname="Arial Bold"; fontsize=13; color="#8FB9B0"; style="rounded";
+    ui [label="Student / Teacher / Demo UI", fillcolor="#E8F6F3"];
+    r3f [label="R3F 3D shell\n+ accessible controls", fillcolor="#E8F6F3"];
+    store [label="Zustand session store", fillcolor="#EEF2FF"];
+    engine [label="Experiment plugin\nchemistry engine", fillcolor="#FFF4D6"];
+    sm [label="StudentModel\n+ trigger policy", fillcolor="#F3EEFF"];
+    queue [label="Local persistence queue\n(non-blocking)", fillcolor="#EAF3FF"];
+    ui -> r3f;
+    r3f -> store [label="dispatch action"];
+    store -> engine [label="state + action"];
+    engine -> store [label="next state"];
+    engine -> sm [label="SemanticEvent"];
+    sm -> ui [label="coach state"];
+    sm -> queue [label="events / skill checkpoints"];
+  }
+
+  subgraph cluster_server {
+    label="Vercel / Next.js server routes"; fontname="Arial Bold"; fontsize=13; color="#A8A0C2"; style="rounded";
+    coachapi [label="/api/coach\nagent orchestration", fillcolor="#FDECEF"];
+    evalapi [label="/api/evaluate\nreport rubric", fillcolor="#FDECEF"];
+    voiceapi [label="/api/realtime-token\nvoice session", fillcolor="#FDECEF"];
+    validation [label="Zod validation, rate limits,\ncost caps, safety policy", fillcolor="#F7F7F7"];
+    coachapi -> validation [dir=both];
+    evalapi -> validation [dir=both];
+    voiceapi -> validation [dir=both];
+  }
+
+  subgraph cluster_external {
+    label="Managed services"; fontname="Arial Bold"; fontsize=13; color="#B7B7B7"; style="rounded";
+    openai [label="OpenAI\nGPT-5.6 + voice transcription", fillcolor="#FDECEF"];
+    supabase [label="Supabase\nAuth + Postgres + RLS", fillcolor="#EAF3FF"];
+  }
+
+  sm -> coachapi [label="async trigger / question"];
+  ui -> evalapi [label="report submission"];
+  ui -> voiceapi [label="ephemeral token"];
+  coachapi -> openai [label="structured output + tools"];
+  evalapi -> openai [label="rubric evaluation"];
+  voiceapi -> openai [label="WebRTC"];
+  queue -> supabase [label="batched writes"];
+  supabase -> ui [label="class analytics / history"];
+}

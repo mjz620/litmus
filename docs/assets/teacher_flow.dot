@@ -1,0 +1,16 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", pad=0.2, nodesep=0.35, ranksep=0.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10.5, margin="0.12,0.08", color="#2C4A52", fillcolor="#F4FAF8"];
+  edge [color="#4D6F73", penwidth=1.4, arrowsize=0.75];
+  a [label="Teacher home\nclasses + assignments"];
+  b [label="Create / open class\nshare join code"];
+  c [label="Assign pre-lab\nexperiment + due date"];
+  d [label="Class readiness\noverview"];
+  e [label="Skill heatmap\ncommon misconceptions"];
+  f [label="Student detail\nevidence timeline + report"];
+  g [label="Plan intervention\nreview before physical lab"];
+  a->b->c->d->e;
+  e->f [label="drill down"];
+  e->g;
+  f->g;
+}

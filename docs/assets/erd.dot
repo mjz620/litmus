@@ -1,0 +1,28 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", pad=0.25, nodesep=0.45, ranksep=0.65];
+  node [shape=record, style="rounded,filled", fontname="Arial", fontsize=9.5, color="#2C4A52", fillcolor="#F7FAFC"];
+  edge [color="#4D6F73", penwidth=1.2, arrowsize=0.65];
+  profiles [label="{profiles|id PK\lrole\ldisplay_name\l}", fillcolor="#E8F6F3"];
+  classes [label="{classes|id PK\lteacher_id FK\lname\ljoin_code\lis_demo\l}", fillcolor="#E8F6F3"];
+  members [label="{class_members|class_id FK\lstudent_id FK\ljoined_at\l}", fillcolor="#E8F6F3"];
+  assignments [label="{assignments|id PK\lclass_id FK\lexperiment_id\ldue_at\l}", fillcolor="#FFF4D6"];
+  sessions [label="{sessions|id PK\luser_id FK\lclass_id FK\lassignment_id FK\lexperiment_id\lmode\lparent_session_id\lfinal_state jsonb\l}", fillcolor="#EEF2FF"];
+  events [label="{events|id PK\lsession_id FK\lt_sim\lpayload jsonb\l}", fillcolor="#EEF2FF"];
+  skills [label="{skill_estimates|session_id FK\lstudent_id FK\lexperiment_id\lskill_id\lmastery\levidence_count\l}", fillcolor="#F3EEFF"];
+  interventions [label="{coach_interventions|session_id FK\ltrigger_event_id FK\lhint_level\lresponse jsonb\l}", fillcolor="#FDECEF"];
+  reports [label="{reports|session_id FK\lstudent_response jsonb\lrubric jsonb\l}", fillcolor="#FDECEF"];
+
+  profiles -> classes [label="teaches"];
+  profiles -> members [label="joins"];
+  classes -> members;
+  classes -> assignments;
+  profiles -> sessions [label="runs"];
+  classes -> sessions;
+  assignments -> sessions;
+  sessions -> events;
+  sessions -> skills;
+  sessions -> interventions;
+  events -> interventions [label="triggers"];
+  sessions -> reports;
+  sessions -> sessions [label="parent retry", style=dashed];
+}

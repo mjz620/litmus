@@ -1,0 +1,13 @@
+.next
+coverage
+node_modules
+playwright-report
+test-results
+labbench_codex_workflow_pack
+LabBench_AI_Codex_Workflow_Pack.zip
+package-lock.json
+
+# Canonical workflow/specification documents retain their source formatting.
+AGENTS.md
+tickets.md
+docs

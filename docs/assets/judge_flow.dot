@@ -1,0 +1,15 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", pad=0.2, nodesep=0.35, ranksep=0.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10.5, margin="0.12,0.08", color="#2C4A52", fillcolor="#F4FAF8"];
+  edge [color="#4D6F73", penwidth=1.4, arrowsize=0.75];
+  a [label="/demo hub\nno login"];
+  b [label="Student demo\nseeded at 22.00 mL"];
+  c [label="Trigger mistake\ncoach reacts"];
+  d [label="Ask by voice\ncontext-aware response"];
+  e [label="Submit short report\nget rubric feedback"];
+  f [label="Adaptive retry\npractice final 3 mL"];
+  g [label="Switch to Teacher\nseeded class dashboard"];
+  h [label="See judge session\nappear in live analytics"];
+  i [label="Technical view\nevents, tools, evals"];
+  a->b->c->d->e->f->g->h->i;
+}
