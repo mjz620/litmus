@@ -1,0 +1,84 @@
+.scene {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 2rem;
+}
+
+.headingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.headingRow h2 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status {
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: #e6f4f1;
+  color: #115e59;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.instructions {
+  margin: 0;
+  color: #52616b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.canvasFrame {
+  height: clamp(20rem, 46vw, 31rem);
+  overflow: hidden;
+  border: 1px solid #b9cbc7;
+  border-radius: 1rem;
+  background: #dceae7;
+  touch-action: none;
+}
+
+.canvasFrame canvas {
+  display: block;
+}
+
+.fallback {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: 2rem;
+  color: #40515a;
+  text-align: center;
+}
+
+.srSummary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 38rem) {
+  .headingRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .status {
+    justify-self: start;
+  }
+}

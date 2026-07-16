@@ -16,7 +16,8 @@ This file is the source of truth for Codex implementation tasks. Implement exact
 
 ```text
 T0001 → T0002 → T0003 → T0004 → T0005/T0006
-T0006 → T0007 → T0008 → T0009 → T0010/T0011/T0012
+T0006 → T0007 → T0008 → T0009 → T0010/T0011
+T0011 → T0011A → T0011B → T0012
 T0009 + T0014 → T0015 → T0016 → T0017 → T0018
 T0013 + T0019/T0020/T0021 → T0022 → T0023
 T0024/T0025/T0026 → T0027 → T0028
@@ -25,6 +26,7 @@ T0030/T0031/T0032/T0033/T0034 = report + retry loop
 T0040/T0041 = voice
 T0042/T0043 = precipitation plugin
 T0044/T0045/T0046 = polish and submission
+T0009/KI-003 → T0047 → T0048 = randomized titration sessions and refills
 ```
 
 
@@ -402,16 +404,238 @@ T0044/T0045/T0046 = polish and submission
 **Completion report required:** yes.
 
 
+## T0011A — Student lab surface and debug-state separation
+
+**Suggested branch:** `feature/t0011a-student-debug-surface-separation`
+**Goal:** Replace the raw engine-state sidebar with a student-facing lab
+notebook, move internal analytics to a separate development testing route, and
+prevent internal truth or answers from appearing in the student experience.
+
+**Dependencies:** T0011, T0047
+
+**Allowed areas:**
+
+- `src/app/lab/**, src/app/dev/lab/**, src/components/lab/**, tests/components/**, tests/e2e/**`
+
+**Do not touch:**
+
+- `chemistry formulas, semantic event meanings, StudentModel calculations, coach behavior, database schema`
+
+**Requirements:**
+
+- Remove the production-facing “Initialized state summary” and all raw internal
+  fields from the normal student surface, including experiment IDs, session
+  seeds, skills tracked, event counts, and engine status labels.
+- Establish two clearly separated routes that reuse the same experiment engine,
+  Zustand store, action controls, seeded configuration generator, and shared lab
+  session components:
+  - `/lab/[experimentId]` is the student route and contains no raw analytics or
+    answer-bearing internal state;
+  - `/dev/lab/[experimentId]` is the developer testing route and may display the
+    raw state/configuration, session seed, unknown ground truth, skills,
+    semantic-event counts, and test controls needed to inspect the simulation.
+- Make `/dev/lab/[experimentId]` development-only: it must return 404 or
+  otherwise be unreachable in production builds. Do not rely on a hidden link
+  or visual obscurity as access control.
+- Give the developer route an unmistakable “Developer testing” banner and a
+  link back to the corresponding student route so screenshots or user tests
+  cannot confuse it with the product experience.
+- Support the same explicit `?seed=<recorded-seed>` replay parameter on both
+  routes. The dev route should show the active seed and deterministic generated
+  configuration; the student route must use them without visibly revealing
+  them.
+- Never display the generated unknown analyte concentration, equivalence volume,
+  ground truth, or other answer-bearing engine values to the student.
+- Replace the sidebar with a student lab notebook/session panel containing only
+  pedagogically appropriate information: objective, current procedure stage,
+  known analyte sample volume, standardized titrant concentration, selected
+  indicator, student-recorded burette readings/observations, and the live pH
+  curve when appropriate.
+- Preserve a compact developer analytics summary on the dev route with status,
+  canonical experiment ID, session ID/seed, full config and raw state, current
+  StudentModel skill estimates/flags, and semantic-event count. T0012 will add
+  the detailed collapsible event/evidence inspector to this route.
+- Add a top session bar placeholder for experiment title, stage, save status,
+  reset/help controls, and eventual report navigation without implementing
+  persistence, coach, report, or reset behavior early.
+- Preserve access to every existing precision action and retain clear keyboard
+  focus order at Chromebook widths.
+
+**Non-goals:**
+
+- No engine, persistence, coach, report, or procedure-grading changes.
+- No detailed event-by-event inspector; that remains T0012. T0011A includes only
+  the baseline developer analytics page needed to separate internal data from
+  the student route.
+- No visual redesign of the 3D room; that belongs to T0011B.
+
+**Acceptance criteria:**
+
+- The normal `/lab/titration` page contains no visible session seed, internal
+  experiment ID, skill count, event count, raw engine-state heading, unknown
+  analyte concentration, or equivalence volume.
+- `/dev/lab/titration` displays the deterministic seed/configuration, raw state,
+  skill summary, flags, and event count in development while using the same
+  engine state and typed action flow as `/lab/titration`.
+- A production build returns 404 for `/dev/lab/titration`; the developer page
+  and its answer-bearing content are not shipped as an accessible production
+  student route.
+- The student can identify the objective, known sample volume, standardized
+  titrant concentration, current stage, selected indicator, and their recorded
+  measurements without seeing the answer.
+- A regression test explicitly proves that the unknown analyte concentration is
+  absent from visible student text for several randomized session seeds.
+- Route tests prove a shared seed produces matching underlying configuration on
+  the student and dev pages without exposing that configuration on the student
+  page.
+- Existing controls, pH curve, 3D projections, and deterministic engine tests
+  remain green.
+
+**Manual verification:**
+
+- Open several seeded and unseeded titration sessions; confirm no unknown
+  concentration or internal diagnostic data is visible.
+- Open the same seeds on `/dev/lab/titration`; confirm the raw configuration,
+  state, skills, flags, and event count are available and update after actions.
+- Run or preview a production build and confirm `/dev/lab/titration` returns
+  404.
+- Complete rinse, fill, indicator selection, titrant addition, and meniscus
+  recording; confirm the notebook shows only student-appropriate information.
+- Navigate the page keyboard-only at a Chromebook-sized viewport and inspect the
+  browser console.
+
+**Completion report required:** yes.
+
+
+## T0011B — Detailed interactive high-school chemistry lab
+
+**Suggested branch:** `feature/t0011b-interactive-high-school-lab`
+**Goal:** Replace the placeholder low-poly bench with a polished, recognizable
+high-school chemistry lab whose equipment can be selected and operated through
+contextual controls.
+
+**Dependencies:** T0011A
+
+**Allowed areas:**
+
+- `src/components/lab/three/**, src/components/lab/titration/**, src/app/lab/**, tests/components/**, tests/e2e/**, docs/assets/**`
+
+**Do not touch:**
+
+- `chemistry formulas, experiment action semantics, StudentModel, coach behavior, persistence, database schema`
+
+**Requirements:**
+
+- Use the project owner's supplied high-school laboratory photo as art
+  direction. Recreate the environmental character without reproducing people:
+  black phenolic lab islands, warm wood cabinetry, glass-front storage, sinks
+  and faucets, classroom ceiling/light panels, and believable chemistry-room
+  background detail.
+- Treat the source classroom photo as private reference material. Do not commit
+  the original image or any identifiable student likeness; a cropped,
+  de-identified environment reference may enter `docs/assets/**` only with
+  explicit owner approval.
+- Move from placeholder primitive silhouettes to a moderate-detail,
+  performance-conscious style. Equipment must remain lightweight enough for
+  Chromebook hardware but may not look like featureless blocks.
+- Apply selective photorealism to the scientific glassware even though the
+  surrounding classroom remains moderately stylized. Burette and flask glass
+  should use physically based transparent/transmissive materials with believable
+  index of refraction, thickness, roughness, reflections, edge highlights, and
+  restrained environmental lighting.
+- Make the glass walls, liquid, meniscus, printed graduations, and background
+  visibly separable. Glassware may not look like an opaque pastel solid or a
+  single translucent cone/cylinder.
+- Provide a lower-cost glass-material fallback for weak WebGL devices or reduced
+  graphics settings while preserving vessel shape, liquid level, markings, and
+  interaction affordances.
+- Model the burette with correct proportions, visible graduation ticks and
+  readable major-volume markings, a clamp, stopcock, tip, liquid column, and
+  meniscus. Model the Erlenmeyer flask with a distinct neck, rim, glass wall, and
+  contained liquid surface.
+- Correct all spatial relationships: the burette tip must stop above the flask
+  opening, must never intersect or pass through the flask, and equipment must
+  rest on or attach to the appropriate bench/stand surfaces without visible
+  clipping.
+- Add hover and keyboard-focus affordances for interactive equipment, including
+  a subtle outline/highlight, equipment name, concise purpose, and pointer/focus
+  feedback.
+- Make the burette, flask, indicator, and meniscus selectable. Selection moves
+  or frames the camera to a focused view and shows only that object's contextual
+  controls:
+  - burette: rinse, fill, and stopcock/delivery controls;
+  - flask/indicator: select indicator, inspect color, and a typed swirl action
+    only if a separate engine ticket authorizes it;
+  - meniscus: eye-level detailed view and reading input.
+- Keep precision-critical actions in accessible 2D overlays/panels while making
+  their entry point spatially connected to the selected 3D equipment.
+- Provide a clear way to exit the focused view and return to the full bench.
+- Preserve engine-owned liquid level and color projections. The scene may not
+  calculate chemistry or dispatch an action that does not exist in the typed
+  experiment contract.
+- Use optimized reusable geometry/materials, demand rendering, bounded DPR, and
+  lazy loading. Use environment/reflection lighting only at a tightly bounded
+  cost. Avoid physics, required post-processing, photogrammetry, large textures,
+  or uncontrolled polygon counts.
+
+**Non-goals:**
+
+- No photorealistic digital twin of the entire classroom, freeform pouring
+  physics, avatars, student likenesses, decorative clutter that harms
+  performance, or chemistry logic in the scene. Selective glassware realism is
+  explicitly in scope.
+- No new swirl or procedural action semantics unless separately authorized in an
+  experiment-core ticket.
+- No coach panel or persistence behavior.
+
+**Acceptance criteria:**
+
+- The default scene is recognizably a high-school chemistry lab rather than an
+  empty generic table, with the specified cabinetry, black work surface, sink
+  context, and classroom set dressing visible at an appropriate level of detail.
+- Automated geometry assertions and visual/manual inspection prove the burette
+  tip is above the flask opening with no intersection across default and focused
+  camera views.
+- Burette graduation marks and major labels remain legible in its focused view.
+- In focused views the burette and flask read as glass: backgrounds remain
+  partially visible through them, edges catch light, the contained liquid and
+  meniscus remain distinct, and transparency does not hide graduations or
+  interaction highlighting.
+- Pointer hover and keyboard focus identify each selectable equipment item; a
+  student can select the burette, flask, indicator, and meniscus and receive the
+  correct contextual panel.
+- Existing typed actions still flow through the lab store and
+  `ExperimentDefinition.step()`; the 3D scene owns no chemistry truth.
+- The scene remains usable at a Chromebook viewport, respects reduced motion,
+  and meets the current performance budget or records measured limitations.
+
+**Manual verification:**
+
+- Compare the lab's environmental composition with the supplied high-school lab
+  reference, ignoring the people in the photo.
+- Inspect the burette closely from multiple views; verify graduations, clamp,
+  stopcock, meniscus, glass transparency/reflections, and the gap above the
+  flask.
+- Inspect the flask against both light and dark classroom backgrounds; verify
+  the glass walls, liquid boundary, color, and rim remain visually distinct.
+- Hover, keyboard-focus, select, and exit every equipment view; complete the
+  existing titration procedure using contextual controls.
+- Test at a Chromebook-sized viewport with reduced motion and inspect FPS,
+  loading behavior, accessibility names, and the browser console.
+
+**Completion report required:** yes.
+
+
 ## T0012 — Student event inspector dev panel
 
 **Suggested branch:** `feature/t0012-student-event-inspector-dev-panel`  
 **Goal:** Add collapsible development event inspector.
 
-**Dependencies:** T0007, T0009
+**Dependencies:** T0011A, T0011B
 
 **Allowed areas:**
 
-- `src/components/lab/EventInspector.tsx, src/app/lab/**`
+- `src/components/lab/EventInspector.tsx, src/app/dev/lab/**`
 
 **Do not touch:**
 
@@ -419,7 +643,11 @@ T0044/T0045/T0046 = polish and submission
 
 **Requirements:**
 
-- Show recent SemanticEvents and StudentModel for debugging.
+- Show recent SemanticEvents, StudentModel, session seed, and raw engine state
+  for debugging.
+- Mount the inspector only on `/dev/lab/[experimentId]` behind an explicit
+  collapsible affordance; none of these values may appear in the normal student
+  lab notebook or production student route.
 
 **Non-goals:**
 
@@ -427,7 +655,8 @@ T0044/T0045/T0046 = polish and submission
 
 **Acceptance criteria:**
 
-- Inspector displays event types/flags/evidence after actions.
+- Inspector displays event types/flags/evidence and internal state after actions
+  in development, and production/student-surface tests prove it is absent.
 
 **Manual verification:**
 
@@ -1588,5 +1817,95 @@ T0044/T0045/T0046 = polish and submission
 **Manual verification:**
 
 - Follow README setup on clean checkout or simulate steps.
+
+**Completion report required:** yes.
+
+
+## T0047 — Seeded randomized titration session configurations
+
+**Suggested branch:** `feature/t0047-randomized-titration-configs`
+**Goal:** Give each titration session a varied but valid analyte/titrant pairing that is deterministic for replay.
+
+**Dependencies:** T0009 and the KI-003 resolution
+
+**Allowed areas:**
+
+- `src/experiments/titration/**, src/app/lab/**, src/stores/**, src/lib/persistence/**, tests/experiments/**, tests/stores/**, tests/e2e/**`
+
+**Do not touch:**
+
+- `chemistry formulas, coach behavior, teacher analytics, database schema`
+
+**Requirements:**
+
+- Add a pure local seeded configuration generator with no LLM calls and no new randomization dependency.
+- Generate supported positive analyte volume/concentration and titrant concentration combinations, then validate them with engine-owned equivalence-volume logic.
+- Guarantee `0 < equivalenceVolumeML <= buretteCapacityML`, so the endpoint is reachable from the single fill available in KI-003.
+- Create a fresh seed for each new session while making the same seed reproduce the exact same configuration for replay and tests.
+- Retain the generated seed/configuration in session state and existing persistence/replay payloads without blocking simulation actions.
+
+**Non-goals:**
+
+- No configurations requiring refills or more than one burette capacity; those belong to T0048.
+- No changes to pH, equivalence-point, dilution, or grading formulas.
+- No client-side chemistry validation duplicated from the engine.
+
+**Acceptance criteria:**
+
+- Representative distinct session seeds produce varied configurations, and identical seeds reproduce identical configurations.
+- A deterministic multi-seed test proves every generated configuration has finite positive values and an equivalence volume no greater than its burette capacity.
+- Opening two new titration sessions uses independently seeded configurations while replaying a recorded seed restores the original configuration.
+- Existing titration truth, semantic-event, persistence, and demo tests remain green.
+
+**Manual verification:**
+
+- Open two new `/lab/titration` sessions; confirm their displayed analyte/titrant amounts can differ and each endpoint fits within the available initial fill.
+- Replay one recorded seed; confirm the configuration and deterministic results match the original session.
+
+**Completion report required:** yes.
+
+
+## T0048 — Custom burette refills and refill-required titrations
+
+**Suggested branch:** `feature/t0048-custom-burette-refills`
+**Goal:** Support custom partial burette refills and valid titration sessions whose endpoint requires more than one 50 mL burette fill.
+
+**Dependencies:** T0047, T0023, T0033
+
+**Allowed areas:**
+
+- `src/experiments/titration/**, src/components/lab/titration/**, src/app/lab/**, src/stores/**, src/lib/persistence/**, tests/experiments/**, tests/stores/**, tests/e2e/**`
+
+**Do not touch:**
+
+- `chemistry formulas, coach prompt behavior, teacher metric formulas, unrelated experiment plugins`
+
+**Requirements:**
+
+- Replace the single-fill assumption with an explicit custom-volume fill/refill action that accepts a positive requested volume and never exceeds physical burette capacity.
+- Permit multiple full or partial fills during one session, including refilling an empty burette with a student-selected amount.
+- Separate cumulative titrant delivered to the flask from the current burette meniscus reading and current available volume.
+- Keep pH, curve, equivalence, events, reports, persistence, and replay based on cumulative engine-owned delivery across all fills.
+- Extend seeded session generation with valid bounded scenarios where `equivalenceVolumeML > buretteCapacityML`, ensuring at least one refill is required and the configured endpoint remains achievable.
+- Emit semantic fill/refill events with requested amount, resulting availability, current reading, and whether the action was an initial fill or refill; routine valid refills remain unflagged.
+- Add accessible custom-amount input, full-capacity preset, availability/current-reading feedback, and deterministic validation errors to the 2D controls.
+
+**Non-goals:**
+
+- No freeform fluid physics, infinite reservoir, automatic refill, or changes to chemistry ground truth.
+- No refill-related mistake flag unless coach/eval coverage is included in this ticket.
+
+**Acceptance criteria:**
+
+- A configured endpoint above 50 mL can be completed only after a refill, with continuous cumulative titrant and pH-curve state.
+- Full and custom partial fills update availability and burette reading correctly without exceeding capacity.
+- Meniscus evidence uses the current burette reading, while stoichiometry and ground truth use cumulative delivered volume.
+- Seed, checkpoint, replay, and retry tests preserve every fill/refill and reproduce the final state.
+- Positive valid fill/refill actions have explicit stay-silent coverage; all prior titration tests remain green.
+
+**Manual verification:**
+
+- Run a seeded refill-required titration, empty the first fill, add a custom partial refill, reach the endpoint above 50 mL total delivery, and verify the displayed current reading, cumulative volume, curve, event history, and replayed state.
+- Complete the refill flow using keyboard-only controls and check the browser console.
 
 **Completion report required:** yes.

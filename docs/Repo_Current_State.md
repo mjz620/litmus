@@ -20,6 +20,36 @@ This file is living shared memory for ChatGPT, Codex, and the human project owne
 - `T0003 — Experiment contract scaffold`
   - Completion report:
     `docs/completion-reports/T0003_Experiment_Contract_Scaffold.md`
+- `T0004 — Titration engine import`
+  - Completion report:
+    `docs/completion-reports/T0004_Titration_Engine_Import.md`
+- `T0005 — Display formatting helpers`
+  - Completion report:
+    `docs/completion-reports/T0005_Display_Formatting_Helpers.md`
+- `T0006 — Experiment registry`
+  - Completion report:
+    `docs/completion-reports/T0006_Experiment_Registry.md`
+- `T0007 — Lab store scaffold`
+  - Completion report:
+    `docs/completion-reports/T0007_Lab_Store_Scaffold.md`
+- `T0008 — Student route shell`
+  - Completion report:
+    `docs/completion-reports/T0008_Student_Route_Shell.md`
+- `T0009 — 2D titration controls`
+  - Completion report:
+    `docs/completion-reports/T0009_2D_Titration_Controls.md`
+- `T0010 — pH curve component`
+  - Completion report:
+    `docs/completion-reports/T0010_PH_Curve_Component.md`
+- `T0011 — Low-poly 3D lab shell`
+  - Completion report:
+    `docs/completion-reports/T0011_Low_Poly_3D_Lab_Shell.md`
+- `KI-003 — Deterministic burette fill support`
+  - Completion report:
+    `docs/completion-reports/KI003_Burette_Fill_Support.md`
+- `T0047 — Seeded randomized titration session configurations`
+  - Completion report:
+    `docs/completion-reports/T0047_Randomized_Titration_Configs.md`
 
 ## Current folder structure
 
@@ -28,26 +58,70 @@ Current application and test structure:
 ```text
 src/
   app/
+    experiments/
+      page.module.css
+      page.tsx
     globals.css
+    lab/
+      [experimentId]/
+        LabRouteShell.tsx
+        page.module.css
+        page.tsx
     layout.tsx
     page.tsx
+  components/
+    lab/
+      PHCurve.tsx
+      three/
+        Burette.tsx
+        ErlenmeyerFlask.tsx
+        LabBench.tsx
+        LabScene.tsx
+        sceneProjection.ts
+      titration/
+        TitrationControls.module.css
+        TitrationControls.tsx
+        TitrationScene.module.css
+        TitrationScene.tsx
+    ui/
+      ExperimentCard.module.css
+      ExperimentCard.tsx
+      experimentRoutes.ts
   experiments/
+    registry.ts
     shared/
       experiment.ts
       index.ts
+    titration/
+      display.ts
+      manifest.ts
+      sessionConfig.ts
+      titration.ts
+  stores/
+    labStore.ts
   types/
     index.ts
 tests/
+  components/
+    PHCurve.test.ts
+    sceneProjection.test.ts
   e2e/
     home.spec.ts
+    student-routes.spec.ts
+    titration-controls.spec.ts
   experiments/
     experiment.test.ts
+    registry.test.ts
+    titration-session-config.test.ts
+    titration-display.test.ts
+    titration.test.ts
+  stores/
+    labStore.test.ts
   unit/
     skeleton.test.ts
 ```
 
-Future-ticket folders such as `components`, `stores`, and `supabase` have not
-been created yet.
+The future persistence folder `supabase/` has not been created yet.
 
 ## Workflow path convention
 
@@ -72,6 +146,10 @@ been created yet.
 - `prettier@3.8.2`
 - `vitest@4.1.10`
 - `@playwright/test@1.58.2`
+- `@react-three/drei@10.7.7`
+- `@react-three/fiber@9.6.1`
+- `three@0.185.1`
+- `zustand@5.0.14`
 - React and Node TypeScript declarations
 - `postcss@8.5.10` enforced as a security override
 
@@ -99,8 +177,8 @@ been created yet.
 - `npm run lint` — passed.
 - `npm run format:check` — passed; canonical workflow/specification documents are
   excluded from automatic rewriting and retain their source formatting.
-- `npm test` — passed, 2 files and 6 tests.
-- `npm run test:e2e` — passed in Chromium, 1 test.
+- `npm test` — passed, 9 files and 41 tests.
+- `npm run test:e2e` — passed in Chromium, 5 tests.
 - `npm audit` — 0 vulnerabilities.
 
 ## Known issues
@@ -109,7 +187,7 @@ been created yet.
 
 ## Next recommended ticket
 
-- `T0004 — Titration engine import`.
+- `T0011A — Student lab surface and debug-state separation`.
 
 ## Notes for next Codex run
 
@@ -119,8 +197,33 @@ been created yet.
 - Use `labbench_codex_workflow_pack/` only for local reference material that has
   no root counterpart, such as the established source contracts.
 - Apply the workflow path convention above when reading ticket paths.
-- Implement only `T0004` next.
-- Port the established titration engine from
-  `labbench_codex_workflow_pack/source-contracts/` without weakening the shared
-  contract or chemistry invariants.
+- KI-003 is resolved with a single pre-run burette fill and deterministic
+  remaining-volume state. Mid-run refills remain out of scope.
+- T0047 creates a fresh client-side session seed, generates a deterministic valid
+  analyte/titrant configuration locally, stores the seed with engine state, and
+  supports replay through `/lab/titration?seed=<recorded-seed>`.
+- T0048 remains blocked until both T0023 and T0033 are complete. Do not add
+  refills or configurations requiring more than one burette fill early.
+- T0011 adds a low-poly R3F bench using primitive geometry, a demand-driven
+  render loop, capped device-pixel ratio, constrained orbit controls, and no
+  physics, models, textures, shadows, or post-processing.
+- The 3D burette level projects `state.buretteAvailableML`; flask color projects
+  the latest engine-emitted `observedColor`. The scene does not compute pH or
+  own experiment actions.
+- Headless Chromium uses its software WebGL renderer in Playwright so the scene
+  is exercised in browser tests.
+- Implement `T0011A` before any further student-lab feature work. The current
+  state summary leaks the randomized unknown analyte concentration and exposes
+  development-only IDs, seeds, skill counts, and event counts. Preserve those
+  diagnostics on a separate development-only `/dev/lab/[experimentId]` testing
+  route while keeping `/lab/[experimentId]` strictly student-facing; both routes
+  must reuse the same engine/store/session implementation.
+- Implement `T0011B` immediately after T0011A. Replace the placeholder scene
+  with the owner-directed high-school chemistry lab environment, correct
+  burette/flask intersections, add fine equipment details and selective
+  physically based photorealism for the glassware, and connect selectable 3D
+  equipment to contextual precision controls.
+- T0012 now depends on T0011A/T0011B and must keep raw events, StudentModel,
+  seeds, and engine state inside an inspector mounted only on the dev testing
+  route.
 - Produce completion report.

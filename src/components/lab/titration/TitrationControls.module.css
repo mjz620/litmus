@@ -1,0 +1,209 @@
+.controls {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #d8e2df;
+}
+
+.headingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.headingRow h2,
+.controlGroup h3 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.liveReading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.liveReading span {
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: #e6f4f1;
+  color: #115e59;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.controlGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.controlGroup {
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #d8e2df;
+  border-radius: 0.9rem;
+  background: #f8faf9;
+}
+
+.controlGroup legend,
+.controlGroup > label,
+.controlGroup h3 {
+  padding: 0;
+  color: #17212b;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.controlGroup label {
+  display: grid;
+  gap: 0.4rem;
+  color: #34434d;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.controlGroup input,
+.controlGroup select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #aebfbb;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  color: #17212b;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.controlGroup input:focus-visible,
+.controlGroup select:focus-visible,
+.controlGroup button:focus-visible {
+  outline: 3px solid #99f6e4;
+  outline-offset: 2px;
+}
+
+.buttonRow,
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.controlGroup button {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #8da6a0;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  color: #23413b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.controlGroup button:hover:not(:disabled) {
+  border-color: #0f766e;
+  background: #eef8f6;
+}
+
+.controlGroup button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.controlGroup .primaryButton {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.controlGroup .primaryButton:hover:not(:disabled) {
+  background: #115e59;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.groupStatus {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.note {
+  margin: 0;
+  color: #607078;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.inputError {
+  margin: 0;
+  padding: 0.8rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.65rem;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.85rem;
+}
+
+.eventFeedback {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: #edf3f1;
+  color: #40515a;
+  font-size: 0.82rem;
+}
+
+.eventFeedback span:last-child {
+  text-align: right;
+}
+
+@media (max-width: 46rem) {
+  .controlGrid,
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .headingRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .liveReading {
+    justify-content: flex-start;
+  }
+
+  .eventFeedback {
+    grid-template-columns: 1fr;
+  }
+
+  .eventFeedback span:last-child {
+    text-align: left;
+  }
+}
