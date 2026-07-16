@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("guest can open the experiment catalog and initialized titration shell", async ({
+test("guest can open the experiment catalog and student lab notebook", async ({
   page
 }) => {
   const browserErrors: string[] = [];
@@ -20,29 +20,24 @@ test("guest can open the experiment catalog and initialized titration shell", as
 
   await page.getByRole("link", { name: "Start practice" }).click();
   await expect(page).toHaveURL(/\/lab\/titration$/);
+
+  const notebook = page.getByRole("complementary", { name: "Session notes" });
   await expect(
-    page.getByRole("heading", {
-      level: 2,
-      name: "Initialized state summary"
-    })
+    notebook.getByRole("heading", { level: 2, name: "Session notes" })
   ).toBeVisible();
-  await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  const summary = page.getByRole("complementary", {
-    name: "Initialized state summary"
-  });
+  await expect(notebook.getByText("concentration unknown")).toBeVisible();
+  await expect(notebook.getByText("Prepare the burette")).toBeVisible();
   await expect(
-    summary
-      .getByText("Titrant added", { exact: true })
-      .locator("..")
-      .getByText("0.00 mL", { exact: true })
+    page.getByText("Practice mode — progress is not saved yet")
   ).toBeVisible();
-  await expect(
-    summary
-      .getByText("Titrant available", { exact: true })
-      .locator("..")
-      .getByText("0.00 mL", { exact: true })
-  ).toBeVisible();
-  await expect(page.getByText("4", { exact: true })).toBeVisible();
+
+  const bodyText = (await page.locator("body").innerText()).toLowerCase();
+  expect(bodyText).not.toContain("session seed");
+  expect(bodyText).not.toContain("events recorded");
+  expect(bodyText).not.toContain("skills tracked");
+  expect(bodyText).not.toContain("acid_base_titration");
+  expect(bodyText).not.toContain("initialized state summary");
+  expect(bodyText).not.toContain("guest-");
   expect(browserErrors).toEqual([]);
 });
 
@@ -53,47 +48,52 @@ test("unknown experiment route returns a 404", async ({ page }) => {
   await expect(page.getByText("This page could not be found.")).toBeVisible();
 });
 
-test("new titration sessions receive fresh seeds and explicit seeds replay", async ({
+test("dev route shows fresh seeds per session and replays explicit seeds", async ({
   page
 }) => {
-  const summaryValue = (label: string) =>
-    page
-      .getByRole("complementary", { name: "Initialized state summary" })
-      .getByText(label, { exact: true })
-      .locator("..")
-      .locator("dd");
+  const devSeed = page.getByTestId("dev-session-seed");
+  const devConfig = page.getByTestId("dev-config");
 
-  await page.goto("/lab/titration");
+  await page.goto("/dev/lab/titration");
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  const firstSeed = await summaryValue("Session seed").innerText();
+  const firstSeed = await devSeed.innerText();
 
   await page.reload();
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  const secondSeed = await summaryValue("Session seed").innerText();
+  const secondSeed = await devSeed.innerText();
 
   expect(firstSeed).toMatch(/^guest-/);
   expect(secondSeed).toMatch(/^guest-/);
   expect(secondSeed).not.toBe(firstSeed);
 
-  await page.goto("/lab/titration?seed=replay-alpha");
+  await page.goto("/dev/lab/titration?seed=replay-alpha");
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  await expect(summaryValue("Session seed")).toHaveText("replay-alpha");
-  const replayedConfiguration = [
-    (await summaryValue("Analyte").textContent()) ?? "",
-    (await summaryValue("Titrant").textContent()) ?? ""
-  ];
+  await expect(devSeed).toHaveText("replay-alpha");
+  const replayedConfiguration = await devConfig.innerText();
 
   await page.reload();
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  await expect(summaryValue("Analyte")).toHaveText(replayedConfiguration[0]);
-  await expect(summaryValue("Titrant")).toHaveText(replayedConfiguration[1]);
+  await expect(devConfig).toHaveText(replayedConfiguration);
 
-  await page.goto("/lab/titration?seed=replay-beta");
+  await page.goto("/dev/lab/titration?seed=replay-beta");
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  const differentConfiguration = [
-    (await summaryValue("Analyte").textContent()) ?? "",
-    (await summaryValue("Titrant").textContent()) ?? ""
-  ];
+  const differentConfiguration = await devConfig.innerText();
 
-  expect(differentConfiguration).not.toEqual(replayedConfiguration);
+  expect(differentConfiguration).not.toBe(replayedConfiguration);
+});
+
+test("dev route is unmistakably marked and links back to the student route", async ({
+  page
+}) => {
+  await page.goto("/dev/lab/titration?seed=replay-alpha");
+
+  await expect(page.getByText("⚠ Developer testing route")).toBeVisible();
+
+  const studentLink = page.getByRole("link", {
+    name: "Open the student route →"
+  });
+  await expect(studentLink).toHaveAttribute(
+    "href",
+    "/lab/titration?seed=replay-alpha"
+  );
 });

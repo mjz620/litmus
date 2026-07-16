@@ -1,0 +1,82 @@
+.bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: min(100%, 78rem);
+  margin: 0 auto 1rem;
+  padding: 0.5rem 0;
+}
+
+.identity h1 {
+  margin: 0.45rem 0 0;
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  letter-spacing: -0.035em;
+}
+
+.backLink {
+  color: #0f766e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.backLink:focus-visible,
+.backLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.stage {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #d7ebe7;
+  color: #115e59;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.session {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: end;
+}
+
+.saveStatus {
+  color: #52616b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actions button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #d1dedb;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  color: #33413d;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.actions button:disabled {
+  color: #9aa8a4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 32rem) {
+  .bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .session {
+    justify-items: start;
+  }
+}

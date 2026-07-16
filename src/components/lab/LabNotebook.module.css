@@ -1,0 +1,88 @@
+.notebook {
+  display: grid;
+  gap: 1.1rem;
+  align-content: start;
+}
+
+.notebook h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.notebook h3 {
+  margin: 0 0 0.4rem;
+  color: #33413d;
+  font-size: 0.95rem;
+}
+
+.eyebrow {
+  margin: 0 0 -0.55rem;
+  color: #0f766e;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section {
+  padding-top: 0.9rem;
+  border-top: 1px solid #e2e8e6;
+}
+
+.section p {
+  margin: 0;
+  color: #52616b;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+p.stage {
+  display: inline-block;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #d7ebe7;
+  color: #115e59;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.factList {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.factList div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.factList dt {
+  color: #52616b;
+  font-size: 0.85rem;
+}
+
+.factList dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.indicator {
+  text-transform: capitalize;
+}
+
+.readings {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  font-weight: 700;
+}
+
+p.empty {
+  color: #6b7a76;
+}

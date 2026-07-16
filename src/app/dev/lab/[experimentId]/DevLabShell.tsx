@@ -1,0 +1,195 @@
+"use client";
+
+import Link from "next/link";
+
+import { PHCurve } from "../../../../components/lab/PHCurve";
+import { TitrationControls } from "../../../../components/lab/titration/TitrationControls";
+import { TitrationScene } from "../../../../components/lab/titration/TitrationScene";
+import { useLabSession } from "../../../../components/lab/useLabSession";
+import type { ExperimentId } from "../../../../experiments/registry";
+
+import styles from "./page.module.css";
+
+interface DevLabShellProps {
+  experimentId: ExperimentId;
+  routeSegment: string;
+  title: string;
+  replaySeed?: string;
+}
+
+/**
+ * Developer analytics surface. Shares the exact session hook, store, engine,
+ * and controls with the student route; only this shell may render seeds, raw
+ * state, ground-truth-bearing configuration, skills, and event diagnostics.
+ */
+export function DevLabShell({
+  experimentId,
+  routeSegment,
+  title,
+  replaySeed
+}: DevLabShellProps) {
+  const {
+    status,
+    sessionId,
+    definition,
+    state,
+    studentModel,
+    eventQueue,
+    error,
+    isCurrentExperiment,
+    isPending,
+    isReady
+  } = useLabSession({ experimentId, replaySeed });
+
+  const studentPath = replaySeed
+    ? `/lab/${routeSegment}?seed=${encodeURIComponent(replaySeed)}`
+    : `/lab/${routeSegment}`;
+  const latestEvent = eventQueue.at(-1);
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.banner} role="note" aria-label="Developer testing">
+        <strong>⚠ Developer testing route</strong>
+        <span>
+          This page exposes internal session data, including answers. It is not
+          the student experience and returns 404 in production builds.
+        </span>
+        <Link className={styles.studentLink} href={studentPath}>
+          Open the student route →
+        </Link>
+      </div>
+
+      <header className={styles.header}>
+        <h1>{title} — developer testing</h1>
+      </header>
+
+      <div className={styles.workspace}>
+        <section className={styles.bench} aria-labelledby="dev-bench-heading">
+          <h2 id="dev-bench-heading">Shared lab workspace</h2>
+          <p>
+            The controls below dispatch the same typed actions through the same
+            store and engine as the student route.
+          </p>
+
+          {isPending && (
+            <p className={styles.loading} role="status" aria-live="polite">
+              Initializing deterministic experiment…
+            </p>
+          )}
+
+          {status === "error" && isCurrentExperiment && (
+            <div className={styles.error} role="alert">
+              <strong>Experiment unavailable</strong>
+              <span>{error ?? "The experiment could not be initialized."}</span>
+            </div>
+          )}
+
+          {isReady && state && (
+            <>
+              <TitrationScene />
+              <TitrationControls />
+              <PHCurve
+                points={state.curve}
+                maxVolumeML={state.config.buretteCapacityML}
+              />
+            </>
+          )}
+        </section>
+
+        <aside className={styles.analytics} aria-labelledby="analytics-heading">
+          <p className={styles.eyebrow}>Internal analytics</p>
+          <h2 id="analytics-heading">Session diagnostics</h2>
+
+          <dl className={styles.stateList}>
+            <div>
+              <dt>Status</dt>
+              <dd className={isReady ? styles.ready : undefined}>
+                {isReady ? "Ready" : status}
+              </dd>
+            </div>
+            <div>
+              <dt>Route experiment ID</dt>
+              <dd className={styles.code}>{experimentId}</dd>
+            </div>
+            <div>
+              <dt>Canonical engine ID</dt>
+              <dd className={styles.code}>{definition?.id ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Session ID</dt>
+              <dd className={styles.code}>{sessionId ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Session seed</dt>
+              <dd className={styles.code} data-testid="dev-session-seed">
+                {state?.sessionSeed ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>Events recorded</dt>
+              <dd data-testid="dev-event-count">{eventQueue.length}</dd>
+            </div>
+            <div>
+              <dt>Latest event</dt>
+              <dd className={styles.code}>
+                {latestEvent
+                  ? `${latestEvent.type}${
+                      latestEvent.flags.length > 0
+                        ? ` [${latestEvent.flags.join(", ")}]`
+                        : ""
+                    }`
+                  : "—"}
+              </dd>
+            </div>
+          </dl>
+
+          <section aria-label="StudentModel skills">
+            <h3>StudentModel skills</h3>
+            {studentModel ? (
+              <>
+                <dl className={styles.stateList}>
+                  {Object.entries(studentModel.skills).map(
+                    ([skillId, estimate]) => (
+                      <div key={skillId}>
+                        <dt className={styles.code}>{skillId}</dt>
+                        <dd>
+                          {estimate.mastery.toFixed(2)} ·{" "}
+                          {estimate.evidenceCount} evidence
+                          {estimate.lastReason
+                            ? ` · ${estimate.lastReason}`
+                            : ""}
+                        </dd>
+                      </div>
+                    )
+                  )}
+                </dl>
+                <p className={styles.flags}>
+                  Active flags:{" "}
+                  {studentModel.activeFlags.length > 0
+                    ? studentModel.activeFlags.join(", ")
+                    : "none"}
+                </p>
+              </>
+            ) : (
+              <p>No StudentModel yet.</p>
+            )}
+          </section>
+
+          <section aria-label="Generated configuration">
+            <h3>Generated configuration</h3>
+            <pre className={styles.raw} data-testid="dev-config">
+              {state ? JSON.stringify(state.config, null, 2) : "—"}
+            </pre>
+          </section>
+
+          <section aria-label="Raw engine state">
+            <h3>Raw engine state</h3>
+            <pre className={styles.raw} data-testid="dev-raw-state">
+              {state ? JSON.stringify(state, null, 2) : "—"}
+            </pre>
+          </section>
+        </aside>
+      </div>
+    </main>
+  );
+}

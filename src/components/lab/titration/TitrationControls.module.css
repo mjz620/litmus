@@ -169,21 +169,6 @@
   font-size: 0.85rem;
 }
 
-.eventFeedback {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  border-radius: 0.75rem;
-  background: #edf3f1;
-  color: #40515a;
-  font-size: 0.82rem;
-}
-
-.eventFeedback span:last-child {
-  text-align: right;
-}
-
 @media (max-width: 46rem) {
   .controlGrid,
   .fieldGrid {
@@ -197,13 +182,5 @@
 
   .liveReading {
     justify-content: flex-start;
-  }
-
-  .eventFeedback {
-    grid-template-columns: 1fr;
-  }
-
-  .eventFeedback span:last-child {
-    text-align: left;
   }
 }

@@ -50,6 +50,9 @@ This file is living shared memory for ChatGPT, Codex, and the human project owne
 - `T0047 — Seeded randomized titration session configurations`
   - Completion report:
     `docs/completion-reports/T0047_Randomized_Titration_Configs.md`
+- `T0011A — Student lab surface and debug-state separation`
+  - Completion report:
+    `docs/completion-reports/T0011A_Student_Debug_Surface_Separation.md`
 
 ## Current folder structure
 
@@ -58,6 +61,12 @@ Current application and test structure:
 ```text
 src/
   app/
+    dev/
+      lab/
+        [experimentId]/
+          DevLabShell.tsx
+          page.module.css
+          page.tsx
     experiments/
       page.module.css
       page.tsx
@@ -71,7 +80,12 @@ src/
     page.tsx
   components/
     lab/
+      LabNotebook.module.css
+      LabNotebook.tsx
+      LabSessionBar.module.css
+      LabSessionBar.tsx
       PHCurve.tsx
+      useLabSession.ts
       three/
         Burette.tsx
         ErlenmeyerFlask.tsx
@@ -79,6 +93,7 @@ src/
         LabScene.tsx
         sceneProjection.ts
       titration/
+        procedureStage.ts
         TitrationControls.module.css
         TitrationControls.tsx
         TitrationScene.module.css
@@ -104,10 +119,12 @@ src/
 tests/
   components/
     PHCurve.test.ts
+    procedureStage.test.ts
     sceneProjection.test.ts
   e2e/
     home.spec.ts
     student-routes.spec.ts
+    student-surface.spec.ts
     titration-controls.spec.ts
   experiments/
     experiment.test.ts
@@ -177,8 +194,8 @@ The future persistence folder `supabase/` has not been created yet.
 - `npm run lint` — passed.
 - `npm run format:check` — passed; canonical workflow/specification documents are
   excluded from automatic rewriting and retain their source formatting.
-- `npm test` — passed, 9 files and 41 tests.
-- `npm run test:e2e` — passed in Chromium, 5 tests.
+- `npm test` — passed, 10 files and 47 tests.
+- `npm run test:e2e` — passed in Chromium, 11 tests.
 - `npm audit` — 0 vulnerabilities.
 
 ## Known issues
@@ -187,7 +204,7 @@ The future persistence folder `supabase/` has not been created yet.
 
 ## Next recommended ticket
 
-- `T0011A — Student lab surface and debug-state separation`.
+- `T0011B — Detailed interactive high-school chemistry lab`.
 
 ## Notes for next Codex run
 
@@ -212,13 +229,13 @@ The future persistence folder `supabase/` has not been created yet.
   own experiment actions.
 - Headless Chromium uses its software WebGL renderer in Playwright so the scene
   is exercised in browser tests.
-- Implement `T0011A` before any further student-lab feature work. The current
-  state summary leaks the randomized unknown analyte concentration and exposes
-  development-only IDs, seeds, skill counts, and event counts. Preserve those
-  diagnostics on a separate development-only `/dev/lab/[experimentId]` testing
-  route while keeping `/lab/[experimentId]` strictly student-facing; both routes
-  must reuse the same engine/store/session implementation.
-- Implement `T0011B` immediately after T0011A. Replace the placeholder scene
+- T0011A is complete. `/lab/[experimentId]` is strictly student-facing (lab
+  notebook, session bar, no seeds/IDs/counts/unknown concentration), while
+  `/dev/lab/[experimentId]` carries the internal diagnostics, returns 404 in
+  production builds, and shares the same `useLabSession` hook, store, and
+  engine flow. Leak-regression and shared-seed parity e2e tests guard the
+  separation.
+- Implement `T0011B` next. Replace the placeholder scene
   with the owner-directed high-school chemistry lab environment, correct
   burette/flask intersections, add fine equipment details and selective
   physically based photorealism for the glassware, and connect selectable 3D

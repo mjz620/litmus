@@ -1,0 +1,184 @@
+.page {
+  min-height: 100vh;
+  padding: clamp(1rem, 3vw, 2rem);
+  background: #f4efe4;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  width: min(100%, 78rem);
+  margin: 0 auto 1rem;
+  padding: 0.9rem 1.1rem;
+  border: 2px dashed #b45309;
+  border-radius: 0.9rem;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 0.9rem;
+}
+
+.studentLink {
+  color: #92400e;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.header {
+  width: min(100%, 78rem);
+  margin: 0 auto 1rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  letter-spacing: -0.03em;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+  gap: 1rem;
+  width: min(100%, 78rem);
+  margin: 0 auto;
+}
+
+.bench,
+.analytics {
+  border: 1px solid #ddd3bd;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow: 0 1rem 3rem rgb(43 33 23 / 6%);
+}
+
+.bench {
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  min-height: 34rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.bench h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.bench > p {
+  max-width: 34rem;
+  margin: 0.8rem 0 0;
+  color: #52616b;
+  line-height: 1.6;
+}
+
+.analytics {
+  display: grid;
+  gap: 1rem;
+  align-self: start;
+  align-content: start;
+  padding: 1.5rem;
+}
+
+.analytics h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+}
+
+.analytics h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.eyebrow {
+  margin: 0 0 -0.65rem;
+  color: #b45309;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.loading {
+  margin: 1.5rem 0 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #f4f7f6;
+  color: #52616b;
+}
+
+.error {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.stateList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.stateList div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #ece5d4;
+}
+
+.stateList div:last-child {
+  border-bottom: 0;
+}
+
+.stateList dt {
+  color: #52616b;
+  font-size: 0.85rem;
+}
+
+.stateList dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.code {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.82rem;
+  text-transform: none;
+}
+
+.flags {
+  margin: 0.6rem 0 0;
+  color: #52616b;
+  font-size: 0.85rem;
+}
+
+.raw {
+  max-height: 20rem;
+  margin: 0;
+  padding: 0.8rem;
+  overflow: auto;
+  border-radius: 0.6rem;
+  background: #1f2933;
+  color: #d9e2ec;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 52rem) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .bench {
+    min-height: 28rem;
+  }
+}

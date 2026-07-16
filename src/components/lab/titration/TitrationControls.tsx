@@ -31,7 +31,6 @@ export function TitrationControls() {
 
   if (!state) return null;
 
-  const latestEvent = eventQueue.at(-1);
   const latestPH = eventQueue.findLast(
     ({ observation }) => typeof observation.pH === "number"
   )?.observation.pH;
@@ -266,22 +265,6 @@ export function TitrationControls() {
           {inputError}
         </p>
       )}
-
-      <div className={styles.eventFeedback} aria-live="polite">
-        <strong>Latest engine event</strong>
-        {latestEvent ? (
-          <>
-            <span>{latestEvent.type.replaceAll("_", " ")}</span>
-            <span>
-              {latestEvent.flags.length > 0
-                ? `Flags: ${latestEvent.flags.join(", ")}`
-                : "No flags"}
-            </span>
-          </>
-        ) : (
-          <span>No actions recorded yet.</span>
-        )}
-      </div>
     </section>
   );
 }
