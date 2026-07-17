@@ -3,12 +3,20 @@
 import { useEffect, useRef } from "react";
 
 import type { ExperimentId } from "../../experiments/registry";
+import { DEFAULT_PRECIPITATION_CONFIG } from "../../experiments/precipitation/precipitation";
 import { generateTitrationSessionConfig } from "../../experiments/titration/sessionConfig";
+import {
+  createTitrationRetryScenario,
+  type TitrationRetrySkillId
+} from "../../experiments/titration/retry";
 import { useLabStore } from "../../stores/labStore";
 
 export interface LabSessionOptions {
   experimentId: ExperimentId;
   replaySeed?: string;
+  retrySkillId?: TitrationRetrySkillId;
+  parentSessionId?: string;
+  mode?: "practice" | "assignment" | "demo" | "preview";
 }
 
 /**
@@ -17,7 +25,13 @@ export interface LabSessionOptions {
  * configuration generator, and typed engine flow; only their presentation of
  * the resulting session differs.
  */
-export function useLabSession({ experimentId, replaySeed }: LabSessionOptions) {
+export function useLabSession({
+  experimentId,
+  replaySeed,
+  retrySkillId,
+  parentSessionId,
+  mode
+}: LabSessionOptions) {
   const started = useRef(false);
   const status = useLabStore((store) => store.status);
   const loadedExperimentId = useLabStore((store) => store.experimentId);
@@ -34,18 +48,43 @@ export function useLabSession({ experimentId, replaySeed }: LabSessionOptions) {
     started.current = true;
 
     const newSessionId = globalThis.crypto?.randomUUID
-      ? `guest-${globalThis.crypto.randomUUID()}`
-      : `guest-${Date.now()}`;
+      ? globalThis.crypto.randomUUID()
+      : createFallbackSessionId();
     const sessionSeed = replaySeed ?? newSessionId;
-    const config = generateTitrationSessionConfig(sessionSeed);
-
-    void loadExperiment({
-      experimentId,
-      sessionId: newSessionId,
-      config,
-      seed: { sessionSeed }
-    }).catch(() => undefined);
-  }, [experimentId, loadExperiment, replaySeed]);
+    if (experimentId === "acid_base_titration") {
+      const retryScenario = retrySkillId
+        ? createTitrationRetryScenario(
+            retrySkillId,
+            `retry:${parentSessionId ?? "standalone"}:${sessionSeed}`
+          )
+        : null;
+      void loadExperiment({
+        experimentId,
+        sessionId: newSessionId,
+        config:
+          retryScenario?.config ?? generateTitrationSessionConfig(sessionSeed),
+        seed: retryScenario?.seed ?? { sessionSeed },
+        mode,
+        parentSessionId
+      }).catch(() => undefined);
+    } else {
+      void loadExperiment({
+        experimentId,
+        sessionId: newSessionId,
+        config: DEFAULT_PRECIPITATION_CONFIG,
+        seed: { sessionSeed },
+        mode,
+        parentSessionId
+      }).catch(() => undefined);
+    }
+  }, [
+    experimentId,
+    loadExperiment,
+    mode,
+    parentSessionId,
+    replaySeed,
+    retrySkillId
+  ]);
 
   const isCurrentExperiment = loadedExperimentId === experimentId;
   const isReady = status === "ready" && isCurrentExperiment && state !== null;
@@ -68,4 +107,9 @@ export function useLabSession({ experimentId, replaySeed }: LabSessionOptions) {
     isReady,
     latestPH: typeof latestPH === "number" ? latestPH : undefined
   };
+}
+
+function createFallbackSessionId(): string {
+  const timestamp = Date.now().toString(16).padStart(12, "0").slice(-12);
+  return `00000000-0000-4000-8000-${timestamp}`;
 }

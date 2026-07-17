@@ -18,6 +18,28 @@ When Codex notices something outside the active ticket, it should record it here
 
 ## Current issues
 
+## KI-004 — Checkpoint updates are idempotent but not monotonic
+
+- Date: 2026-07-17
+- Found during ticket: T0022
+- Severity: high
+- Area: persistence / checkpoint ordering and acknowledgements
+- Description: Event insertion is protected by stable client event IDs and
+  database uniqueness, but mutable session and skill rows currently use
+  last-write-wins upserts. A delayed or out-of-order checkpoint could regress a
+  skill estimate or clear `final_state`/`completed_at` because omitted completion
+  fields are written as `null`. The Supabase repository also reports attempted
+  event count as `acceptedEvents`, rather than the number actually inserted
+  after conflict handling.
+- Suggested follow-up ticket: add a monotonic checkpoint revision/sequence gate;
+  preserve existing completion fields on partial checkpoints; reject or ignore
+  stale skill/session updates; return accurate inserted/deduplicated event
+  counts; and test duplicate, delayed, reordered, retry, and concurrent-tab
+  delivery against the database constraint path.
+- Do not fix until: the baseline checkpoint route and queue tickets are complete
+  and a persistence-hardening ticket explicitly owns the migration, repository,
+  and integration-test changes.
+
 ## KI-002 — Titration duration metadata conflicts with product specification
 
 - Date: 2026-07-15
@@ -53,9 +75,10 @@ When Codex notices something outside the active ticket, it should record it here
   contract and engine change.
 - Resolved: 2026-07-15. The project owner explicitly authorized the KI-003 plan.
   The engine now starts with an empty burette, exposes a typed `fill_burette`
-  action and remaining-volume state, enforces single-fill capacity constraints,
-  and emits an unflagged semantic fill event. The UI dispatches that action and
-  renders engine-owned availability.
+  action and remaining-volume state, and emits unflagged semantic fill events.
+  T0048 subsequently added positive bounded custom refills, independent current
+  reading/availability/cumulative delivery, multi-fill replay/checkpoints, and
+  refill-required configurations without changing chemistry formulas.
 
 ## KI-001 — Root README fails the global Prettier check
 
@@ -77,8 +100,9 @@ When Codex notices something outside the active ticket, it should record it here
 
 ## Future followups already expected
 
-- More advanced accessibility alternatives for all 3D actions.
-- Offline IndexedDB write queue hardening.
-- Calorimetry plugin after core demo is stable.
-- Teacher-authored rubrics after MVP.
-- Rich trend charts after MVP.
+- Physical screen-reader and lowest-tier Chromebook validation.
+- Offline IndexedDB and monotonic checkpoint write hardening.
+- Credentialed Supabase RLS/auth/reset integration tests.
+- Live Realtime microphone and procedural-sound listening checks.
+- Calorimetry only after the bounded Lab Composer titration path is stable.
+- Teacher-authored rubrics and rich trend charts after MVP.

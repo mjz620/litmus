@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import {
   type ExperimentId,
+  getExperimentManifest,
   loadExperimentDefinition,
   type RegisteredExperimentDefinition
 } from "../experiments/registry";
@@ -11,37 +12,99 @@ import {
   type SemanticEvent,
   type StudentModel
 } from "../experiments/shared";
+import type {
+  PrecipitationAction,
+  PrecipitationConfig,
+  PrecipitationState,
+  precipitation as precipitationDefinition
+} from "../experiments/precipitation/precipitation";
+import type {
+  TitrationAction,
+  TitrationConfig,
+  TitrationState,
+  titration as titrationDefinition
+} from "../experiments/titration/titration";
+import {
+  CHECKPOINT_SCHEMA_VERSION,
+  CheckpointQueue,
+  NoopCheckpointTransport,
+  type SaveStatus,
+  type CheckpointRequest
+} from "../lib/persistence";
+import { HttpCheckpointTransport } from "../lib/persistence/httpCheckpointTransport";
+import {
+  HttpCoachClient,
+  NoopCoachClient,
+  type CoachClient
+} from "../lib/agent/client";
+import type { CoachRequest, CoachResponse } from "../lib/agent/schemas";
+import { decideCoachTrigger } from "../lib/agent/triggerPolicy";
 
-export type LabExperimentConfig = Parameters<
-  RegisteredExperimentDefinition["createInitialState"]
->[0];
-export type LabExperimentState = ReturnType<
-  RegisteredExperimentDefinition["createInitialState"]
->;
-export type LabExperimentAction = Parameters<
-  RegisteredExperimentDefinition["step"]
->[1];
+export type LabExperimentConfig = TitrationConfig | PrecipitationConfig;
+export type LabExperimentState = TitrationState | PrecipitationState;
+export type LabExperimentAction = TitrationAction | PrecipitationAction;
 
 export type LabStoreStatus = "idle" | "loading" | "ready" | "error";
+export type CoachStatus = "idle" | "loading" | "error";
 
-export interface LoadExperimentRequest {
-  experimentId: ExperimentId;
-  sessionId: string;
-  config: LabExperimentConfig;
-  seed?: Partial<LabExperimentState>;
+export interface CoachMessage {
+  id: string;
+  role: "student" | "coach";
+  text: string;
+  response?: CoachResponse;
 }
+
+interface LoadExperimentRequestBase {
+  sessionId: string;
+  mode?: "practice" | "assignment" | "demo" | "preview";
+  parentSessionId?: string;
+  workflowVersionId?: string;
+}
+
+export type LoadExperimentRequest =
+  | (LoadExperimentRequestBase & {
+      experimentId: "acid_base_titration";
+      config: TitrationConfig;
+      seed?: Partial<TitrationState>;
+    })
+  | (LoadExperimentRequestBase & {
+      experimentId: "precipitation_solubility";
+      config: PrecipitationConfig;
+      seed?: Partial<PrecipitationState>;
+    });
 
 export interface LabStore {
   status: LabStoreStatus;
   experimentId: ExperimentId | null;
   sessionId: string | null;
+  mode: "practice" | "assignment" | "demo" | "preview";
+  parentSessionId: string | null;
+  workflowVersionId: string | null;
   definition: RegisteredExperimentDefinition | null;
   state: LabExperimentState | null;
   studentModel: StudentModel | null;
   eventQueue: SemanticEvent[];
+  saveStatus: SaveStatus;
+  saveError: string | null;
+  coachMessages: CoachMessage[];
+  coachStatus: CoachStatus;
+  coachError: string | null;
+  lastCoachRequest: CoachRequest | null;
+  lastCheckpoint: CheckpointRequest | null;
   error: string | null;
   loadExperiment: (request: LoadExperimentRequest) => Promise<void>;
   dispatch: (action: LabExperimentAction) => void;
+  checkpoint: (completed?: boolean) => void;
+  retryCheckpoint: () => void;
+  askCoach: (question: string) => Promise<void>;
+}
+
+export interface CreateLabStoreOptions {
+  checkpointQueue?: CheckpointQueue;
+  mode?: "practice" | "assignment" | "demo" | "preview";
+  parentSessionId?: string;
+  workflowVersionId?: string;
+  coachClient?: CoachClient;
 }
 
 export class LabStoreNotReadyError extends Error {
@@ -51,15 +114,32 @@ export class LabStoreNotReadyError extends Error {
   }
 }
 
-export function createLabStore() {
-  return create<LabStore>((set, get) => ({
+export function createLabStore(options: CreateLabStoreOptions = {}) {
+  const checkpointQueue =
+    options.checkpointQueue ??
+    new CheckpointQueue(new NoopCheckpointTransport());
+  const coachClient = options.coachClient ?? new NoopCoachClient();
+  let nextEventSequence = 0;
+  let nextCoachMessageSequence = 0;
+
+  const store = create<LabStore>((set, get) => ({
     status: "idle",
     experimentId: null,
     sessionId: null,
+    mode: options.mode ?? "practice",
+    parentSessionId: options.parentSessionId ?? null,
+    workflowVersionId: options.workflowVersionId ?? null,
     definition: null,
     state: null,
     studentModel: null,
     eventQueue: [],
+    saveStatus: "idle",
+    saveError: null,
+    coachMessages: [],
+    coachStatus: "idle",
+    coachError: null,
+    lastCoachRequest: null,
+    lastCheckpoint: null,
     error: null,
 
     async loadExperiment(request) {
@@ -67,19 +147,29 @@ export function createLabStore() {
         status: "loading",
         experimentId: request.experimentId,
         sessionId: request.sessionId,
+        mode: request.mode ?? options.mode ?? "practice",
+        parentSessionId:
+          request.parentSessionId ?? options.parentSessionId ?? null,
+        workflowVersionId:
+          request.workflowVersionId ?? options.workflowVersionId ?? null,
         definition: null,
         state: null,
         studentModel: null,
         eventQueue: [],
+        saveStatus: "idle",
+        saveError: null,
+        coachMessages: [],
+        coachStatus: "idle",
+        coachError: null,
+        lastCoachRequest: null,
+        lastCheckpoint: null,
         error: null
       });
 
       try {
-        const definition = await loadExperimentDefinition(request.experimentId);
-        const state = definition.createInitialState(
-          request.config,
-          request.seed
-        );
+        nextEventSequence = 0;
+        const { definition, state } =
+          await initializeRegisteredExperiment(request);
         const studentModel = newStudentModel(request.sessionId, definition);
 
         set({
@@ -88,6 +178,7 @@ export function createLabStore() {
           state,
           studentModel
         });
+        queueCheckpoint([], state, studentModel);
       } catch (error) {
         set({
           status: "error",
@@ -105,6 +196,7 @@ export function createLabStore() {
 
       if (
         current.status !== "ready" ||
+        !current.experimentId ||
         !current.definition ||
         !current.state ||
         !current.studentModel
@@ -112,7 +204,12 @@ export function createLabStore() {
         throw new LabStoreNotReadyError();
       }
 
-      const result = current.definition.step(current.state, action);
+      const result = stepRegisteredExperiment(
+        current.experimentId,
+        current.definition,
+        current.state,
+        action
+      );
       const studentModel = result.events.reduce(
         (model, event) => applyEvidence(model, event),
         current.studentModel
@@ -123,11 +220,237 @@ export function createLabStore() {
         studentModel,
         eventQueue: [...current.eventQueue, ...result.events]
       });
+
+      queueCheckpoint(result.events, result.state, studentModel);
+
+      const decision = decideCoachTrigger({
+        recentEvents: [...current.eventQueue, ...result.events].slice(-12)
+      });
+      if (decision.shouldTrigger) {
+        void requestCoach(undefined, decision.source, decision.maxHintLevel);
+      }
+    },
+
+    checkpoint(completed = false) {
+      const current = get();
+      if (!current.state || !current.studentModel) return;
+      queueCheckpoint([], current.state, current.studentModel, completed);
+    },
+
+    retryCheckpoint() {
+      checkpointQueue.retry();
+    },
+
+    async askCoach(question) {
+      const normalized = question.trim();
+      if (!normalized) return;
+      store.setState((current) => ({
+        coachMessages: [
+          ...current.coachMessages,
+          {
+            id: `coach-message-${nextCoachMessageSequence++}`,
+            role: "student",
+            text: normalized
+          }
+        ]
+      }));
+      await requestCoach(normalized, "question", 3);
     }
   }));
+
+  checkpointQueue.subscribe((snapshot) => {
+    store.setState({
+      saveStatus: snapshot.status,
+      saveError: snapshot.lastError
+    });
+  });
+
+  function queueCheckpoint(
+    events: readonly SemanticEvent[],
+    state: LabExperimentState,
+    studentModel: StudentModel,
+    completed = false
+  ): void {
+    const current = store.getState();
+    if (!current.sessionId || !current.experimentId) return;
+
+    const manifest = getExperimentManifest(current.experimentId);
+    const checkpointEvents = events.map((payload) => {
+      const seq = nextEventSequence++;
+      return {
+        clientEventId: `${current.sessionId}:${seq}`,
+        seq,
+        payload
+      };
+    });
+    const sessionSeed =
+      "sessionSeed" in state && typeof state.sessionSeed === "string"
+        ? state.sessionSeed
+        : undefined;
+
+    const checkpoint: CheckpointRequest = {
+      schemaVersion: CHECKPOINT_SCHEMA_VERSION,
+      sessionId: current.sessionId,
+      experimentId: current.experimentId,
+      experimentVersion: manifest.version,
+      mode: current.mode,
+      parentSessionId: current.parentSessionId ?? undefined,
+      workflowVersionId: current.workflowVersionId ?? undefined,
+      sessionSeed,
+      events: checkpointEvents.length > 0 ? checkpointEvents : undefined,
+      skillEstimates: Object.entries(studentModel.skills).map(
+        ([skillId, estimate]) => ({ skillId, ...estimate })
+      ),
+      finalState: completed ? state : undefined,
+      completedAt: completed ? new Date().toISOString() : undefined
+    };
+    store.setState({ lastCheckpoint: checkpoint });
+    checkpointQueue.enqueue(checkpoint);
+  }
+
+  async function requestCoach(
+    studentQuestion: string | undefined,
+    source: "event" | "question" | "retry",
+    maxHintLevel: 0 | 1 | 2 | 3
+  ): Promise<void> {
+    const current = store.getState();
+    if (
+      current.status !== "ready" ||
+      !current.sessionId ||
+      !current.experimentId ||
+      !current.state ||
+      !current.studentModel
+    ) {
+      return;
+    }
+
+    store.setState({ coachStatus: "loading", coachError: null });
+    try {
+      const coachRequest: CoachRequest = {
+        sessionId: current.sessionId,
+        experimentId: current.experimentId,
+        currentState: current.state,
+        recentEvents: current.eventQueue.slice(-12),
+        studentModel: current.studentModel,
+        studentQuestion,
+        triggerPolicy: { source, maxHintLevel }
+      };
+      store.setState({ lastCoachRequest: coachRequest });
+      const response = await coachClient.request(coachRequest);
+
+      store.setState((latest) => ({
+        coachStatus: "idle",
+        coachError: null,
+        coachMessages:
+          response.shouldRespond && response.message
+            ? [
+                ...latest.coachMessages,
+                {
+                  id: `coach-message-${nextCoachMessageSequence++}`,
+                  role: "coach" as const,
+                  text: response.message,
+                  response
+                }
+              ]
+            : latest.coachMessages
+      }));
+    } catch (error) {
+      store.setState({
+        coachStatus: "error",
+        coachError: getErrorMessage(error)
+      });
+    }
+  }
+
+  return store;
 }
 
-export const useLabStore = createLabStore();
+async function initializeRegisteredExperiment(
+  request: LoadExperimentRequest
+): Promise<{
+  definition: RegisteredExperimentDefinition;
+  state: LabExperimentState;
+}> {
+  if (request.experimentId === "acid_base_titration") {
+    const definition = await loadExperimentDefinition(request.experimentId);
+    return {
+      definition,
+      state: definition.createInitialState(request.config, request.seed)
+    };
+  }
+
+  const definition = await loadExperimentDefinition(request.experimentId);
+  return {
+    definition,
+    state: definition.createInitialState(request.config, request.seed)
+  };
+}
+
+function stepRegisteredExperiment(
+  experimentId: ExperimentId,
+  definition: RegisteredExperimentDefinition,
+  state: LabExperimentState,
+  action: LabExperimentAction
+) {
+  if (
+    experimentId === "acid_base_titration" &&
+    isTitrationState(state) &&
+    isTitrationAction(action)
+  ) {
+    return (definition as typeof titrationDefinition).step(state, action);
+  }
+  if (
+    experimentId === "precipitation_solubility" &&
+    isPrecipitationState(state) &&
+    isPrecipitationAction(action)
+  ) {
+    return (definition as typeof precipitationDefinition).step(state, action);
+  }
+  throw new TypeError(
+    `Action does not match loaded experiment ${experimentId}.`
+  );
+}
+
+export function isTitrationState(
+  state: LabExperimentState | null
+): state is TitrationState {
+  return state !== null && "titrantAddedML" in state;
+}
+
+export function isPrecipitationState(
+  state: LabExperimentState | null
+): state is PrecipitationState {
+  return state !== null && "solutionA" in state && "solutionB" in state;
+}
+
+function isTitrationAction(
+  action: LabExperimentAction
+): action is TitrationAction {
+  return [
+    "rinse_burette",
+    "fill_burette",
+    "select_indicator",
+    "add_titrant",
+    "read_meniscus",
+    "submit_report"
+  ].includes(action.type);
+}
+
+function isPrecipitationAction(
+  action: LabExperimentAction
+): action is PrecipitationAction {
+  return [
+    "select_solution",
+    "mix_solutions",
+    "submit_precipitate_prediction",
+    "submit_net_ionic_equation"
+  ].includes(action.type);
+}
+
+export const useLabStore = createLabStore({
+  checkpointQueue: new CheckpointQueue(new HttpCheckpointTransport()),
+  coachClient: new HttpCoachClient()
+});
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Failed to load experiment.";

@@ -12,15 +12,21 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "profile:lab": "node scripts/profile-lab.mjs",
+    "eval:coach": "vitest run tests/coach/evalHarness.test.ts --reporter=verbose"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.7",
     "next": "16.2.10",
+    "openai": "^6.48.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "three": "^0.185.1",
+    "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

@@ -8,7 +8,7 @@ const MAX_GENERATION_ATTEMPTS = 64;
 
 /**
  * Produce a varied titration configuration that is stable for a given session
- * seed and whose equivalence point fits within one burette fill.
+ * seed and whose equivalence point fits within at most two burette fills.
  */
 export function generateTitrationSessionConfig(
   sessionSeed: string
@@ -35,7 +35,7 @@ export function generateTitrationSessionConfig(
     if (
       Number.isFinite(equivalenceML) &&
       equivalenceML > 0 &&
-      equivalenceML <= config.buretteCapacityML
+      equivalenceML <= config.buretteCapacityML * 2
     ) {
       return config;
     }

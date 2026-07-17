@@ -17,7 +17,7 @@ describe("seeded titration session configuration", () => {
     expect(second).not.toEqual(first);
   });
 
-  it("keeps every generated equivalence point within one burette fill", () => {
+  it("keeps every generated equivalence point within two fills", () => {
     const configurations = Array.from({ length: 250 }, (_, index) =>
       generateTitrationSessionConfig(`validity-seed-${index}`)
     );
@@ -30,11 +30,16 @@ describe("seeded titration session configuration", () => {
       expect(config.titrant.concentrationM).toBeGreaterThan(0);
       expect(Number.isFinite(equivalenceML)).toBe(true);
       expect(equivalenceML).toBeGreaterThan(0);
-      expect(equivalenceML).toBeLessThanOrEqual(config.buretteCapacityML);
+      expect(equivalenceML).toBeLessThanOrEqual(config.buretteCapacityML * 2);
     }
 
     expect(
       new Set(configurations.map((config) => JSON.stringify(config))).size
     ).toBeGreaterThan(1);
+    expect(
+      configurations.some(
+        (config) => equivalenceVolumeML(config) > config.buretteCapacityML
+      )
+    ).toBe(true);
   });
 });

@@ -32,8 +32,13 @@ describe("titration display formatting", () => {
 
   it("does not round the full-precision titrant volume in engine state", () => {
     const initialState = titration.createInitialState(EXAMPLE_STRONG);
-    const filledState = titration.step(initialState, {
-      type: "fill_burette"
+    const withIndicator = titration.step(initialState, {
+      type: "select_indicator",
+      indicator: "phenolphthalein"
+    }).state;
+    const filledState = titration.step(withIndicator, {
+      type: "fill_burette",
+      volumeML: 50
     }).state;
     const { state } = titration.step(filledState, {
       type: "add_titrant",

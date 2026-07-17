@@ -1,4 +1,5 @@
 import { titrationManifest } from "./titration/manifest";
+import { precipitationManifest } from "./precipitation/manifest";
 
 export type ExperimentDifficulty = "intro" | "intermediate" | "advanced";
 
@@ -20,7 +21,8 @@ export interface ExperimentManifest<TDefinition = unknown> {
 }
 
 const manifests = {
-  [titrationManifest.id]: titrationManifest
+  [titrationManifest.id]: titrationManifest,
+  [precipitationManifest.id]: precipitationManifest
 } as const;
 
 export type ExperimentId = keyof typeof manifests;

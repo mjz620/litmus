@@ -36,8 +36,20 @@ export interface TitrationConfig {
 export interface TitrationState {
   config: TitrationConfig;
   sessionSeed: string | null;
+  /** True after the student has committed one indicator addition to the flask. */
+  indicatorAdded: boolean;
   titrantAddedML: number;
   buretteAvailableML: number;
+  /** Current 0–capacity meniscus scale reading, independent of cumulative delivery. */
+  buretteReadingML: number;
+  fillCount: number;
+  fillHistory: Array<{
+    requestedML: number;
+    resultingAvailableML: number;
+    currentReadingML: number;
+    kind: "initial" | "refill";
+    tSim: number;
+  }>;
   buretteConditioned: boolean;
   titrantDilutionFactor: number;
   tSim: number;
@@ -47,7 +59,7 @@ export interface TitrationState {
 
 export type TitrationAction =
   | { type: "rinse_burette"; solvent: "water" | "titrant" }
-  | { type: "fill_burette" }
+  | { type: "fill_burette"; volumeML: number }
   | { type: "select_indicator"; indicator: IndicatorId }
   | { type: "add_titrant"; volumeML: number; durationS: number }
   | { type: "read_meniscus"; reportedML: number }
@@ -132,7 +144,7 @@ export function equivalenceVolumeML(
   return (acidMoles / effectiveTitrantConcentration) * 1000;
 }
 
-interface IndicatorSpec {
+export interface IndicatorSpecification {
   low: string;
   mid: string;
   high: string;
@@ -140,7 +152,9 @@ interface IndicatorSpec {
   highMin: number;
 }
 
-const INDICATORS: Record<IndicatorId, IndicatorSpec> = {
+export const INDICATOR_SPECIFICATIONS: Readonly<
+  Record<IndicatorId, IndicatorSpecification>
+> = {
   phenolphthalein: {
     low: "colorless",
     mid: "faint pink",
@@ -165,7 +179,7 @@ const INDICATORS: Record<IndicatorId, IndicatorSpec> = {
 };
 
 export function observedColor(indicator: IndicatorId, pH: number): string {
-  const specification = INDICATORS[indicator];
+  const specification = INDICATOR_SPECIFICATIONS[indicator];
   if (pH < specification.lowMax) return specification.low;
   if (pH > specification.highMin) return specification.high;
   return specification.mid;
@@ -290,18 +304,54 @@ export const titration: ExperimentDefinition<
   reportRubric: RUBRIC,
 
   createInitialState(config, seed) {
+    const seededAvailableML = seed?.buretteAvailableML ?? 0;
+    const seededAddedML = seed?.titrantAddedML ?? 0;
     const base: TitrationState = {
       config,
       sessionSeed: null,
+      indicatorAdded: false,
       titrantAddedML: 0,
       buretteAvailableML: 0,
+      buretteReadingML: config.buretteCapacityML,
+      fillCount: 0,
+      fillHistory: [],
       buretteConditioned: false,
       titrantDilutionFactor: 1,
       tSim: 0,
       curve: [],
       submitted: false
     };
-    const state: TitrationState = { ...base, ...seed, config };
+    const state: TitrationState = {
+      ...base,
+      ...seed,
+      config,
+      indicatorAdded: seed?.indicatorAdded ?? seededAddedML > 0,
+      buretteReadingML:
+        seed?.buretteReadingML ?? config.buretteCapacityML - seededAvailableML,
+      fillCount:
+        seed?.fillCount ?? (seededAvailableML > 0 || seededAddedML > 0 ? 1 : 0),
+      fillHistory: seed?.fillHistory ? [...seed.fillHistory] : []
+    };
+
+    if (
+      state.buretteAvailableML < 0 ||
+      state.buretteAvailableML > config.buretteCapacityML ||
+      state.buretteReadingML < 0 ||
+      state.buretteReadingML > config.buretteCapacityML
+    ) {
+      throw new RangeError("Seeded burette state exceeds physical capacity.");
+    }
+
+    if (
+      Math.abs(
+        state.buretteReadingML -
+          (config.buretteCapacityML - state.buretteAvailableML)
+      ) > 1e-6
+    ) {
+      throw new RangeError(
+        "Seeded burette reading must match the available volume."
+      );
+    }
 
     if (state.titrantAddedML > 0 && state.curve.length === 0) {
       state.curve = buildCurve(
@@ -317,8 +367,10 @@ export const titration: ExperimentDefinition<
   step(state, action): StepResult<TitrationState> {
     switch (action.type) {
       case "rinse_burette": {
-        if (state.buretteAvailableML > 0) {
-          throw new RangeError("Cannot rinse a filled burette.");
+        if (state.buretteAvailableML > 0 || state.fillCount > 0) {
+          throw new RangeError(
+            "Cannot rinse a burette after filling has begun."
+          );
         }
 
         const conditioned = action.solvent === "titrant";
@@ -351,18 +403,34 @@ export const titration: ExperimentDefinition<
       }
 
       case "fill_burette": {
-        if (state.titrantAddedML > 0 || state.buretteAvailableML > 0) {
+        if (!Number.isFinite(action.volumeML) || action.volumeML <= 0) {
+          throw new RangeError("Fill volume must be a positive number.");
+        }
+        const remainingCapacityML =
+          state.config.buretteCapacityML - state.buretteAvailableML;
+        if (action.volumeML > remainingCapacityML + 1e-9) {
           throw new RangeError(
-            "The burette can only be filled once before titrant delivery."
+            "Fill volume exceeds remaining burette capacity."
           );
         }
+        const resultingAvailableML = round(
+          state.buretteAvailableML + action.volumeML,
+          6
+        );
+        const currentReadingML = round(
+          state.config.buretteCapacityML - resultingAvailableML,
+          6
+        );
+        const kind = state.fillCount === 0 ? "initial" : "refill";
 
         const event: SemanticEvent = {
-          type: "fill_burette",
+          type: kind === "initial" ? "fill_burette" : "refill_burette",
           tSim: state.tSim,
           observation: {
-            capacityML: state.config.buretteCapacityML,
-            availableML: state.config.buretteCapacityML
+            requestedML: round(action.volumeML, 2),
+            resultingAvailableML: round(resultingAvailableML, 2),
+            currentReadingML: round(currentReadingML, 2),
+            fillKind: kind
           },
           flags: [],
           evidence: []
@@ -371,13 +439,31 @@ export const titration: ExperimentDefinition<
         return {
           state: {
             ...state,
-            buretteAvailableML: state.config.buretteCapacityML
+            buretteAvailableML: resultingAvailableML,
+            buretteReadingML: currentReadingML,
+            fillCount: state.fillCount + 1,
+            fillHistory: [
+              ...state.fillHistory,
+              {
+                requestedML: action.volumeML,
+                resultingAvailableML,
+                currentReadingML,
+                kind,
+                tSim: state.tSim
+              }
+            ]
           },
           events: [event]
         };
       }
 
       case "select_indicator": {
+        if (state.indicatorAdded) {
+          throw new RangeError(
+            "Indicator has already been added and cannot be changed."
+          );
+        }
+
         const event: SemanticEvent = {
           type: "select_indicator",
           tSim: state.tSim,
@@ -389,6 +475,7 @@ export const titration: ExperimentDefinition<
         return {
           state: {
             ...state,
+            indicatorAdded: true,
             config: { ...state.config, indicator: action.indicator }
           },
           events: [event]
@@ -408,6 +495,11 @@ export const titration: ExperimentDefinition<
         if (action.volumeML > state.buretteAvailableML) {
           throw new RangeError(
             "Cannot add more titrant than remains in the burette."
+          );
+        }
+        if (!state.indicatorAdded) {
+          throw new RangeError(
+            "Add and confirm one indicator before adding titrant."
           );
         }
 
@@ -471,6 +563,12 @@ export const titration: ExperimentDefinition<
           observation: {
             addedML: round(action.volumeML, 2),
             totalML: round(after, 2),
+            cumulativeDeliveredML: round(after, 2),
+            currentReadingML: round(
+              state.buretteReadingML + action.volumeML,
+              2
+            ),
+            availableML: round(state.buretteAvailableML - action.volumeML, 2),
             rateMlPerS: round(rate, 2),
             pH: round(pH, 2),
             observedColor: color,
@@ -484,7 +582,17 @@ export const titration: ExperimentDefinition<
           state: {
             ...state,
             titrantAddedML: after,
-            buretteAvailableML: state.buretteAvailableML - action.volumeML,
+            buretteAvailableML: round(
+              state.buretteAvailableML - action.volumeML,
+              6
+            ),
+            buretteReadingML: round(
+              Math.min(
+                state.config.buretteCapacityML,
+                state.buretteReadingML + action.volumeML
+              ),
+              6
+            ),
             tSim: state.tSim + action.durationS,
             curve
           },
@@ -493,7 +601,7 @@ export const titration: ExperimentDefinition<
       }
 
       case "read_meniscus": {
-        const trueReading = state.titrantAddedML;
+        const trueReading = state.buretteReadingML;
         const errorML = action.reportedML - trueReading;
         const withinTolerance = Math.abs(errorML) <= 0.05;
         const event: SemanticEvent = {

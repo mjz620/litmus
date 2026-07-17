@@ -29,10 +29,19 @@ describe("experiment registry", () => {
     expect(manifest.loadDefinition).toBeTypeOf("function");
   });
 
-  it("lists the registered titration manifest", () => {
+  it("lists both independently registered experiment manifests", () => {
     expect(listExperimentManifests().map(({ id }) => id)).toEqual([
-      "acid_base_titration"
+      "acid_base_titration",
+      "precipitation_solubility"
     ]);
+  });
+
+  it("lazily loads the precipitation definition by ID", async () => {
+    const definition = await loadExperimentDefinition(
+      "precipitation_solubility"
+    );
+    expect(definition.id).toBe("precipitation_solubility");
+    expect(definition.step).toBeTypeOf("function");
   });
 
   it("lazily loads the titration definition by ID", async () => {

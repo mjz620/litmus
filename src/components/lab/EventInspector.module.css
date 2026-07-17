@@ -1,0 +1,57 @@
+.inspector {
+  margin-top: 1rem;
+  border: 1px solid color-mix(in srgb, var(--lab-ink, #18221e) 18%, transparent);
+  border-radius: var(--lab-radius-md, 0.75rem);
+  background: color-mix(in srgb, var(--lab-surface, #fffaf0) 92%, white);
+  overflow: hidden;
+}
+
+.inspector > summary {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.content {
+  display: grid;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+}
+
+.content h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.raw {
+  max-height: 22rem;
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  border-radius: 0.5rem;
+  background: #14201c;
+  color: #eef7f1;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.events {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--lab-ink, #18221e) 14%, transparent);
+  border-radius: 0.5rem;
+}
+
+.event p {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+}
