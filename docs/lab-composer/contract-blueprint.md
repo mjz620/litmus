@@ -17,14 +17,13 @@ src/lab-workflows/
   capabilities/
     ids.ts                          # bounded canonical ID unions/constants
     types.ts                        # equipment + chemistry capability contracts
-    resolution.ts                   # pure exact set/dependency resolution
   registries/
     components/                     # evolve in place as equipment definitions
     actions/                        # evolve in place
     reagents/                       # v1 compatibility; material facade/metadata
     materials/                      # only if LC2-102 proves the reagent type cannot evolve cleanly
     configurations/                 # schema/preset metadata
-    chemistry-models/               # module definitions, never executable authored code
+    chemistry-models/               # module contracts/metadata + pure provider resolution
     visual-adapters/                # IDs/metadata only; no React imports
     mechanical-adapters/            # IDs/metadata only; no Three/browser imports
   validation/
@@ -126,6 +125,8 @@ interface EquipmentDefinition {
 }
 ```
 
+Stage 1A preserves the misleading v1 `visualAdapterId` concrete export-name field because the current titration adapter consumes it. The canonical exact reference is temporarily exposed as `visualAdapterDefinitionId`; a later compatibility migration may rename that field only when it also moves the legacy export name behind the explicit adapter. Do not treat the deprecated v1 field as an exact registry ID.
+
 Rules:
 
 - State schema describes serializable mechanical state, not authored runtime state values.
@@ -172,6 +173,7 @@ interface MaterialProfile {
   readonly providedChemistryCapabilityIds: readonly ChemistryCapabilityId[];
   readonly compatibleContainerCapabilityIds: readonly EquipmentCapabilityId[];
   readonly initializationPresetSchemaId: SchemaId;
+  readonly quantityPresetIds: readonly QuantityPresetId[];
   readonly safetyPolicyIds: readonly SafetyPolicyId[];
   readonly availability: "declared" | "verified" | "restricted";
 }

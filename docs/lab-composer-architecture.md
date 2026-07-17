@@ -73,10 +73,12 @@ The implemented Composer surface currently includes:
 - A verified canonical titration workflow fixture and replay validation.
 - A titration-specific runtime assembler and exact adapters.
 - An initial server-side Lab Authoring Agent route with constrained registry inspection and deterministic validation.
+- Stage 1A exact capability, equipment, action, material, quantity, configuration-schema, and chemistry-model metadata contracts.
+- A pure deterministic chemistry-model provider resolver over injected verified metadata; the production model registry is intentionally empty.
 
 It does **not** yet include:
 
-- A general capability vocabulary or chemistry-model module resolver.
+- Structured v2 condition/rule/diagnosis schemas or a v2 workflow validator.
 - A v2 constraint-based workflow evaluator or structured diagnoses.
 - A setup-driven production student runtime/scene.
 - A teacher visual composer or shared editing command layer.
@@ -105,13 +107,15 @@ Hard validation correctly rejects unknown IDs, registry incompatibilities, unsup
 
 | Registry | Current useful contract | Current coupling |
 | --- | --- | --- |
-| Components | Exact IDs, state metadata, actions, accessibility, safety, visual adapter reference, performance tier | Component union is titration-only; visual IDs are React export names; compatibility is family-based; capabilities and mechanical adapters are absent |
-| Actions | Exact IDs, bounded parameters, actor/target component types, emitted event types | `engineActionType` is a titration action union; compatibility is engine/family-based; source/target capabilities and precondition contracts are absent |
-| Reagents | Exact verified material choices and quantities | Entries are framed as titration reagents and family/engine compatibility, not reusable material profiles and container compatibility |
+| Capabilities | Exact bounded equipment/chemistry IDs, category separation, availability, and exclusive chemistry-provider policy | Metadata is present, but the v1 validator/runtime does not consume it and chemistry providers remain unimplemented |
+| Components | Exact IDs, state metadata, capabilities, actions, accessibility, safety, exact state/config/visual/mechanical references, performance tier | Component union remains titration-only; the v1 adapter still consumes a deprecated concrete visual export name and family compatibility metadata |
+| Actions | Exact IDs, bounded parameter schemas, source/target capabilities, preconditions, errors, event contracts, adapters, and behavior mode | `engineActionType` and family/engine fields remain explicit v1 compatibility metadata; no generic coordinator consumes the new contracts yet |
+| Reagents/materials | Exact verified material profiles, quantity presets, container capabilities, initialization schemas, and safety metadata | The material facade intentionally shares v1 reagent entries; legacy family/engine/component and numeric amount fields remain v1 authority |
 | Engines | Deterministic definition identity and exact supported IDs | Only `engine.titration.v1`; a family is the compatibility authority and assembly boundary |
 | Skills | Exact learning-objective/evidence metadata and support visibility | Runtime support is inferred through family/engine availability; precipitation skill remains planned in Composer despite a standalone engine |
 | Events/flags | Exact mapping from workflow IDs to engine semantic values | Mappings are titration-engine-specific; events lack stable runtime event IDs and sequences |
-| Configurations | Exact presets for engine, seed, components, actions, observations, policies, placement, device, and units | All implemented entries are family-scoped; heterogeneous configuration schemas are not explicitly registered |
+| Configurations | Exact presets for engine, seed, components, actions, observations, policies, placement, device, units, schemas, and quantities | Schema metadata is deliberately declared until v2 hard validation consumes it; legacy entries remain readable |
+| Chemistry models | Framework-free module/metadata/implementation contracts plus exact verified-provider/dependency resolution | Production provider metadata and executable registrations are empty until the authorized compatibility/model tickets |
 | Safety | Exact allow-list and deterministic validation hooks | Current entries cover the virtual titration setup, not capability/material/action policies generally |
 
 ### Titration truth layer
@@ -191,13 +195,13 @@ Existing persisted sessions and demo traces identify static experiment versions 
 | `LabWorkflowSpec` v1 | Requiring a backward-compatible contract extension | Evolve as schema v2; keep strict v1 parser and deterministic migration |
 | Canonical hashing and current-hash eligibility | Reusable through an adapter | Preserve v1 hash exactly; domain-separate v2 hashes and bind validation to exact migrated/current content |
 | Hard validation framework | Reusable through an adapter | Replace family authority with exact capability, schema, adapter, material, model, rule, and safety resolution |
-| Component registry | Requiring a backward-compatible contract extension | Add explicit equipment capabilities plus state-schema, visual-adapter, and mechanical-adapter IDs |
-| Action registry | Requiring a backward-compatible contract extension | Add source/target capabilities, parameter schema, state preconditions, event contract, behavior mode, and mechanical adapter ID |
-| Reagent registry | Requiring a backward-compatible contract extension | Evolve into exact material profiles and quantity presets; do not allow authored chemical identities or formulas |
+| Component registry | Reusable through an adapter | Stage 1A added equipment capabilities and exact references while preserving v1 fields; future runtime tickets consume them |
+| Action registry | Reusable through an adapter | Stage 1A added source/target capabilities, schemas, preconditions, errors, events, behavior, and adapter IDs without changing execution |
+| Reagent registry | Reusable through an adapter | Stage 1A added a material facade and quantity/container metadata while preserving exact v1 material values and authority |
 | Engine registry | Obsolete only after replacement parity | Keep the titration adapter while chemistry-model capabilities replace engine/family compatibility authority |
 | Skill registry | Reusable through an adapter | Map exact objectives to evidence and rubric semantics independent of lab family |
 | Event/flag registries | Requiring a backward-compatible contract extension | Retain exact mappings and add action/rule/equipment evidence contracts plus compatibility versions |
-| Configuration registry | Requiring a backward-compatible contract extension | Add exact schema IDs for equipment, quantity, material, layout, action, and model presets |
+| Configuration registry | Reusable through an adapter | Stage 1A added exact schema/quantity facets; v2 validation must enforce declared versus verified availability |
 | Safety registry | Reusable through an adapter | Resolve policies against exact material/action/equipment capabilities; validator retains veto authority |
 | Titration runtime assembler and adapters | Titration-specific but temporarily necessary | Explicit compatibility path behind a flag until serialized titration has action, event, replay, and visual parity |
 | Fixed titration equipment visuals | Reusable through an adapter | Register exact visual and mechanical adapters without importing React/Three into core contracts |
@@ -375,7 +379,7 @@ interface EquipmentDefinition<State> {
 }
 ```
 
-Initial capability vocabulary is deliberately bounded: contain/receive/dispense liquid, measure volume/mass/temperature, rinse, stir, heat, cool, mount, and observe color. Equipment never owns experiment success, expected reagent identity, endpoint truth, or required student sequence.
+The implemented Stage 1A equipment vocabulary is deliberately bounded to contain/receive/dispense/transfer liquid, measure volume, rinse, mix, mount, observe color, and fill to mark. Transfer, mix, and fill-to-mark are declared rather than verified. Mass, temperature, heating, cooling, and stirring remain future concepts until a scoped mechanic ticket adds code and tests. Equipment never owns experiment success, expected reagent identity, endpoint truth, or required student sequence.
 
 ### Typed actions
 

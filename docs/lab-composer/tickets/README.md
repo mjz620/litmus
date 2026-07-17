@@ -10,9 +10,13 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | --- | --- | --- |
 | `LC2-000` | Complete | Architecture audit and migration plan |
 | `LC2-001` | Optional gap ticket | Use only for a concrete missing black-box characterization; do not duplicate existing tests |
-| `LC2-100` onward | Not started | Verify current source before claiming otherwise |
+| `LC2-100` | Complete | Bounded capability vocabularies and backward-compatible equipment metadata |
+| `LC2-101` | Complete | Capability-based action contracts and exact supporting metadata registries |
+| `LC2-102` | Complete | Reusable material, quantity, and configuration-schema metadata |
+| `LC2-103` | Complete | Chemistry-model contracts and exact verified-provider resolver; production providers remain empty |
+| `LC2-104` onward | Not started | Verify current source before claiming otherwise |
 
-The next normal implementation ticket is `LC2-100`.
+The next normal implementation ticket is `LC2-104`.
 
 ## Dependency map
 

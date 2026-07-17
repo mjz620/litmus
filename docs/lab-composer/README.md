@@ -31,7 +31,7 @@ Then inspect every source and test file named by the active ticket. Documentatio
 
 ## Current safe starting point
 
-The repository currently has the transitional Composer foundation through the initial author route:
+The repository currently has the transitional Composer foundation through the initial author route plus the Stage 1A capability contracts:
 
 - exact v1 registries for the supported titration workflow;
 - `LabWorkflowSpec` `1.0.0`;
@@ -39,10 +39,14 @@ The repository currently has the transitional Composer foundation through the in
 - canonical titration seed and replay validation;
 - a titration-specific runtime assembler that still uses ordered steps as control flow;
 - an initial family-oriented Lab Authoring Agent route.
+- exact equipment and chemistry capability vocabularies with explicit declared/verified/restricted availability;
+- backward-compatible equipment and action definitions with exact state/configuration/visual/mechanical/schema/precondition/error/event-contract references;
+- reusable material-profile metadata over the existing reagent registry, with exact quantity and configuration-schema metadata;
+- framework-free chemistry-model contracts and deterministic exact provider resolution (the production provider registry is intentionally empty).
 
-It does not have the capability-driven contracts, v2 schema/migration, generic runtime, constraint evaluator, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage.
+It does not yet have structured v2 conditions, a v2 schema/migration/validator, a generic runtime, constraint evaluator, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. Stage 1A is metadata and validation groundwork; the current v1 runtime still uses the titration compatibility adapter.
 
-The next unblocked implementation ticket is `LC2-100`. `LC2-001` is optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
+The next unblocked implementation ticket is `LC2-104`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
 
 ## Non-negotiable implementation sequence
 

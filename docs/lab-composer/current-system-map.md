@@ -29,16 +29,30 @@
 | v1 strict schema | Implemented | [`src/lab-workflows/schema.ts`](../../src/lab-workflows/schema.ts) | requires family, one engine, one seed, and ordered steps |
 | canonical hash | Implemented | [`src/lab-workflows/hash.ts`](../../src/lab-workflows/hash.ts) | excludes only support/validation/Judge artifacts; array order is significant |
 | hard validator and eligibility | Implemented | [`src/lab-workflows/validation.ts`](../../src/lab-workflows/validation.ts) | family/engine are compatibility authority; step order is exact |
-| component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | titration components only; visual IDs are concrete export names; no capability/mechanical adapter IDs |
-| action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | maps directly to titration action types and family/engine compatibility |
-| reagent registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | exact supported profiles but named as reagents and engine/family scoped |
+| capability registry | Implemented contract metadata | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | exact equipment/chemistry categories and honest availability; no capability-driven runtime consumer yet |
+| component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | current equipment has exact capabilities and state/config/visual/mechanical references; the titration adapter still consumes the deprecated concrete visual export name for v1 compatibility |
+| action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact source/target capabilities, parameter schemas, preconditions, errors, event contracts, adapters, and behavior mode coexist with unchanged titration engine/family mappings |
+| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | `materialRegistry` is a facade over the same three exact v1 reagent entries; quantity/config/schema metadata is present, while v1 engine/family/component fields remain authority |
 | engine registry | Implemented, transitional | [`src/lab-workflows/registries/engines`](../../src/lab-workflows/registries/engines) | only `engine.titration.v1`; must not be cloned for dilution |
 | skills | Implemented | [`src/lab-workflows/registries/skills`](../../src/lab-workflows/registries/skills) | availability currently derived from family/runtime support |
 | events/flags | Implemented, transitional | [`src/lab-workflows/registries/event-flags`](../../src/lab-workflows/registries/event-flags) | exact titration event mapping; no normalized action/rule evidence metadata |
-| configurations | Implemented, transitional | [`src/lab-workflows/registries/configurations`](../../src/lab-workflows/registries/configurations) | heterogeneous categories share one family-scoped entry type |
+| configurations | Implemented, transitional | [`src/lab-workflows/registries/configurations`](../../src/lab-workflows/registries/configurations) | one registry now distinguishes legacy entries, declared strict schema metadata, and verified code-owned quantity presets |
 | safety | Implemented, limited | [`src/lab-workflows/registries/safety`](../../src/lab-workflows/registries/safety) | current virtual titration policies only |
 
 Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows). The Phase 0 coupling baselines are in [`currentArchitectureCharacterization.test.ts`](../../tests/lab-workflows/currentArchitectureCharacterization.test.ts).
+
+### Stage 1A registry provenance
+
+| Registry | Current snapshot | Historical snapshot retained |
+| --- | --- | --- |
+| capabilities | `capabilities.1.0.0` | none |
+| components | `components.2.0.0` | `components.1.0.0` |
+| actions | `actions.2.0.0` | `actions.1.0.0` |
+| reagents/materials | `reagents.2.0.0` | `reagents.1.0.0` |
+| configurations | `configurations.2.0.0` | `configurations.1.0.0` |
+| chemistry-model metadata | `chemistry-models.1.0.0` | none |
+
+The capability and chemistry-model snapshots are not added to v1 validation artifacts because the v1 validator does not consume them. Component/action/reagent/configuration snapshot bumps make artifacts carrying their old snapshots stale until revalidation, while canonical v1 workflow content hashes remain unchanged. LC2-107 owns adding the new authorities to v2 validation provenance.
 
 ## Composer runtime and fixture
 
@@ -50,7 +64,7 @@ Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows).
 | titration workflow assembler | Implemented, transitional | [`src/lab-workflows/runtime/titrationRuntime.ts`](../../src/lab-workflows/runtime/titrationRuntime.ts) | Current steps are runtime control flow; do not generalize by adding family switches |
 | generic coordinator | Missing | future `src/lab-workflows/runtime/generic/**` | Build only after v2 contracts/validator exist |
 | constraint evaluator/diagnoses | Missing | future `src/lab-workflows/evaluation/**` | Consume observables/events; never calculate chemistry |
-| chemistry module resolution | Missing | future `src/lab-workflows/chemistry-models/**` | Resolve exact verified modules, not one engine per lab |
+| chemistry model contracts/resolution | Implemented metadata layer | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models) | pure exact provider/dependency resolution exists; production metadata is intentionally empty and no chemistry implementation was extracted |
 
 ## Production student UI and state
 
