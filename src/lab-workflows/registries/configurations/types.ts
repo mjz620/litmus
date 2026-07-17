@@ -44,12 +44,17 @@ export type ConfigurationSchemaId =
   | "schema.layout_configuration.titration_bench.v1"
   | "schema.material_initialization.aqueous_solution.v1"
   | "schema.material_initialization.indicator.v1"
+  | "schema.material_initialization.pure_liquid.v1"
   | "schema.model_configuration.strong_acid_strong_base_25ml.v1"
   | "schema.quantity.drop_count.v1"
   | "schema.quantity.volume_ml.v1";
 
 export type QuantityPresetId =
+  | "quantity-preset.bromothymol_blue_1_drop.v1"
+  | "quantity-preset.bromothymol_blue_2_drops.v1"
   | "quantity-preset.hydrochloric_acid_0_100m_25ml.v1"
+  | "quantity-preset.methyl_orange_1_drop.v1"
+  | "quantity-preset.methyl_orange_2_drops.v1"
   | "quantity-preset.phenolphthalein_1_drop.v1"
   | "quantity-preset.phenolphthalein_2_drops.v1"
   | "quantity-preset.sodium_hydroxide_0_100m_25ml.v1"

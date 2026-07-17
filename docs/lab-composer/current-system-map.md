@@ -32,7 +32,7 @@
 | capability registry | Implemented contract metadata | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | exact equipment/chemistry categories and honest availability; no capability-driven runtime consumer yet |
 | component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | current equipment has exact capabilities and state/config/visual/mechanical references; the titration adapter still consumes the deprecated concrete visual export name for v1 compatibility |
 | action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact source/target capabilities, parameter schemas, preconditions, errors, event contracts, adapters, and behavior mode coexist with unchanged titration engine/family mappings |
-| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | `materialRegistry` is a facade over the same three exact v1 reagent entries; quantity/config/schema metadata is present, while v1 engine/family/component fields remain authority |
+| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | `materialRegistry` is a facade over exact HCl, NaOH, three engine-supported indicators, and distilled water; quantity/config/schema metadata is present, while v1 engine/family/component fields remain authority |
 | engine registry | Implemented, transitional | [`src/lab-workflows/registries/engines`](../../src/lab-workflows/registries/engines) | only `engine.titration.v1`; must not be cloned for dilution |
 | skills | Implemented | [`src/lab-workflows/registries/skills`](../../src/lab-workflows/registries/skills) | availability currently derived from family/runtime support |
 | events/flags | Implemented, transitional | [`src/lab-workflows/registries/event-flags`](../../src/lab-workflows/registries/event-flags) | exact titration event mapping; no normalized action/rule evidence metadata |
@@ -48,8 +48,9 @@ Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows).
 | capabilities | `capabilities.1.0.0` | none |
 | components | `components.2.0.0` | `components.1.0.0` |
 | actions | `actions.2.0.0` | `actions.1.0.0` |
-| reagents/materials | `reagents.2.0.0` | `reagents.1.0.0` |
-| configurations | `configurations.2.0.0` | `configurations.1.0.0` |
+| reagents/materials | `reagents.2.1.0` | `reagents.1.0.0`, `reagents.2.0.0` |
+| configurations | `configurations.2.1.0` | `configurations.1.0.0`, `configurations.2.0.0` |
+| engines | `engines.1.1.0` | `engines.1.0.0` |
 | chemistry-model metadata | `chemistry-models.1.0.0` | none |
 
 The capability and chemistry-model snapshots are not added to v1 validation artifacts because the v1 validator does not consume them. Component/action/reagent/configuration snapshot bumps make artifacts carrying their old snapshots stale until revalidation, while canonical v1 workflow content hashes remain unchanged. LC2-107 owns adding the new authorities to v2 validation provenance.

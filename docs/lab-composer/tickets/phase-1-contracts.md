@@ -88,6 +88,12 @@ Phase 1 changes deterministic contracts and validation only. It does not create 
 
 **Stop:** Do not create water/stock-solution/dilution profiles until Phase 5 unless needed as an existing current titration compatibility profile and backed by code/tests.
 
+### LC2-102A — Existing material parity correction
+
+**Status:** Complete.
+
+The LC2-102 audit initially preserved only material profiles already present in the Composer registry and missed materials already implemented by the deterministic titration engine and student UI. The corrective ticket registers exact bromothymol-blue and methyl-orange indicator profiles plus their bounded drop presets, and registers distilled water for the existing deterministic rinse action. It changes no chemistry formulas or action semantics. Water has no invented quantity preset because the legacy rinse action does not expose a physical volume or consumable inventory. Focused tests prove all three engine indicator choices resolve, alternate indicator workflows validate, water rinse remains deterministic, old material values/hashes remain stable, and snapshot provenance is retained.
+
 ## LC2-103 — Chemistry-model contracts and exact capability resolution
 
 **Objective:** Define deterministic module contracts and a pure resolver for exact verified chemistry capability providers without extracting or implementing chemistry modules yet.

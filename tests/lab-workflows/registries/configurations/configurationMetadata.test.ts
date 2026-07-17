@@ -19,9 +19,10 @@ import {
 
 describe("LC2-102 configuration metadata", () => {
   it("bumps the semantic snapshot and retains its legacy provenance ID", () => {
-    expect(configurationRegistry.snapshotId).toBe("configurations.2.0.0");
+    expect(configurationRegistry.snapshotId).toBe("configurations.2.1.0");
     expect(LEGACY_CONFIGURATION_REGISTRY_SNAPSHOT_IDS).toEqual([
-      "configurations.1.0.0"
+      "configurations.1.0.0",
+      "configurations.2.0.0"
     ]);
   });
 
@@ -158,6 +159,30 @@ describe("LC2-102 configuration metadata", () => {
         2,
         "unit.drop.v1",
         "reagent.phenolphthalein.v1"
+      ],
+      [
+        "quantity-preset.bromothymol_blue_1_drop.v1",
+        1,
+        "unit.drop.v1",
+        "reagent.bromothymol_blue.v1"
+      ],
+      [
+        "quantity-preset.bromothymol_blue_2_drops.v1",
+        2,
+        "unit.drop.v1",
+        "reagent.bromothymol_blue.v1"
+      ],
+      [
+        "quantity-preset.methyl_orange_1_drop.v1",
+        1,
+        "unit.drop.v1",
+        "reagent.methyl_orange.v1"
+      ],
+      [
+        "quantity-preset.methyl_orange_2_drops.v1",
+        2,
+        "unit.drop.v1",
+        "reagent.methyl_orange.v1"
       ]
     ] as const;
 

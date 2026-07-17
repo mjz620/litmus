@@ -170,6 +170,10 @@ interface MaterialProfile {
   readonly version: string;
   readonly displayName: string;
   readonly phase: "aqueous_solution" | "indicator" | "pure_liquid";
+  readonly usageModes: readonly (
+    | "material_binding"
+    | "legacy_action_parameter"
+  )[];
   readonly providedChemistryCapabilityIds: readonly ChemistryCapabilityId[];
   readonly compatibleContainerCapabilityIds: readonly EquipmentCapabilityId[];
   readonly initializationPresetSchemaId: SchemaId;
@@ -187,6 +191,8 @@ interface MaterialBinding {
 ```
 
 Concentrations and other verified scientific parameters live in code-owned material/configuration presets, not authored free-form fields. A v2 definition may select an exact allowed preset but cannot write chemical formulas or serialized model state.
+
+Current compatibility note: phenolphthalein, bromothymol blue, and methyl orange each have exact one- and two-drop presets matching the deterministic engine/UI choices. Distilled water is also an exact verified profile because the current engine supports a deterministic water-rinse action. Its `usageModes` contains only `legacy_action_parameter`, and it intentionally has no quantity preset because the legacy action exposes no physical rinse volume or consumable ledger. Do not invent one; a later mechanical/material-ledger ticket must define and test that quantity before v2 material binding treats it as consumable inventory.
 
 ## Chemistry model modules
 

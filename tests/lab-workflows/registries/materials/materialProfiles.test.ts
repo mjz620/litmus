@@ -3,9 +3,16 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { capabilityRegistry } from "../../../../src/lab-workflows/capabilities";
+import {
+  EXAMPLE_STRONG,
+  INDICATOR_SPECIFICATIONS,
+  titration,
+  type IndicatorId
+} from "../../../../src/experiments/titration/titration";
 import { hashLabWorkflowSpec } from "../../../../src/lab-workflows/hash";
 import {
   SupportingRegistryError,
+  actionParameterSchemaRegistry,
   createSupportingRegistry
 } from "../../../../src/lab-workflows/registries/actions";
 import { componentRegistry } from "../../../../src/lab-workflows/registries/components";
@@ -14,6 +21,7 @@ import {
   getConfigurationSchema,
   getQuantityPreset
 } from "../../../../src/lab-workflows/registries/configurations";
+import { engineRegistry } from "../../../../src/lab-workflows/registries/engines";
 import {
   LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS,
   REAGENT_REGISTRY_ENTRIES,
@@ -34,14 +42,19 @@ import { createSchemaValidWorkflowDraft } from "../../schema/fixtures";
 describe("LC2-102 material profiles", () => {
   it("evolves the exact reagent entries through one material facade", () => {
     expect(materialRegistry).toBe(reagentRegistry);
-    expect(reagentRegistry.snapshotId).toBe("reagents.2.0.0");
-    expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual(["reagents.1.0.0"]);
+    expect(reagentRegistry.snapshotId).toBe("reagents.2.1.0");
+    expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual([
+      "reagents.1.0.0",
+      "reagents.2.0.0"
+    ]);
     expect(materialRegistry.list().map(({ id }) => id)).toEqual([
       "reagent.hydrochloric_acid_0_100m.v1",
       "reagent.sodium_hydroxide_0_100m.v1",
-      "reagent.phenolphthalein.v1"
+      "reagent.phenolphthalein.v1",
+      "reagent.bromothymol_blue.v1",
+      "reagent.methyl_orange.v1",
+      "reagent.distilled_water.v1"
     ]);
-    expect(materialRegistry.has("reagent.water.v1")).toBe(false);
     expect(materialRegistry.has("reagent.stock_solution.v1")).toBe(false);
   });
 
@@ -70,20 +83,23 @@ describe("LC2-102 material profiles", () => {
   });
 
   it("preserves every v1 scientific, amount, role, container, and safety value", () => {
-    const legacyProjection = materialRegistry.list().map((entry) => ({
-      id: entry.id,
-      version: entry.version,
-      displayName: entry.displayName,
-      profileKind: entry.profileKind,
-      concentrationM: entry.concentrationM,
-      compatibleContainerComponentIds: entry.compatibleContainerComponentIds,
-      compatibleEngineIds: entry.compatibleEngineIds,
-      compatibleFamilyIds: entry.compatibleFamilyIds,
-      allowedRoleIds: entry.allowedRoleIds,
-      requestedAmountLimits: entry.requestedAmountLimits,
-      safetyConstraintIds: entry.safetyConstraintIds,
-      availability: entry.availability
-    }));
+    const legacyProjection = materialRegistry
+      .list()
+      .slice(0, 3)
+      .map((entry) => ({
+        id: entry.id,
+        version: entry.version,
+        displayName: entry.displayName,
+        profileKind: entry.profileKind,
+        concentrationM: entry.concentrationM,
+        compatibleContainerComponentIds: entry.compatibleContainerComponentIds,
+        compatibleEngineIds: entry.compatibleEngineIds,
+        compatibleFamilyIds: entry.compatibleFamilyIds,
+        allowedRoleIds: entry.allowedRoleIds,
+        requestedAmountLimits: entry.requestedAmountLimits,
+        safetyConstraintIds: entry.safetyConstraintIds,
+        availability: entry.availability
+      }));
 
     expect(legacyProjection).toEqual([
       {
@@ -138,6 +154,117 @@ describe("LC2-102 material profiles", () => {
         availability: "verified"
       }
     ]);
+  });
+
+  it("registers every deterministic indicator exposed by the engine and UI contract", () => {
+    const indicatorMaterialIds: Readonly<Record<IndicatorId, string>> = {
+      phenolphthalein: "reagent.phenolphthalein.v1",
+      bromothymol_blue: "reagent.bromothymol_blue.v1",
+      methyl_orange: "reagent.methyl_orange.v1"
+    };
+
+    expect(Object.keys(indicatorMaterialIds).sort()).toEqual(
+      Object.keys(INDICATOR_SPECIFICATIONS).sort()
+    );
+    const indicatorParameter = actionParameterSchemaRegistry
+      .get("schema.action_parameters.select_indicator.v1")
+      .parameters.find(({ key }) => key === "indicator");
+    if (!indicatorParameter || !("allowedValues" in indicatorParameter)) {
+      throw new Error("Indicator parameter enum is not registered");
+    }
+    expect(indicatorParameter.allowedValues).toEqual(
+      Object.keys(indicatorMaterialIds)
+    );
+    for (const [indicatorId, materialId] of Object.entries(
+      indicatorMaterialIds
+    ) as [IndicatorId, string][]) {
+      const material = materialRegistry.get(materialId);
+      expect(material).toMatchObject({
+        phase: "indicator",
+        usageModes: ["material_binding", "legacy_action_parameter"],
+        availability: "verified",
+        allowedRoleIds: ["indicator"],
+        compatibleContainerComponentIds: ["component.indicator_bottle.v1"],
+        providedChemistryCapabilityIds: ["chemistry.indicator_response.v1"]
+      });
+      expect(material.quantityPresetIds).toHaveLength(2);
+      expect(engineRegistry.get("engine.titration.v1").reagentIds).toContain(
+        material.id
+      );
+      expect(INDICATOR_SPECIFICATIONS[indicatorId]).toBeDefined();
+    }
+  });
+
+  it.each([
+    ["reagent.bromothymol_blue.v1", "Bromothymol blue indicator"],
+    ["reagent.methyl_orange.v1", "Methyl orange indicator"]
+  ] as const)(
+    "keeps a v1 workflow using %s deterministically runnable",
+    (reagentId, displayLabel) => {
+      const draft = {
+        ...ENDPOINT_CONTROL_PRELAB_DRAFT,
+        reagents: ENDPOINT_CONTROL_PRELAB_DRAFT.reagents.map((reagent) =>
+          reagent.role === "indicator"
+            ? { ...reagent, reagentId, displayLabel }
+            : reagent
+        )
+      };
+      const outcome = validateLabWorkflowSpec(draft, {
+        checkedAt: ENDPOINT_CONTROL_PRELAB_VALIDATION_TIME
+      });
+      expect(outcome.schemaValid).toBe(true);
+      if (!outcome.schemaValid)
+        throw new Error("Expected schema-valid workflow");
+      expect(outcome.validation).toMatchObject({
+        status: "runnable",
+        runnable: true,
+        issues: []
+      });
+    }
+  );
+
+  it("registers distilled water without inventing a physical rinse volume", () => {
+    const water = materialRegistry.get("reagent.distilled_water.v1");
+    expect(water).toMatchObject({
+      displayName: "Distilled water",
+      phase: "pure_liquid",
+      usageModes: ["legacy_action_parameter"],
+      initializationPresetSchemaId:
+        "schema.material_initialization.pure_liquid.v1",
+      compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+      compatibleContainerCapabilityIds: [
+        "capability.contain_liquid.v1",
+        "capability.dispense_liquid.v1"
+      ],
+      compatibleEngineIds: ["engine.titration.v1"],
+      allowedRoleIds: ["rinse_solvent"],
+      availability: "verified"
+    });
+    expect(water.quantityPresetIds).toEqual([]);
+    expect(water.requestedAmountLimits).toEqual([]);
+    expect(water.safetyPolicyIds).toEqual([]);
+    expect(engineRegistry.get("engine.titration.v1").reagentIds).toContain(
+      water.id
+    );
+    const rinseSolventParameter = actionParameterSchemaRegistry
+      .get("schema.action_parameters.rinse.v1")
+      .parameters.find(({ key }) => key === "solvent");
+    if (!rinseSolventParameter || !("allowedValues" in rinseSolventParameter)) {
+      throw new Error("Rinse solvent parameter enum is not registered");
+    }
+    expect(rinseSolventParameter.allowedValues).toContain("water");
+
+    const transition = titration.step(
+      titration.createInitialState(EXAMPLE_STRONG),
+      {
+        type: "rinse_burette",
+        solvent: "water"
+      }
+    );
+    expect(transition.state.titrantDilutionFactor).toBeLessThan(1);
+    expect(transition.events[0]?.observation).toMatchObject({
+      solvent: "water"
+    });
   });
 
   it("resolves bounded capabilities, schemas, quantities, and safety exactly", () => {
@@ -202,6 +329,7 @@ describe("LC2-102 material profiles", () => {
     const acid = materialRegistry.get("reagent.hydrochloric_acid_0_100m.v1");
     expect(Object.isFrozen(materialRegistry.list())).toBe(true);
     expect(Object.isFrozen(acid)).toBe(true);
+    expect(Object.isFrozen(acid.usageModes)).toBe(true);
     expect(Object.isFrozen(acid.providedChemistryCapabilityIds)).toBe(true);
     expect(Object.isFrozen(acid.compatibleContainerCapabilityIds)).toBe(true);
     expect(Object.isFrozen(acid.quantityPresetIds)).toBe(true);
@@ -226,7 +354,7 @@ describe("LC2-102 material profiles", () => {
       ENDPOINT_CONTROL_PRELAB_EXPECTED_HASH
     );
     expect(outcome.validation.registrySnapshotIds.reagents).toBe(
-      "reagents.2.0.0"
+      "reagents.2.1.0"
     );
   });
 

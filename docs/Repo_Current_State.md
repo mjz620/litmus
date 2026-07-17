@@ -27,7 +27,7 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 
 - closed equipment and chemistry capability vocabularies with explicit availability;
 - backward-compatible equipment/action contracts with exact schema, adapter, precondition, error, and event references;
-- material-profile, quantity-preset, and configuration-schema metadata over the existing v1 registries;
+- material-profile, quantity-preset, and configuration-schema metadata over the existing v1 registries, including all three deterministic indicators and distilled-water rinse support;
 - deterministic chemistry-model provider/dependency resolution over injected verified metadata, with no production chemistry modules registered yet.
 
 This is not yet a capability-driven runtime. Family/engine IDs remain v1 compatibility authority, ordered steps remain runtime control flow, and the production student scene is fixed. The v2 conditions/schema/migration/validator, Workflow Judge, generic capability runtime, constraint diagnoses, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. Existing optional `workflowVersionId` fields remain provenance seams only.
@@ -130,7 +130,7 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ```text
 npm run typecheck    pass — 2026-07-17 Stage 1A
 npm run lint         pass — 2026-07-17 Stage 1A
-npm test             pass — 60 files / 327 tests
+npm test             pass — 60 files / 331 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
 ```
 

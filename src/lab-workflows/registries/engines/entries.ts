@@ -27,7 +27,10 @@ export const ENGINE_REGISTRY_ENTRIES = [
     reagentIds: [
       "reagent.hydrochloric_acid_0_100m.v1",
       "reagent.sodium_hydroxide_0_100m.v1",
-      "reagent.phenolphthalein.v1"
+      "reagent.phenolphthalein.v1",
+      "reagent.bromothymol_blue.v1",
+      "reagent.methyl_orange.v1",
+      "reagent.distilled_water.v1"
     ],
     engineConfigIds: [
       "engine_config.titration.strong_acid_strong_base_25ml.v1"

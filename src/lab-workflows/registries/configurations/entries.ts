@@ -319,6 +319,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Strict metadata contract for code-owned indicator initialization."
   ),
   schema(
+    "schema.material_initialization.pure_liquid.v1",
+    "material_initialization",
+    "Strict metadata contract for a code-owned pure-liquid identity without authored composition."
+  ),
+  schema(
     "schema.model_configuration.strong_acid_strong_base_25ml.v1",
     "model",
     "Strict metadata contract for the current legacy titration configuration."
@@ -356,5 +361,17 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   ]),
   quantity("quantity-preset.phenolphthalein_2_drops.v1", 2, "unit.drop.v1", [
     "reagent.phenolphthalein.v1"
+  ]),
+  quantity("quantity-preset.bromothymol_blue_1_drop.v1", 1, "unit.drop.v1", [
+    "reagent.bromothymol_blue.v1"
+  ]),
+  quantity("quantity-preset.bromothymol_blue_2_drops.v1", 2, "unit.drop.v1", [
+    "reagent.bromothymol_blue.v1"
+  ]),
+  quantity("quantity-preset.methyl_orange_1_drop.v1", 1, "unit.drop.v1", [
+    "reagent.methyl_orange.v1"
+  ]),
+  quantity("quantity-preset.methyl_orange_2_drops.v1", 2, "unit.drop.v1", [
+    "reagent.methyl_orange.v1"
   ])
 ] as const satisfies readonly ConfigurationRegistryEntry[];

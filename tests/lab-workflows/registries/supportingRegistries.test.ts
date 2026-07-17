@@ -8,7 +8,10 @@ import {
 } from "../../../src/lab-workflows/registries/actions";
 import { componentRegistry } from "../../../src/lab-workflows/registries/components";
 import { configurationRegistry } from "../../../src/lab-workflows/registries/configurations";
-import { engineRegistry } from "../../../src/lab-workflows/registries/engines";
+import {
+  LEGACY_ENGINE_REGISTRY_SNAPSHOT_IDS,
+  engineRegistry
+} from "../../../src/lab-workflows/registries/engines";
 import {
   eventFlagRegistry,
   eventTypeRegistry
@@ -105,9 +108,9 @@ describe("Lab Composer supporting registries", () => {
       expect(engineRegistry.get(reagent.compatibleEngineIds[0]).id).toBe(
         "engine.titration.v1"
       );
-      expect(safetyRegistry.get(reagent.safetyConstraintIds[0]).id).toBe(
-        "safety.virtual_titration_ppe_notice.v1"
-      );
+      for (const safetyId of reagent.safetyConstraintIds) {
+        expect(safetyRegistry.get(safetyId).id).toBe(safetyId);
+      }
       for (const { unitId } of reagent.requestedAmountLimits) {
         expect(configurationRegistry.get(unitId).category).toBe("unit");
       }
@@ -121,6 +124,8 @@ describe("Lab Composer supporting registries", () => {
       configurationRegistry.get(id);
     }
     for (const id of engine.workflowEventTypeIds) eventTypeRegistry.get(id);
+    expect(engineRegistry.snapshotId).toBe("engines.1.1.0");
+    expect(LEGACY_ENGINE_REGISTRY_SNAPSHOT_IDS).toEqual(["engines.1.0.0"]);
 
     for (const flag of eventFlagRegistry.list()) {
       for (const semanticEventType of flag.emittedBySemanticEventTypes) {

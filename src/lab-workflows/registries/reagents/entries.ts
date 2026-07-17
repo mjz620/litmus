@@ -10,6 +10,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     version: "1.0.0",
     displayName: "0.100 M hydrochloric acid",
     phase: "aqueous_solution",
+    usageModes: ["material_binding"],
     providedChemistryCapabilityIds: ["chemistry.acid_base_equilibrium.v1"],
     compatibleContainerCapabilityIds: ["capability.receive_liquid.v1"],
     initializationPresetSchemaId:
@@ -33,6 +34,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     version: "1.0.0",
     displayName: "0.100 M sodium hydroxide",
     phase: "aqueous_solution",
+    usageModes: ["material_binding"],
     providedChemistryCapabilityIds: ["chemistry.acid_base_equilibrium.v1"],
     compatibleContainerCapabilityIds: [
       "capability.contain_liquid.v1",
@@ -65,6 +67,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     version: "1.0.0",
     displayName: "Phenolphthalein indicator",
     phase: "indicator",
+    usageModes: ["material_binding", "legacy_action_parameter"],
     providedChemistryCapabilityIds: ["chemistry.indicator_response.v1"],
     compatibleContainerCapabilityIds: [
       "capability.contain_liquid.v1",
@@ -84,6 +87,85 @@ export const REAGENT_REGISTRY_ENTRIES = [
     allowedRoleIds: ["indicator"],
     requestedAmountLimits: [{ unitId: "unit.drop.v1", minimum: 1, maximum: 2 }],
     safetyConstraintIds: SAFETY,
+    availability: "verified"
+  },
+  {
+    id: "reagent.bromothymol_blue.v1",
+    version: "1.0.0",
+    displayName: "Bromothymol blue indicator",
+    phase: "indicator",
+    usageModes: ["material_binding", "legacy_action_parameter"],
+    providedChemistryCapabilityIds: ["chemistry.indicator_response.v1"],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId: "schema.material_initialization.indicator.v1",
+    quantityPresetIds: [
+      "quantity-preset.bromothymol_blue_1_drop.v1",
+      "quantity-preset.bromothymol_blue_2_drops.v1"
+    ],
+    safetyPolicyIds: SAFETY,
+    profileKind: "indicator",
+    concentrationM: null,
+    compatibleContainerComponentIds: ["component.indicator_bottle.v1"],
+    compatibleEngineIds: ENGINE,
+    compatibleFamilyIds: FAMILY,
+    allowedRoleIds: ["indicator"],
+    requestedAmountLimits: [{ unitId: "unit.drop.v1", minimum: 1, maximum: 2 }],
+    safetyConstraintIds: SAFETY,
+    availability: "verified"
+  },
+  {
+    id: "reagent.methyl_orange.v1",
+    version: "1.0.0",
+    displayName: "Methyl orange indicator",
+    phase: "indicator",
+    usageModes: ["material_binding", "legacy_action_parameter"],
+    providedChemistryCapabilityIds: ["chemistry.indicator_response.v1"],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId: "schema.material_initialization.indicator.v1",
+    quantityPresetIds: [
+      "quantity-preset.methyl_orange_1_drop.v1",
+      "quantity-preset.methyl_orange_2_drops.v1"
+    ],
+    safetyPolicyIds: SAFETY,
+    profileKind: "indicator",
+    concentrationM: null,
+    compatibleContainerComponentIds: ["component.indicator_bottle.v1"],
+    compatibleEngineIds: ENGINE,
+    compatibleFamilyIds: FAMILY,
+    allowedRoleIds: ["indicator"],
+    requestedAmountLimits: [{ unitId: "unit.drop.v1", minimum: 1, maximum: 2 }],
+    safetyConstraintIds: SAFETY,
+    availability: "verified"
+  },
+  {
+    id: "reagent.distilled_water.v1",
+    version: "1.0.0",
+    displayName: "Distilled water",
+    phase: "pure_liquid",
+    usageModes: ["legacy_action_parameter"],
+    providedChemistryCapabilityIds: [],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.pure_liquid.v1",
+    quantityPresetIds: [],
+    safetyPolicyIds: [],
+    profileKind: "pure_liquid",
+    concentrationM: null,
+    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleEngineIds: ENGINE,
+    compatibleFamilyIds: FAMILY,
+    allowedRoleIds: ["rinse_solvent"],
+    requestedAmountLimits: [],
+    safetyConstraintIds: [],
     availability: "verified"
   }
 ] as const satisfies readonly ReagentRegistryEntry[];

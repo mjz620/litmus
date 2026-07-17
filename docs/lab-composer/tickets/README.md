@@ -13,6 +13,7 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | `LC2-100` | Complete | Bounded capability vocabularies and backward-compatible equipment metadata |
 | `LC2-101` | Complete | Capability-based action contracts and exact supporting metadata registries |
 | `LC2-102` | Complete | Reusable material, quantity, and configuration-schema metadata |
+| `LC2-102A` | Complete | Corrective parity registration for bromothymol blue, methyl orange, and distilled-water rinse support |
 | `LC2-103` | Complete | Chemistry-model contracts and exact verified-provider resolver; production providers remain empty |
 | `LC2-104` onward | Not started | Verify current source before claiming otherwise |
 
@@ -26,7 +27,7 @@ LC2-000
   -> LC2-101
   -> LC2-102
   -> LC2-103
-LC2-101/102/103 -> LC2-104 -> LC2-105 -> LC2-106 -> LC2-107
+LC2-101/102/102A/103 -> LC2-104 -> LC2-105 -> LC2-106 -> LC2-107
 
 LC2-107 -> LC2-200 -> LC2-201 -> LC2-202
 LC2-200/202 -> LC2-203 -> LC2-204 -> LC2-205
