@@ -1,5 +1,11 @@
 # Lab Workflow Judge Agent
 
+> **Target retained, sequencing changed:** No Judge route is currently
+> implemented. Its advisory authority remains correct, but implementation now
+> waits until the Level 2 human Composer and two-lab generic runtime pass. The
+> current input must also include capability and executed-trace summaries; see
+> [`LC2-701`](../lab-composer/tickets/phase-7-evaluation.md).
+
 ## Purpose
 
 The Lab Workflow Judge Agent is a second LLM that critiques whether a proposed, validator-eligible workflow is a good lesson for the teacher's request. It reviews pedagogy and usability; it does not establish scientific support or runtime eligibility.

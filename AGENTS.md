@@ -36,6 +36,12 @@ These rules apply to every coding agent run in this repository.
 
 ## Lab Composer invariants
 
+- For capability-driven Composer work, read `docs/lab-composer/README.md` and implement the exact active `LC2-*` ticket. T0210–T0220 are superseded.
+- A lab family may be optional catalog metadata, but it is never the generic runtime dispatch key or compatibility authority.
+- Evolve the existing `LabWorkflowSpec` and registries through versioned compatibility; do not introduce a second Lab IR, event system, rubric system, or evaluator without an explicit architecture decision.
+- Equipment owns reusable mechanics, actions own typed contracts, chemistry modules own deterministic scientific truth, and workflow rules own procedural/assessment constraints. Do not mix these responsibilities.
+- Human authoring through the shared domain command layer must pass the Level 2 gate before agent-authored adaptable labs are presented as Level 3.
+- The Author Agent must use the same shared domain commands as the human Composer and must execute typed traces against the real runtime; prose simulation is not evidence.
 - Never bypass hard validation.
 - Never let an AI-authored workflow run without validation.
 - Never put chemistry formulas in UI components or generated workflow specs.

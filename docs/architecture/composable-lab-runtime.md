@@ -1,5 +1,12 @@
 # Composable Lab Runtime
 
+> **Transitional v1 architecture:** This document explains the implemented
+> fixed-family Composer foundation and remains a compatibility reference. It is
+> not the target runtime dispatch design. New work must follow
+> [`../lab-composer-architecture.md`](../lab-composer-architecture.md) and the
+> [`LC2 execution pack`](../lab-composer/README.md); do not add another
+> family-selected runtime assembler.
+
 ## Purpose
 
 The composable runtime evolves LabBench from manually selected static experiment plugins into validated workflows assembled over those plugins. It adds a constrained authoring layer; it does not replace deterministic engines, semantic events, or `ExperimentDefinition.step()`.

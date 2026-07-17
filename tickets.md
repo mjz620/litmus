@@ -32,12 +32,21 @@ T0102 → T0110, T0103 → T0111, T0110+T0111 → T0112 = focus interaction fram
 T0101 → T0120 → T0121 = glassware rebuild
 T0111 → T0130, T0120+T0130 → T0131 → T0132 = direct-manipulation titration
 T0140 → T0141, T0131 → T0142 = in-lab visual design system (UX overhaul, see docs/handoffs/UX_Overhaul_Handoff.md)
+T0141 → T0143 = production Adobe Fonts provisioning and font-loaded validation
 T0200 → T0201/T0202; T0202 → T0203; T0201/T0202/T0203 → T0204 → T0205 → T0206 = Lab Composer contracts and hard validation
 T0201/T0202/T0203/T0204/T0206 → T0207 → T0208 = canonical titration workflow and runtime assembly
 T0204/T0205/T0206 → T0209/T0210 → T0211 = author–validator–judge loop
 T0208/T0211 → T0212 → T0213/T0214 → T0215 = teacher Composer and preview
 T0215 → T0216 → T0218; T0215 → T0217 = assignment, coach, and analytics integration
 T0206/T0209/T0210/T0211 → T0219; T0213/T0214/T0215/T0217/T0218/T0219 → T0220 = evals and judge-demo polish
+LC2-000 → LC2-100 → LC2-101/LC2-102/LC2-103 → LC2-104 → LC2-105 → LC2-106 → LC2-107 = capability-driven contracts
+LC2-107 → LC2-200 → LC2-201 → LC2-202 → LC2-203 → LC2-204 → LC2-205 = generic runtime/evaluator/replay
+LC2-205 → LC2-300 → LC2-301 → LC2-302 → LC2-303 → LC2-304 = titration migration and parity
+LC2-304 → LC2-400 → LC2-401/LC2-402 → LC2-403 = non-LLM human Composer
+LC2-403 → LC2-500 → LC2-501 → LC2-502 → LC2-503 = second lab and Level 2 gate
+LC2-503 → LC2-600 → LC2-601 → LC2-602 = constrained agent command loop
+LC2-502/LC2-602 → LC2-700/LC2-701 → LC2-702/LC2-703 = hybrid evaluation and coaching
+LC2-403 → LC2-800 → LC2-801; LC2-700/LC2-702/LC2-703/LC2-801 → LC2-802 → LC2-803 → LC2-804 = persistence, hardening, cleanup
 ```
 
 
@@ -2451,7 +2460,81 @@ contextual controls.
 **Completion report required:** yes.
 
 
+## T0143 — Production Adobe Fonts project and font-loaded validation
+
+**Suggested branch:** `chore/t0143-adobe-fonts-production-validation`
+
+**Goal:** Provision the single production Adobe Fonts Web Project for the
+approved typography system, configure its stylesheet URL safely, and verify the
+real loaded faces across representative LabBench surfaces.
+
+**Dependencies:** Typography overhaul implementation and a project-owner Adobe
+Creative Cloud account with permission to create and manage a Web Project.
+
+**Allowed areas:** Deployment environment configuration, `.env.example`,
+`src/app/layout.tsx`, `src/app/globals.css`, `docs/design-system.md`, and
+focused typography/e2e tests. A project owner must perform Adobe account and
+hosting-dashboard actions.
+
+**Do not touch:** Chemistry/experiment state or formulas, simulation actions,
+coach/persistence/analytics behavior, Adobe font binaries, unrelated layout or
+visual redesign, Google Font substitution, or additional runtime dependencies.
+
+**Requirements:**
+
+- Create exactly one Adobe Fonts Web Project containing Tomarik Display regular
+  and only the Neulis Sans regular, medium, semibold, and bold styles used by
+  the centralized tokens.
+- Use Adobe's generated CSS stylesheet URL; set it as
+  `NEXT_PUBLIC_ADOBE_FONTS_STYLESHEET` in preview and production configuration.
+  Do not commit font files, credentials, or an unrelated CDN URL.
+- Confirm the project-reported CSS family names and weights. If they differ
+  from `tomarik-display` / `neulis-sans`, update only the centralized token
+  values and their documentation.
+- Configure Adobe's project font-display behavior to avoid a long invisible
+  text state, retain the existing fallbacks, and verify the application loads
+  the stylesheet only from `https://use.typekit.net/<kit>.css`.
+- Verify loaded-font support and fallback behavior for chemical notation,
+  degree symbols, Greek letters, operators, superscripts/subscripts, units,
+  arrows, and warning symbols without changing scientific text formatting.
+- Capture and review font-loaded screenshots for experiment selection, in-lab
+  HUD, procedure panel, AI coach, equipment controls, live measurement,
+  warning/error, completion, and teacher surfaces. Reject a result that reads
+  as a generic dashboard rather than one cohesive educational game.
+
+**Non-goals:** No new typography families or weights, no self-hosting, no
+Adobe JavaScript loader, no content rewrite, no chemistry notation changes, and
+no redesign beyond correcting a loaded-font overflow or legibility regression.
+
+**Acceptance criteria:** The production/preview page requests the configured
+Adobe stylesheet once; browser-computed font stacks use Tomarik only for
+expressive display roles and Neulis for functional UI; instrument displays
+remain the only ordinary product use of monospace; no font-load console/CSP
+errors occur; all focused visual and automated checks pass with the real kit.
+
+**Manual verification:** In a clean browser profile and throttled connection,
+open the required representative routes/states; inspect the Network and
+Computed panels for the Adobe stylesheet and final families; test a blocked
+font request to confirm readable fallback; keyboard-check controls and tables;
+review 1366 px and Chromebook-width screenshots with the actual faces loaded.
+
+**Completion report instructions:** Use the `AGENTS.md` report; include the
+Web Project style inventory (never credentials), configured environment names,
+computed-family evidence, character/fallback checks, screenshot paths, browser
+console/network results, commands, and any owner action still required.
+
+
 # Lab Composer / Composable Workflow Architecture
+
+> **Superseded implementation sequence:** T0200–T0209 produced the current
+> transitional v1 foundation. Do not continue with T0210–T0220 as written.
+> The product direction now requires capability-driven LabWorkflowSpec v2,
+> a generic runtime and constraint evaluator, a non-LLM human Composer, and a
+> second lab before agent/Judge integration. The authoritative replacement
+> tickets and exact handoff instructions are in
+> [`docs/lab-composer/tickets/README.md`](docs/lab-composer/tickets/README.md).
+> Preserve this section as a record of the v1 implementation and requirements
+> that the LC2 tickets explicitly migrate.
 
 These tickets implement **AI-authored lab workflows over verified deterministic lab primitives**. They do not authorize arbitrary chemistry generation. Complete one ticket per branch/run, preserve the existing titration truth layer and semantic event contract, and follow the Lab Composer invariants in `AGENTS.md`.
 
@@ -2916,3 +2999,27 @@ These tickets implement **AI-authored lab workflows over verified deterministic 
 **Manual verification:** Rehearse script three times with live and fallback agent modes; test reset/isolation/offline-after-load/keyboard/reduced graphics; run demo e2e and performance smoke.
 
 **Completion report instructions:** Use the `AGENTS.md` report; include timed runs, live/fallback behavior, real-path evidence, performance/accessibility results, risks, and commands.
+
+
+# Capability-Driven Lab Composer Migration (`LC2-*`)
+
+The `LC2-*` ticket specifications under
+[`docs/lab-composer/tickets`](docs/lab-composer/tickets/README.md) are
+incorporated into this backlog by reference and are the source of truth for the
+current Lab Composer overhaul. Each linked ticket contains dependencies,
+allowed and forbidden areas, exact required changes, tests, acceptance criteria,
+manual verification, and stop conditions.
+
+- `LC2-000` is complete: architecture audit and migration plan.
+- `LC2-001` is optional and may be used only for a demonstrated missing
+  compatibility characterization.
+- `LC2-100` is the next normal implementation ticket.
+- `T0210`–`T0220` are paused/superseded; do not choose them by numeric order.
+- The Level 2 gate in
+  [`docs/lab-composer/tickets/README.md`](docs/lab-composer/tickets/README.md)
+  must pass before `LC2-600` agent work.
+- Legacy path removal is authorized only by `LC2-804` after explicit owner
+  approval and all parity/retention gates.
+
+Use [`docs/lab-composer/downstream-agent-handoff.md`](docs/lab-composer/downstream-agent-handoff.md)
+to hand one LC2 ticket to an implementation agent.

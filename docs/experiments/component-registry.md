@@ -1,10 +1,18 @@
 # Component Registry
 
+> **Version note:** The titration component registry is now implemented, but
+> its current entries remain family-coupled and lack the full capability and
+> mechanical-adapter contracts. Treat the interfaces below as v1/history where
+> they differ from the
+> [`capability contract blueprint`](../lab-composer/contract-blueprint.md).
+> `LC2-100` evolves this registry in place; do not create a competing equipment
+> registry.
+
 ## Purpose and status
 
 The component registry defines reusable, verified lab apparatus primitives. A registry entry is eligible for generated workflows only after its state/action contract, visual adapter, accessibility behavior, safety rules, compatibility matrix, and tests exist in code.
 
-The IDs below are proposed canonical contracts for implementation. This document does not claim that a runtime component registry already exists. Existing titration equipment should be migrated into these entries without changing the titration truth layer.
+The current titration IDs are code-backed only where matching entries and tests exist under `src/lab-workflows/registries/components`. Any additional example remains planned until its exact registry entry, adapter, behavior, and tests exist. Existing titration equipment must evolve without changing the titration truth layer.
 
 Components own apparatus interaction and presentation contracts. They must not contain experiment-specific chemistry formulas, choose precipitates, calculate pH, compute heat flow, or grade answers. A component dispatches a registered typed action; an experiment engine determines the consequence and emits semantic events.
 

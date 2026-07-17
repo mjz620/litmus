@@ -1,5 +1,12 @@
 # Lab Workflow Schema
 
+> **Version note:** This document describes implemented `LabWorkflowSpec`
+> `1.0.0`, where one family/engine and ordered steps are mandatory. Keep it as
+> the v1 compatibility contract. The proposed v2 evolution, migration rules,
+> and exact implementation tickets are in the
+> [`capability contract blueprint`](../lab-composer/contract-blueprint.md) and
+> [`LC2 Phase 1`](../lab-composer/tickets/phase-1-contracts.md).
+
 ## Contract goals
 
 `LabWorkflowSpec` is a versioned data contract for a lesson assembled over one verified deterministic experiment family. It is not executable code and cannot define chemistry formulas, arbitrary component physics, new actions, or safety policy.

@@ -1,5 +1,12 @@
 # Lab Authoring Agent
 
+> **Prototype/v1 note:** The current route implements a family-oriented author
+> prototype. Freeze that behavior during the Level 2 migration. The target
+> agent must use the same capability-based domain commands as the non-LLM human
+> Composer and execute real trace suites; see
+> [`LC2 Phase 6`](../lab-composer/tickets/phase-6-agent.md). Do not extend the
+> prototype by adding more family templates.
+
 ## Purpose
 
 The Lab Authoring Agent turns a teacher's learning goal into a structured `LabWorkflowSpec` draft over verified LabBench registries. It chooses a supported family, components, steps, coach triggers, rubric, and adaptive retry templates. It does not create chemistry, equipment behavior, registry entries, engine state, or validator decisions.

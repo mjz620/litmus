@@ -1,5 +1,11 @@
 # Lab Composer Implementation Roadmap
 
+> **Historical roadmap:** T0200–T0209 produced the transitional v1 foundation.
+> The remaining fixed-family sequence is superseded by the capability-driven
+> [`LC2 ticket backlog`](../lab-composer/tickets/README.md). Preserve this file
+> for original requirements and compatibility context; do not use it to select
+> the next implementation ticket.
+
 ## Roadmap principles
 
 This roadmap is deliberately dependency-ordered. It preserves the existing titration engine and semantic event contracts, proves static-to-composed parity before enabling AI-authored runtime variants, and keeps each phase independently testable.

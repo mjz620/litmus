@@ -1,5 +1,12 @@
 # Lab Composer
 
+> **Original product intention:** This document remains authoritative for the
+> teacher/student/Judge lifecycle and deterministic safety boundary. References
+> to a mandatory family/engine describe the transitional v1 implementation, not
+> the target dispatch architecture. Use
+> [`../lab-composer-architecture.md`](../lab-composer-architecture.md) for the
+> capability-driven correction.
+
 ## Product definition
 
 Lab Composer lets a teacher describe a learning objective in ordinary language and receive a structured lab workflow assembled from verified LabBench components. A request can feel open-ended, but the result is runnable only when every component, action, reagent, engine, safety rule, and event flag resolves through a tested registry.
