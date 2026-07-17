@@ -10,7 +10,7 @@ import {
 
 describe("titration component registry", () => {
   it("lists only the four currently verified titration component contracts", () => {
-    expect(componentRegistry.snapshotId).toBe("components.1.0.0");
+    expect(componentRegistry.snapshotId).toBe("components.2.0.0");
     expect(componentRegistry.list().map(({ id }) => id)).toEqual([
       "component.burette.v1",
       "component.erlenmeyer_flask.v1",
@@ -53,6 +53,7 @@ describe("titration component registry", () => {
 
     expect(Object.isFrozen(entries)).toBe(true);
     expect(Object.isFrozen(burette)).toBe(true);
+    expect(Object.isFrozen(burette.capabilityIds)).toBe(true);
     expect(Object.isFrozen(burette.stateSchema.fields)).toBe(true);
     expect(Object.isFrozen(burette.allowedActionIds)).toBe(true);
     expect(Object.isFrozen(burette.allowedRoleIds)).toBe(true);

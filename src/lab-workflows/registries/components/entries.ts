@@ -7,6 +7,23 @@ export const COMPONENT_REGISTRY_ENTRIES = [
   {
     id: "component.burette.v1",
     version: "1.0.0",
+    displayName: "Burette",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.dispense_liquid.v1",
+      "capability.measure_volume.v1",
+      "capability.rinse.v1",
+      "capability.mount.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.burette.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.burette.50ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.burette.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.burette.v1",
+    mechanicalAdapterAvailability: "verified",
     purpose:
       "Contain, condition, dispense, and read titrant in the verified titration workflow.",
     stateSchema: {
@@ -104,6 +121,20 @@ export const COMPONENT_REGISTRY_ENTRIES = [
   {
     id: "component.erlenmeyer_flask.v1",
     version: "1.0.0",
+    displayName: "Erlenmeyer flask",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.observe_color.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.erlenmeyer_flask.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.erlenmeyer.125ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.erlenmeyer_flask.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.erlenmeyer_flask.v1",
+    mechanicalAdapterAvailability: "verified",
     purpose:
       "Receive titrant and project engine-owned indicator color in the verified titration workflow.",
     stateSchema: {
@@ -167,6 +198,20 @@ export const COMPONENT_REGISTRY_ENTRIES = [
   {
     id: "component.reagent_bottle.v1",
     version: "1.0.0",
+    displayName: "Reagent bottle",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.reagent_bottle.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId:
+      "component_config.reagent_bottle.titrant_source.v1",
+    defaultConfigurationPresetAvailability: "declared",
+    visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.reagent_bottle.v1",
+    mechanicalAdapterAvailability: "verified",
     purpose:
       "Identify the verified titrant source used to prepare the titration burette.",
     stateSchema: {
@@ -207,6 +252,19 @@ export const COMPONENT_REGISTRY_ENTRIES = [
   {
     id: "component.indicator_bottle.v1",
     version: "1.0.0",
+    displayName: "Indicator bottle",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.indicator_bottle.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.indicator_dropper.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.indicator_bottle.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.indicator_bottle.v1",
+    mechanicalAdapterAvailability: "verified",
     purpose:
       "Select and add one verified indicator profile to the titration flask.",
     stateSchema: {

@@ -7,7 +7,7 @@ import {
   type ComponentRegistrySnapshot
 } from "./types";
 
-const SNAPSHOT_ID: ComponentRegistrySnapshot["snapshotId"] = "components.1.0.0";
+const SNAPSHOT_ID: ComponentRegistrySnapshot["snapshotId"] = "components.2.0.0";
 
 function deepFreeze<T>(value: T): Readonly<T> {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
@@ -24,6 +24,7 @@ export function createComponentRegistry(
     (entry) =>
       deepFreeze({
         ...entry,
+        capabilityIds: [...entry.capabilityIds],
         stateSchema: {
           ...entry.stateSchema,
           fields: entry.stateSchema.fields.map((field) => ({

@@ -5,6 +5,7 @@ export {
   createComponentRegistry
 } from "./registry";
 export type {
+  ComponentConfigurationPresetId,
   ComponentPerformanceTier,
   ComponentRegistry,
   ComponentRegistryEntry,
@@ -14,6 +15,12 @@ export type {
   ComponentStateField,
   ComponentStateSchema,
   ComponentStateValueType,
-  MeasurementCapability
+  EquipmentStateSchemaId,
+  MechanicalAdapterId,
+  MeasurementCapability,
+  VisualAdapterDefinitionId
 } from "./types";
-export { ComponentRegistryError } from "./types";
+export {
+  ComponentRegistryError,
+  LEGACY_COMPONENT_REGISTRY_SNAPSHOT_IDS
+} from "./types";
