@@ -3,19 +3,20 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 1.5rem;
-  width: min(100%, 78rem);
+  width: min(100%, 100rem);
   margin: 0 auto 1rem;
   padding: 0.5rem 0;
 }
 
 .identity h1 {
   margin: 0.45rem 0 0;
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
   font-size: clamp(1.7rem, 4vw, 2.5rem);
   letter-spacing: -0.035em;
 }
 
 .backLink {
-  color: #0f766e;
+  color: var(--lab-primary);
   font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
@@ -32,8 +33,8 @@
   margin-top: 0.55rem;
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
-  background: #d7ebe7;
-  color: #115e59;
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
   font-size: 0.8rem;
   font-weight: 750;
 }
@@ -45,7 +46,7 @@
 }
 
 .saveStatus {
-  color: #52616b;
+  color: var(--lab-ink-muted);
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -56,18 +57,45 @@
 }
 
 .actions button {
+  min-height: 2.75rem;
   padding: 0.45rem 0.85rem;
-  border: 1px solid #d1dedb;
-  border-radius: 0.6rem;
-  background: #ffffff;
-  color: #33413d;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: var(--lab-surface);
+  color: var(--lab-ink);
   font-size: 0.82rem;
   font-weight: 700;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
 }
 
 .actions button:disabled {
-  color: #9aa8a4;
+  color: var(--lab-ink-muted);
   cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.actions button:hover:not(:disabled),
+.actions button:focus-visible {
+  border-color: var(--lab-primary);
+  background: var(--lab-primary-soft);
+}
+
+.actions button:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: 2px;
+}
+
+.actions button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actions button {
+    transition: none;
+  }
 }
 
 @media (max-width: 32rem) {

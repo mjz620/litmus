@@ -1,13 +1,8 @@
-const flaskColors = {
-  colorless: "#dff4f1",
-  "faint pink": "#f4b8cf",
-  pink: "#df6f9c",
-  yellow: "#e8ca4d",
-  green: "#55a878",
-  blue: "#4d7fc5",
-  red: "#c95757",
-  orange: "#df8a3e"
-} as const;
+import {
+  LAB_LIQUID_COLORS,
+  LAB_PALETTE,
+  type LabLiquidColorName
+} from "./labPalette";
 
 export function getBuretteFillFraction(
   availableML: number,
@@ -19,6 +14,9 @@ export function getBuretteFillFraction(
 }
 
 export function getFlaskLiquidColor(observedColor?: string): string {
-  if (!observedColor) return flaskColors.colorless;
-  return flaskColors[observedColor as keyof typeof flaskColors] ?? "#dff4f1";
+  if (!observedColor) return LAB_PALETTE.colorlessLiquid;
+  return (
+    LAB_LIQUID_COLORS[observedColor as LabLiquidColorName] ??
+    LAB_PALETTE.colorlessLiquid
+  );
 }

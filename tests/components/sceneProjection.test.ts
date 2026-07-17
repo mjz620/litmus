@@ -4,6 +4,7 @@ import {
   getBuretteFillFraction,
   getFlaskLiquidColor
 } from "../../src/components/lab/three/sceneProjection";
+import { LAB_PALETTE } from "../../src/components/lab/three/labPalette";
 
 describe("3D scene projections", () => {
   it("projects available burette volume into a bounded fill fraction", () => {
@@ -15,9 +16,9 @@ describe("3D scene projections", () => {
   });
 
   it("maps engine observation colors to presentation colors", () => {
-    expect(getFlaskLiquidColor("pink")).toBe("#df6f9c");
-    expect(getFlaskLiquidColor("yellow")).toBe("#e8ca4d");
-    expect(getFlaskLiquidColor("unknown")).toBe("#dff4f1");
-    expect(getFlaskLiquidColor()).toBe("#dff4f1");
+    expect(getFlaskLiquidColor("pink")).toBe(LAB_PALETTE.phenolphthalein);
+    expect(getFlaskLiquidColor("yellow")).toBe(LAB_PALETTE.yellowLiquid);
+    expect(getFlaskLiquidColor("unknown")).toBe(LAB_PALETTE.colorlessLiquid);
+    expect(getFlaskLiquidColor()).toBe(LAB_PALETTE.colorlessLiquid);
   });
 });

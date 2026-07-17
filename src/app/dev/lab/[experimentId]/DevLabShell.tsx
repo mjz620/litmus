@@ -3,8 +3,7 @@
 import Link from "next/link";
 
 import { PHCurve } from "../../../../components/lab/PHCurve";
-import { TitrationControls } from "../../../../components/lab/titration/TitrationControls";
-import { TitrationScene } from "../../../../components/lab/titration/TitrationScene";
+import { TitrationWorkspace } from "../../../../components/lab/titration/TitrationWorkspace";
 import { useLabSession } from "../../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../../experiments/registry";
 
@@ -86,8 +85,7 @@ export function DevLabShell({
 
           {isReady && state && (
             <>
-              <TitrationScene />
-              <TitrationControls />
+              <TitrationWorkspace />
               <PHCurve
                 points={state.curve}
                 maxVolumeML={state.config.buretteCapacityML}

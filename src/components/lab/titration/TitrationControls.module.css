@@ -1,26 +1,25 @@
 .controls {
   display: grid;
-  gap: 1.25rem;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #d8e2df;
+  gap: 1rem;
+  padding: 1rem;
 }
 
 .headingRow {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: stretch;
+  flex-direction: column;
   gap: 1rem;
 }
 
 .headingRow h2,
 .controlGroup h3 {
   margin: 0;
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
 }
 
 .eyebrow {
   margin: 0 0 0.5rem;
-  color: #0f766e;
+  color: var(--lab-primary);
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -30,15 +29,15 @@
 .liveReading {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.45rem;
 }
 
 .liveReading span {
   padding: 0.45rem 0.65rem;
   border-radius: 999px;
-  background: #e6f4f1;
-  color: #115e59;
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   font-weight: 750;
@@ -46,7 +45,7 @@
 
 .controlGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
 }
 
@@ -57,16 +56,16 @@
   min-width: 0;
   margin: 0;
   padding: 1rem;
-  border: 1px solid #d8e2df;
-  border-radius: 0.9rem;
-  background: #f8faf9;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: var(--lab-surface-muted);
 }
 
 .controlGroup legend,
 .controlGroup > label,
 .controlGroup h3 {
   padding: 0;
-  color: #17212b;
+  color: var(--lab-ink);
   font-size: 1rem;
   font-weight: 750;
 }
@@ -74,7 +73,7 @@
 .controlGroup label {
   display: grid;
   gap: 0.4rem;
-  color: #34434d;
+  color: var(--lab-ink-muted);
   font-size: 0.82rem;
   font-weight: 650;
 }
@@ -84,10 +83,10 @@
   width: 100%;
   min-height: 2.75rem;
   padding: 0.6rem 0.7rem;
-  border: 1px solid #aebfbb;
-  border-radius: 0.6rem;
-  background: #ffffff;
-  color: #17212b;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: var(--lab-surface);
+  color: var(--lab-ink);
   font: inherit;
   font-variant-numeric: tabular-nums;
 }
@@ -95,7 +94,7 @@
 .controlGroup input:focus-visible,
 .controlGroup select:focus-visible,
 .controlGroup button:focus-visible {
-  outline: 3px solid #99f6e4;
+  outline: 3px solid var(--lab-focus);
   outline-offset: 2px;
 }
 
@@ -107,74 +106,90 @@
 }
 
 .controlGroup button {
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   padding: 0.55rem 0.75rem;
-  border: 1px solid #8da6a0;
-  border-radius: 0.6rem;
-  background: #ffffff;
-  color: #23413b;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: var(--lab-surface);
+  color: var(--lab-ink);
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
   font-weight: 700;
+  transition:
+    color 120ms ease-out,
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
 }
 
 .controlGroup button:hover:not(:disabled) {
-  border-color: #0f766e;
-  background: #eef8f6;
+  border-color: var(--lab-primary);
+  background: var(--lab-primary-soft);
 }
 
 .controlGroup button:disabled {
   cursor: not-allowed;
-  opacity: 0.65;
+  opacity: 0.55;
 }
 
 .controlGroup .primaryButton {
-  border-color: #0f766e;
-  background: #0f766e;
-  color: #ffffff;
+  border-color: var(--lab-primary);
+  background: var(--lab-primary);
+  color: var(--lab-surface);
 }
 
 .controlGroup .primaryButton:hover:not(:disabled) {
-  background: #115e59;
+  background: color-mix(in srgb, var(--lab-primary) 88%, var(--lab-ink));
 }
 
 .fieldGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
 }
 
 .groupStatus {
   margin: 0;
-  color: #0f766e;
+  color: var(--lab-primary);
   font-size: 0.85rem;
   font-weight: 700;
 }
 
 .note {
   margin: 0;
-  color: #607078;
-  font-size: 0.78rem;
+  color: var(--lab-ink-muted);
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 
 .inputError {
   margin: 0;
   padding: 0.8rem;
-  border: 1px solid #fecaca;
-  border-radius: 0.65rem;
-  background: #fef2f2;
-  color: #991b1b;
+  border: 1px solid var(--lab-danger);
+  border-radius: 0.625rem;
+  background: var(--lab-danger-soft);
+  color: var(--lab-danger);
   font-size: 0.85rem;
 }
 
-@media (max-width: 46rem) {
-  .controlGrid,
-  .fieldGrid {
-    grid-template-columns: 1fr;
-  }
+.controlGroup button:active:not(:disabled) {
+  transform: translateY(1px);
+}
 
+@media (prefers-reduced-motion: reduce) {
+  .controlGroup button {
+    transition: none;
+  }
+}
+
+@media (min-width: 46.01rem) and (max-width: 72rem) {
+  .controlGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 46rem) {
   .headingRow {
     align-items: stretch;
     flex-direction: column;

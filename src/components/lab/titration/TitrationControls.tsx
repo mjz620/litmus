@@ -1,6 +1,11 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  useState
+} from "react";
 
 import {
   formatBuretteVolume,
@@ -8,6 +13,12 @@ import {
 } from "../../../experiments/titration/display";
 import type { IndicatorId } from "../../../experiments/titration/titration";
 import { useLabStore } from "../../../stores/labStore";
+import { type ControlGroupId, getVisibleControlGroups } from "./equipment";
+import {
+  FLOW_RATES_ML_PER_S,
+  type FlowDetent,
+  useDispenseGesture
+} from "./useDispenseGesture";
 
 import styles from "./TitrationControls.module.css";
 
@@ -20,7 +31,20 @@ const indicatorOptions: ReadonlyArray<{
   { value: "methyl_orange", label: "Methyl orange" }
 ];
 
-export function TitrationControls() {
+interface TitrationControlsProps {
+  /**
+   * Control groups to render; defaults to every group. Selecting equipment in
+   * the 3D scene narrows this to that object's contextual controls.
+   */
+  visibleGroups?: readonly ControlGroupId[];
+  /** Selected equipment name shown as the contextual heading. */
+  contextLabel?: string;
+}
+
+export function TitrationControls({
+  visibleGroups = getVisibleControlGroups(null),
+  contextLabel
+}: TitrationControlsProps = {}) {
   const state = useLabStore((store) => store.state);
   const eventQueue = useLabStore((store) => store.eventQueue);
   const dispatch = useLabStore((store) => store.dispatch);
@@ -28,6 +52,9 @@ export function TitrationControls() {
   const [additionDuration, setAdditionDuration] = useState("4");
   const [reportedMeniscus, setReportedMeniscus] = useState("0.00");
   const [inputError, setInputError] = useState<string | null>(null);
+  const dispense = useDispenseGesture({
+    availableML: state?.buretteAvailableML ?? 0
+  });
 
   if (!state) return null;
 
@@ -38,6 +65,9 @@ export function TitrationControls() {
     state.titrantAddedML === 0 && state.buretteAvailableML === 0;
   const availableVolumeML = state.buretteAvailableML;
   const hasAvailableTitrant = availableVolumeML > 0;
+  const isDispensing = dispense.state.isHolding;
+  const canHoldDispense =
+    hasAvailableTitrant && dispense.state.selectedDetent !== "closed";
   const conditioningStatus = state.buretteConditioned
     ? "Conditioned with titrant"
     : state.titrantDilutionFactor < 1
@@ -85,12 +115,43 @@ export function TitrationControls() {
     dispatch({ type: "read_meniscus", reportedML });
   }
 
+  function handleHoldPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    if (!canHoldDispense) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dispense.start();
+  }
+
+  function handleHoldPointerUp(event: PointerEvent<HTMLButtonElement>) {
+    if (!isDispensing) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dispense.end("pointer_up");
+  }
+
+  function handleHoldKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== " " || event.repeat || !canHoldDispense) return;
+
+    event.preventDefault();
+    dispense.start();
+  }
+
+  function handleHoldKeyUp(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== " " || !isDispensing) return;
+
+    event.preventDefault();
+    dispense.end("pointer_up");
+  }
+
   return (
     <section className={styles.controls} aria-labelledby="controls-heading">
       <div className={styles.headingRow}>
         <div>
           <p className={styles.eyebrow}>Precision controls</p>
-          <h2 id="controls-heading">Burette and flask</h2>
+          <h2 id="controls-heading">{contextLabel ?? "Burette and flask"}</h2>
         </div>
         <div
           className={styles.liveReading}
@@ -103,161 +164,215 @@ export function TitrationControls() {
       </div>
 
       <div className={styles.controlGrid}>
-        <fieldset className={styles.controlGroup}>
-          <legend>1. Prepare burette</legend>
-          <p className={styles.groupStatus}>{conditioningStatus}</p>
-          <div className={styles.buttonRow}>
+        {visibleGroups.includes("prepare") && (
+          <fieldset className={styles.controlGroup}>
+            <legend>1. Prepare burette</legend>
+            <p className={styles.groupStatus}>{conditioningStatus}</p>
+            <div className={styles.buttonRow}>
+              <button
+                type="button"
+                disabled={!canPrepareBurette}
+                onClick={() =>
+                  dispatch({ type: "rinse_burette", solvent: "water" })
+                }
+              >
+                Rinse with water
+              </button>
+              <button
+                type="button"
+                disabled={!canPrepareBurette}
+                onClick={() =>
+                  dispatch({ type: "rinse_burette", solvent: "titrant" })
+                }
+              >
+                Rinse with titrant
+              </button>
+            </div>
             <button
+              className={styles.primaryButton}
               type="button"
               disabled={!canPrepareBurette}
-              onClick={() =>
-                dispatch({ type: "rinse_burette", solvent: "water" })
-              }
+              onClick={() => dispatch({ type: "fill_burette" })}
             >
-              Rinse with water
+              Fill burette
             </button>
-            <button
-              type="button"
-              disabled={!canPrepareBurette}
-              onClick={() =>
-                dispatch({ type: "rinse_burette", solvent: "titrant" })
-              }
-            >
-              Rinse with titrant
-            </button>
-          </div>
-          <button
-            className={styles.primaryButton}
-            type="button"
-            disabled={!canPrepareBurette}
-            onClick={() => dispatch({ type: "fill_burette" })}
-          >
-            Fill burette
-          </button>
-          <p className={styles.note}>
-            {hasAvailableTitrant
-              ? `${formatBuretteVolume(availableVolumeML)} mL remains available.`
-              : state.titrantAddedML > 0
-                ? "The burette is empty. This practice run supports one pre-run fill."
-                : "The burette is empty. Rinse it before filling for correct technique."}
-          </p>
-        </fieldset>
+            <p className={styles.note}>
+              {hasAvailableTitrant
+                ? `${formatBuretteVolume(availableVolumeML)} mL remains available.`
+                : state.titrantAddedML > 0
+                  ? "The burette is empty. This practice run supports one pre-run fill."
+                  : "The burette is empty. Rinse it before filling for correct technique."}
+            </p>
+          </fieldset>
+        )}
 
-        <div className={styles.controlGroup}>
-          <label htmlFor="indicator">2. Indicator</label>
-          <select
-            id="indicator"
-            value={state.config.indicator}
-            onChange={(event) =>
-              dispatch({
-                type: "select_indicator",
-                indicator: event.currentTarget.value as IndicatorId
-              })
-            }
-          >
-            {indicatorOptions.map((indicator) => (
-              <option key={indicator.value} value={indicator.value}>
-                {indicator.label}
-              </option>
-            ))}
-          </select>
-          <p className={styles.note}>
-            Selection is sent to the experiment engine as a typed action.
-          </p>
-        </div>
-
-        <form className={styles.controlGroup} onSubmit={handleAddition}>
-          <h3>3. Add titrant</h3>
-          <div className={styles.fieldGrid}>
-            <label>
-              Volume to add (mL)
-              <input
-                type="number"
-                min="0.01"
-                max={availableVolumeML}
-                step="0.01"
-                value={additionVolume}
-                onChange={(event) =>
-                  setAdditionVolume(event.currentTarget.value)
-                }
-                disabled={!hasAvailableTitrant}
-                required
-              />
-            </label>
-            <label>
-              Delivery time (seconds)
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={additionDuration}
-                onChange={(event) =>
-                  setAdditionDuration(event.currentTarget.value)
-                }
-                disabled={!hasAvailableTitrant}
-                required
-              />
-            </label>
-          </div>
-          <div className={styles.presetRow} aria-label="Volume presets">
-            <button
-              type="button"
-              disabled={!hasAvailableTitrant}
-              onClick={() => setAdditionVolume("1.00")}
-            >
-              Coarse 1.00 mL
-            </button>
-            <button
-              type="button"
-              disabled={!hasAvailableTitrant}
-              onClick={() => setAdditionVolume("0.10")}
-            >
-              Fine 0.10 mL
-            </button>
-            <button
-              type="button"
-              disabled={!hasAvailableTitrant}
-              onClick={() => setAdditionVolume("0.05")}
-            >
-              Drop 0.05 mL
-            </button>
-          </div>
-          <button
-            className={styles.primaryButton}
-            type="submit"
-            disabled={!hasAvailableTitrant}
-          >
-            Add titrant
-          </button>
-        </form>
-
-        <form className={styles.controlGroup} onSubmit={handleMeniscusReading}>
-          <h3>4. Read meniscus</h3>
-          <label>
-            Reported burette reading (mL)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={reportedMeniscus}
+        {visibleGroups.includes("indicator") && (
+          <div className={styles.controlGroup}>
+            <label htmlFor="indicator">2. Indicator</label>
+            <select
+              id="indicator"
+              value={state.config.indicator}
               onChange={(event) =>
-                setReportedMeniscus(event.currentTarget.value)
+                dispatch({
+                  type: "select_indicator",
+                  indicator: event.currentTarget.value as IndicatorId
+                })
               }
-              required
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() =>
-              setReportedMeniscus(formatBuretteVolume(state.titrantAddedML))
-            }
+            >
+              {indicatorOptions.map((indicator) => (
+                <option key={indicator.value} value={indicator.value}>
+                  {indicator.label}
+                </option>
+              ))}
+            </select>
+            <p className={styles.note}>
+              Selection is sent to the experiment engine as a typed action.
+            </p>
+          </div>
+        )}
+
+        {visibleGroups.includes("deliver") && (
+          <form className={styles.controlGroup} onSubmit={handleAddition}>
+            <h3>3. Add titrant (stopcock)</h3>
+            <label>
+              Flow detent
+              <select
+                value={dispense.state.selectedDetent}
+                onChange={(event) =>
+                  dispense.setDetent(event.currentTarget.value as FlowDetent)
+                }
+                disabled={!hasAvailableTitrant}
+              >
+                <option value="closed">Closed — 0 mL/s</option>
+                <option value="dropwise">
+                  Dropwise — {FLOW_RATES_ML_PER_S.dropwise.toFixed(2)} mL/s
+                </option>
+                <option value="slow">
+                  Slow — {FLOW_RATES_ML_PER_S.slow.toFixed(2)} mL/s
+                </option>
+                <option value="open">
+                  Open — {FLOW_RATES_ML_PER_S.open.toFixed(2)} mL/s
+                </option>
+              </select>
+            </label>
+            <button
+              className={styles.primaryButton}
+              type="button"
+              aria-pressed={isDispensing}
+              data-dispensing={isDispensing ? "true" : "false"}
+              disabled={!canHoldDispense}
+              onPointerDown={handleHoldPointerDown}
+              onPointerUp={handleHoldPointerUp}
+              onPointerCancel={() => dispense.end("pointer_cancel")}
+              onKeyDown={handleHoldKeyDown}
+              onKeyUp={handleHoldKeyUp}
+              onBlur={() => {
+                if (isDispensing) dispense.end("blur");
+              }}
+            >
+              {isDispensing ? "Dispensing…" : "Hold to dispense"}
+            </button>
+            <p className={styles.note} role="status" aria-live="polite">
+              {isDispensing
+                ? `Valve open at ${FLOW_RATES_ML_PER_S[dispense.state.activeDetent].toFixed(2)} mL/s · ${dispense.state.pendingML.toFixed(3)} mL pending`
+                : "Valve closed. Hold the button or Space key to dispense."}
+            </p>
+            <div className={styles.fieldGrid}>
+              <label>
+                Volume to add (mL)
+                <input
+                  type="number"
+                  min="0.01"
+                  max={availableVolumeML}
+                  step="0.01"
+                  value={additionVolume}
+                  onChange={(event) =>
+                    setAdditionVolume(event.currentTarget.value)
+                  }
+                  disabled={!hasAvailableTitrant || isDispensing}
+                  required
+                />
+              </label>
+              <label>
+                Delivery time (seconds)
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={additionDuration}
+                  onChange={(event) =>
+                    setAdditionDuration(event.currentTarget.value)
+                  }
+                  disabled={!hasAvailableTitrant || isDispensing}
+                  required
+                />
+              </label>
+            </div>
+            <div className={styles.presetRow} aria-label="Volume presets">
+              <button
+                type="button"
+                disabled={!hasAvailableTitrant || isDispensing}
+                onClick={() => setAdditionVolume("1.00")}
+              >
+                Coarse 1.00 mL
+              </button>
+              <button
+                type="button"
+                disabled={!hasAvailableTitrant || isDispensing}
+                onClick={() => setAdditionVolume("0.10")}
+              >
+                Fine 0.10 mL
+              </button>
+              <button
+                type="button"
+                disabled={!hasAvailableTitrant || isDispensing}
+                onClick={() => setAdditionVolume("0.05")}
+              >
+                Drop 0.05 mL
+              </button>
+            </div>
+            <button
+              className={styles.primaryButton}
+              type="submit"
+              disabled={!hasAvailableTitrant || isDispensing}
+            >
+              Add titrant
+            </button>
+          </form>
+        )}
+
+        {visibleGroups.includes("reading") && (
+          <form
+            className={styles.controlGroup}
+            onSubmit={handleMeniscusReading}
           >
-            Use displayed reading
-          </button>
-          <button className={styles.primaryButton} type="submit">
-            Record meniscus reading
-          </button>
-        </form>
+            <h3>4. Read meniscus</h3>
+            <label>
+              Reported burette reading (mL)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={reportedMeniscus}
+                onChange={(event) =>
+                  setReportedMeniscus(event.currentTarget.value)
+                }
+                required
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() =>
+                setReportedMeniscus(formatBuretteVolume(state.titrantAddedML))
+              }
+            >
+              Use displayed reading
+            </button>
+            <button className={styles.primaryButton} type="submit">
+              Record meniscus reading
+            </button>
+          </form>
+        )}
       </div>
 
       {inputError && (

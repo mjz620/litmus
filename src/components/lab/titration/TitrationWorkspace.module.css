@@ -1,0 +1,44 @@
+.workspace {
+  --simulation-canvas-height: clamp(32rem, 68vh, 50rem);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(19rem, 24vw, 23rem);
+  align-items: start;
+  gap: 1rem;
+  min-width: 0;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--lab-border);
+  border-radius: 1.125rem;
+  background: var(--lab-surface-muted);
+}
+
+.controlPanel {
+  align-self: start;
+  max-height: calc(var(--simulation-canvas-height) + 10.5rem);
+  overflow-y: auto;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: var(--lab-surface);
+  box-shadow: var(--lab-card-shadow);
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 72rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .controlPanel {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 46rem) {
+  .workspace {
+    --simulation-canvas-height: clamp(24rem, 62vh, 34rem);
+
+    padding: 0.7rem;
+  }
+}

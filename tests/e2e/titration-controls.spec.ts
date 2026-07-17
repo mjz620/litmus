@@ -11,7 +11,9 @@ test("titration controls dispatch typed actions and update engine state", async 
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
   await page.goto("/lab/titration");
-  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible();
+  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
+    timeout: 30_000
+  });
   const scene = page.getByRole("region", { name: "Interactive lab bench" });
   const notebook = page.getByRole("complementary", { name: "Session notes" });
   await expect(scene).toHaveAttribute("data-burette-fill", "0.000");

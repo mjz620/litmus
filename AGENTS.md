@@ -31,6 +31,26 @@ These rules apply to every coding agent run in this repository.
 13. The app must remain usable on Chromebook-class hardware.
 14. Auth is never required for the core student demo.
 15. API keys and secrets never enter the client bundle.
+16. Lab Composer authors structured workflows over verified primitives; it does not generate arbitrary chemistry labs.
+17. LLMs do pedagogy and authoring; deterministic engines do chemistry.
+
+## Lab Composer invariants
+
+- Never bypass hard validation.
+- Never let an AI-authored workflow run without validation.
+- Never put chemistry formulas in UI components or generated workflow specs.
+- Never invent registry IDs in code, prompts, fixtures, or fallback behavior.
+- Registry IDs must resolve exactly before runtime; do not fuzzy-match or silently substitute them.
+- Generated workflows must include an explicit validation/support status. New or edited drafts are unvalidated until deterministic code produces a matching result.
+- Judge Agent approval cannot override validator failure.
+- Unsupported workflows must be rejected, marked `partially_supported`/`unsupported`/`rejected_for_safety`, or retained only as clearly non-runnable drafts.
+- Only a current, hash-matching `runnable` result may be previewed or assigned.
+- All schema or validator changes require tests for valid, invalid, and safety-relevant behavior.
+- All runtime assembly changes require at least one runnable seed workflow replay test.
+- New registry entries and event flags require compatibility/eval coverage; new flags retain the positive “stay silent” test requirement.
+- Preserve `ExperimentDefinition.step()` as the path for every meaningful simulation action.
+- Keep authoring, validation, preview, and runtime usable within Chromebook and under-resourced-school constraints.
+- All Lab Composer ticket work must include the required completion report and identify schema/registry/docs follow-ups.
 
 ## File ownership boundaries
 
@@ -52,6 +72,18 @@ Allowed: `src/lib/agent/**`, `src/app/api/coach/**`, `tests/coach/**`.
 
 Do not let the LLM mutate simulation state. Do not add unconstrained chat behavior.
 
+### Lab Composer contracts and validation
+
+Allowed: `src/lab-workflows/**`, `tests/lab-workflows/**`.
+
+Keep registries, schemas, validators, canonical hashing, and runtime assembly deterministic and local. Do not import React, Supabase, OpenAI, or browser-only APIs into registry/schema/validator code. Runtime assemblers may resolve verified adapters but must not compute chemistry or execute generated code.
+
+### Lab Authoring and Workflow Judge agents
+
+Allowed: `src/lib/agent/lab-authoring/**`, `src/lib/agent/lab-workflow-judge/**`, `src/app/api/lab-composer/**`, `tests/ai/lab-composer/**`.
+
+Agents receive read-only registry/tool results. They do not write registries, self-certify validation, mutate simulations, expose chain-of-thought, or override hard validator decisions. Keep author and judge prompts/routes independently versioned and evaluated.
+
 ### Persistence / auth
 
 Allowed: `supabase/**`, `src/lib/supabase/**`, `src/app/api/sessions/**`, `src/lib/persistence/**`.
@@ -63,6 +95,8 @@ Do not edit experiment logic. Checkpoint writes must be idempotent.
 Allowed: `src/app/teacher/**`, `src/components/teacher/**`, `src/lib/analytics/**`.
 
 Do not calculate teacher metrics with an LLM.
+
+Lab Composer teacher UI must invalidate prior validation after any edit, show validator and Judge Agent authority separately, disable Preview/Assign for non-runnable specs, and require explicit teacher approval before assignment.
 
 ### Demo mode
 

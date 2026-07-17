@@ -1,48 +1,72 @@
 .page {
+  --lab-page: #f3efe7;
+  --lab-surface: #fffdf8;
+  --lab-surface-muted: #f4f7f3;
+  --lab-ink: #17212b;
+  --lab-ink-muted: #53636b;
+  --lab-primary: #0f766e;
+  --lab-primary-soft: #d7ebe7;
+  --lab-border: #cbd8d3;
+  --lab-focus: #0f766e;
+  --lab-warning: #f8d47a;
+  --lab-danger: #b4232f;
+  --lab-danger-soft: #fdecee;
+  --lab-card-shadow: 0 16px 40px rgb(23 33 43 / 8%);
+  --lab-floating-shadow: 0 6px 18px rgb(23 33 43 / 16%);
+
   min-height: 100vh;
-  padding: clamp(1rem, 3vw, 2rem);
-  background: #edf3f1;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  background: var(--lab-page);
+  color: var(--lab-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(18rem, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
-  width: min(100%, 78rem);
+  width: min(100%, 100rem);
   margin: 0 auto;
 }
 
 .bench,
 .summary {
-  border: 1px solid #d1dedb;
-  border-radius: 1.25rem;
-  background: #ffffff;
-  box-shadow: 0 1rem 3rem rgb(23 33 43 / 6%);
+  border: 1px solid var(--lab-border);
+  border-radius: 1.125rem;
+  background: var(--lab-surface);
+  box-shadow: var(--lab-card-shadow);
 }
 
 .bench {
   display: grid;
   grid-template-rows: auto auto auto;
   min-height: 34rem;
-  padding: clamp(1.5rem, 4vw, 2.5rem);
+  padding: clamp(1rem, 2vw, 1.5rem);
 }
 
 .bench h2,
 .summary h2 {
   margin: 0;
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
   font-size: clamp(1.35rem, 3vw, 1.8rem);
 }
 
 .bench p:not(.eyebrow) {
   max-width: 34rem;
   margin: 0.8rem 0 0;
-  color: #52616b;
+  color: var(--lab-ink-muted);
+  font-size: 0.9375rem;
   line-height: 1.6;
 }
 
 .eyebrow {
   margin: 0 0 0.65rem;
-  color: #0f766e;
+  color: var(--lab-primary);
   font-size: 0.75rem;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -51,6 +75,7 @@
 
 .summary {
   align-self: start;
+  width: min(100%, 34rem);
   min-height: 24rem;
   padding: 1.5rem;
 }
@@ -59,8 +84,8 @@
   margin: 1.5rem 0 0;
   padding: 1rem;
   border-radius: 0.75rem;
-  background: #f4f7f6;
-  color: #52616b;
+  background: var(--lab-surface-muted);
+  color: var(--lab-ink-muted);
 }
 
 .error {
@@ -68,17 +93,13 @@
   gap: 0.35rem;
   margin-top: 1.5rem;
   padding: 1rem;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--lab-danger);
   border-radius: 0.75rem;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--lab-danger-soft);
+  color: var(--lab-danger);
 }
 
 @media (max-width: 52rem) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
   .bench {
     min-height: 28rem;
   }

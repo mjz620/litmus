@@ -3,8 +3,7 @@
 import { LabNotebook } from "../../../components/lab/LabNotebook";
 import { LabSessionBar } from "../../../components/lab/LabSessionBar";
 import { PHCurve } from "../../../components/lab/PHCurve";
-import { TitrationControls } from "../../../components/lab/titration/TitrationControls";
-import { TitrationScene } from "../../../components/lab/titration/TitrationScene";
+import { TitrationWorkspace } from "../../../components/lab/titration/TitrationWorkspace";
 import { useLabSession } from "../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../experiments/registry";
 
@@ -39,8 +38,8 @@ export function LabRouteShell({
             <p className={styles.eyebrow}>Lab workspace</p>
             <h2 id="bench-heading">Practice precise technique</h2>
             <p>
-              Work through the titration on the visual bench, then use the
-              precision controls below for each measured step.
+              Work through the titration on the visual bench, then use its
+              precision controls panel for each measured step.
             </p>
           </div>
 
@@ -59,8 +58,7 @@ export function LabRouteShell({
 
           {isReady && state && (
             <>
-              <TitrationScene />
-              <TitrationControls />
+              <TitrationWorkspace />
               <PHCurve
                 points={state.curve}
                 maxVolumeML={state.config.buretteCapacityML}

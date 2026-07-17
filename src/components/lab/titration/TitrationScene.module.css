@@ -1,7 +1,8 @@
 .scene {
   display: grid;
+  grid-template-rows: auto auto 3.25rem auto;
   gap: 0.85rem;
-  margin-top: 2rem;
+  min-width: 0;
 }
 
 .headingRow {
@@ -13,44 +14,211 @@
 
 .headingRow h2 {
   margin: 0;
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
 }
 
 .eyebrow {
   margin: 0 0 0.5rem;
-  color: #0f766e;
+  color: var(--lab-primary);
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
+.headingActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .status {
   padding: 0.45rem 0.65rem;
   border-radius: 999px;
-  background: #e6f4f1;
-  color: #115e59;
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
   font-size: 0.78rem;
   font-weight: 750;
 }
 
+.qualityToggle {
+  min-height: 2.75rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--lab-border);
+  border-radius: 999px;
+  background: var(--lab-surface);
+  color: var(--lab-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color 120ms ease-out,
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.qualityToggle[aria-pressed="true"] {
+  border-color: var(--lab-primary);
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
+}
+
+.equipmentBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.equipmentButton {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: var(--lab-surface);
+  color: var(--lab-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color 120ms ease-out,
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.equipmentButton:hover,
+.equipmentButton:focus-visible {
+  border-color: var(--lab-primary);
+  color: var(--lab-primary);
+}
+
+.equipmentButton[aria-pressed="true"] {
+  border-color: var(--lab-primary);
+  background: var(--lab-primary);
+  color: var(--lab-surface);
+}
+
+.exitButton {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.exitButton:hover,
+.exitButton:focus-visible {
+  border-color: var(--lab-primary);
+}
+
 .instructions {
+  display: flex;
+  align-items: center;
+  height: 3.25rem;
+  overflow-y: auto;
   margin: 0;
-  color: #52616b;
-  font-size: 0.88rem;
+  color: var(--lab-ink-muted);
+  font-size: 0.9375rem;
   line-height: 1.5;
 }
 
 .canvasFrame {
-  height: clamp(20rem, 46vw, 31rem);
+  position: relative;
+  height: var(--simulation-canvas-height, clamp(32rem, 68vh, 50rem));
   overflow: hidden;
-  border: 1px solid #b9cbc7;
-  border-radius: 1rem;
-  background: #dceae7;
+  border: 1px solid var(--lab-border);
+  border-radius: 1.125rem;
+  background: var(--lab-primary-soft);
+  cursor: default;
+  touch-action: auto;
+}
+
+.canvasFrame[data-look-active="true"] {
+  cursor: crosshair;
   touch-action: none;
+}
+
+.canvasFrame[data-hovered="true"] {
+  cursor: pointer;
+}
+
+.canvasFrame:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: 2px;
 }
 
 .canvasFrame canvas {
   display: block;
+}
+
+.canvasFrame [data-contextual-prompt] {
+  border-color: color-mix(
+    in srgb,
+    var(--lab-primary) 30%,
+    transparent
+  ) !important;
+  border-radius: 0.625rem !important;
+  background: color-mix(
+    in srgb,
+    var(--lab-surface) 94%,
+    transparent
+  ) !important;
+  box-shadow: var(--lab-floating-shadow) !important;
+  color: var(--lab-primary) !important;
+  font-size: 0.8125rem !important;
+  transition: opacity 160ms ease-out;
+}
+
+.lookChip {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 2;
+  max-width: calc(100% - 8rem);
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lab-primary) 92%, transparent);
+  color: var(--lab-surface);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-align: center;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.recenterButton {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 2;
+  padding: 0.5rem 0.7rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--lab-border);
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--lab-surface) 94%, transparent);
+  color: var(--lab-primary);
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.recenterButton:hover,
+.recenterButton:focus-visible {
+  border-color: var(--lab-primary);
+  background: var(--lab-surface);
 }
 
 .fallback {
@@ -58,8 +226,33 @@
   height: 100%;
   place-items: center;
   padding: 2rem;
-  color: #40515a;
+  color: var(--lab-ink-muted);
   text-align: center;
+}
+
+.qualityToggle:active,
+.equipmentButton:active,
+.exitButton:active,
+.recenterButton:active {
+  transform: translateY(1px);
+}
+
+.qualityToggle:focus-visible,
+.equipmentButton:focus-visible,
+.exitButton:focus-visible,
+.recenterButton:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qualityToggle,
+  .equipmentButton,
+  .exitButton,
+  .recenterButton,
+  .canvasFrame [data-contextual-prompt] {
+    transition: none;
+  }
 }
 
 .srSummary {
@@ -73,12 +266,28 @@
 }
 
 @media (max-width: 38rem) {
+  .scene {
+    grid-template-rows: auto auto 4.5rem auto;
+  }
+
   .headingRow {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .headingActions {
+    flex-wrap: wrap;
+  }
+
+  .instructions {
+    height: 4.5rem;
+  }
+
   .status {
     justify-self: start;
+  }
+
+  .lookChip {
+    max-width: calc(100% - 2rem);
   }
 }
