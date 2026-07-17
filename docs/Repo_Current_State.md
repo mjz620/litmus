@@ -38,7 +38,9 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 
 `LC2-107` adds strict schema-version-dispatched v2 hard validation and fail-closed eligibility. It resolves exact equipment, configurations, layouts, materials, action contracts, capabilities, model providers, rules, evidence, presentation/coach references, safety, adapters, and registry snapshots; rejects graph contradictions/unreachable success; deterministically orders issues; revalidates artifacts for current-hash eligibility; and treats Judge output as advisory only. V1 validator decisions, hashes, and eligibility remain unchanged.
 
-This is not yet a capability-driven runtime. Family/engine IDs remain v1 compatibility authority, ordered steps remain runtime control flow, and the production student scene is fixed. The Workflow Judge, generic capability runtime, constraint evaluator, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. V2 Preview/Assign are intentionally disabled until the setup-driven runtime exists, and migrated titration remains partially supported until verified chemistry providers and its explicit compatibility adapter are registered. Existing optional `workflowVersionId` fields remain provenance seams only.
+`LC2-200` adds the framework-free generic runtime scaffold beside the unchanged titration assembler. It implements the existing `ExperimentDefinition` contract, compiles immutable exact v2 equipment/material/action/model/rule/provenance bindings once, validates normalized permissions/connections/capabilities/parameters/attempts/preconditions/safety before mutation, invokes exact injected mechanical/model/evaluator ports, and exposes serializable immutable state, observables, ground truth, events, and diagnoses. The public runtime wrapper calls `ExperimentDefinition.step()` exactly once per dispatch. Only test implementations are registered.
+
+This is not yet a production capability-driven runtime. Family/engine IDs remain v1 compatibility authority for the legacy assembler, ordered steps remain legacy runtime control flow, and the production student scene is fixed. The Workflow Judge, reusable mechanics/material ledger, chemistry-module coordinator, constraint evaluator, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. V2 Preview/Assign are intentionally disabled, and migrated titration remains partially supported until verified chemistry providers and its explicit compatibility adapter are registered. Existing optional `workflowVersionId` fields remain provenance seams only.
 
 ## Deterministic/AI boundary
 
@@ -104,7 +106,7 @@ Lab Composer transitional implementation present in source/tests:
 - T0201–T0206-equivalent registry, schema, hashing, and hard-validation foundation under `src/lab-workflows/**` and `tests/lab-workflows/**`;
 - T0207 canonical titration seed/replay and T0208 titration-specific runtime assembler/adapters;
 - T0209 initial Lab Authoring Agent route and tests under `src/lib/agent/lab-authoring/**`, `src/app/api/lab-composer/author/**`, and `tests/ai/lab-composer/authoring/**`.
-- LC2-100–LC2-107 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, version-aware hashing, hard validation/eligibility, and exact tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
+- LC2-100–LC2-200 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, version-aware hashing, hard validation/eligibility, generic runtime scaffold, and exact tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
 
 The exact historical ticket completion reports were not added for these transitional files. Implementation status is based on current source and passing tests, not assumed ticket completion. T0210–T0220 are superseded by the capability-driven `LC2-*` sequence.
 
@@ -136,10 +138,10 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ## Latest local verification
 
 ```text
-npm run typecheck    pass — 2026-07-17 LC2-107
-npm run lint         pass — 2026-07-17 LC2-107
-npm run format:check pass — 2026-07-17 LC2-107
-npm test             pass — 65 files / 379 tests
+npm run typecheck    pass — 2026-07-17 LC2-200
+npm run lint         pass — 2026-07-17 LC2-200
+npm run format:check pass — 2026-07-17 LC2-200
+npm test             pass — 67 files / 388 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
 ```
 
@@ -154,4 +156,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-The next normal implementation ticket is `LC2-200`, the generic lab-state and action-coordinator scaffold. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.
+The next normal implementation ticket is `LC2-201`, reusable equipment mechanics and the material ledger. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.

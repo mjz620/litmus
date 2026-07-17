@@ -31,7 +31,7 @@ Then inspect every source and test file named by the active ticket. Documentatio
 
 ## Current safe starting point
 
-The repository currently has the transitional Composer foundation through `LC2-107`, including the Stage 1 capability contracts, pure schema migration, and versioned hard validation:
+The repository currently has the transitional Composer foundation through `LC2-200`, including the Stage 1 contracts/validation and the first generic runtime scaffold:
 
 - exact v1 registries for the supported titration workflow;
 - `LabWorkflowSpec` `1.0.0`;
@@ -49,10 +49,11 @@ The repository currently has the transitional Composer foundation through `LC2-1
 - pure exact v1-to-v2 migration that preserves all supported v1 setup, workflow, coach, retry, rubric, safety, and presentation semantics or fails closed;
 - version-aware hashing that preserves v1 bytes and uses the frozen `lab-workflow-spec\0schema=2.0.0\0` domain for strict JSON-safe v2 content.
 - strict version-dispatched v2 hard validation with injected registry provenance, exact capability/setup/action/material/model/rule/evidence/safety resolution, graph checks, deterministic issue ordering, current-hash artifact revalidation, and Judge non-authority.
+- a framework-free generic `ExperimentDefinition` coordinator that compiles exact validated bindings once, admits only current contract-runnable v2 artifacts, dispatches typed actions through exact code-owned ports, and keeps Preview/Assign closed.
 
-It does not yet have a generic runtime, constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. Migrated v2 output remains non-runnable in production because its chemistry capabilities are declared without registered providers and its explicit legacy runtime adapter is not executable yet. The current production runtime still uses the v1 titration compatibility path.
+It does not yet have production reusable mechanics, a material ledger, chemistry-module execution, a constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. LC2-200 uses only injected test ports and makes no production lab runnable. Migrated v2 output remains non-runnable in production because its chemistry capabilities are declared without registered providers and its explicit legacy runtime adapter is not executable yet. The current production runtime still uses the v1 titration compatibility path.
 
-The next unblocked implementation ticket is `LC2-200`, the generic lab-state and action-coordinator scaffold. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work before the generic runtime and evaluator prerequisites.
+The next unblocked implementation ticket is `LC2-201`, reusable equipment mechanics and the material ledger. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work before the generic runtime and evaluator prerequisites.
 
 ## Non-negotiable implementation sequence
 

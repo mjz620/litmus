@@ -4,6 +4,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 
 ## LC2-200 — Generic lab state and action coordinator scaffold
 
+**Status:** Implemented on 2026-07-17.
+
 **Objective:** Implement a generic `ExperimentDefinition<GenericLabConfig, GenericLabState, NormalizedLabAction>` coordinator that validates and dispatches typed actions through exact capability/adapter contracts.
 
 **Dependencies:** `LC2-107`.
@@ -28,6 +30,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 **Acceptance:** A small test-only validated v2 setup can initialize and execute a no-chemistry mechanical action. No production lab claims generic support yet.
 
 **Stop:** Do not use `Record<string, unknown>` as the permanent state model or add `switch (familyId)`. Missing mechanics/model behavior is a port error until later tickets.
+
+**Implementation note:** The scaffold uses a dedicated internal runtime-admission check that authoritatively revalidates the v2 artifact and tolerates only LC2-107's deliberate Preview gate. It does not alter Preview/Assign eligibility. Exact mechanical, precondition, safety, model, and evaluator behavior is supplied through code-owned ports; LC2-200 registers no production implementation.
 
 ## LC2-201 — Reusable equipment mechanics and material ledger
 

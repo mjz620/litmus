@@ -142,6 +142,8 @@ Feature flags should distinguish:
 
 The generic coordinator may use an explicit legacy titration adapter at first. Its snapshot must identify that compatibility dependency. It cannot switch on catalog family.
 
+Implementation note: LC2-200 adds the coordinator scaffold beside the unchanged legacy assembler. It compiles exact equipment/material/action/model/rule bindings, uses a dedicated current-artifact runtime-admission check, and routes normalized actions through `ExperimentDefinition.step()`. Its mechanical, safety, model, and evaluator implementations are injected exact ports; only the no-chemistry test fixture supplies implementations at this stage. Validator Preview/Assign flags remain false, and no production route consumes the scaffold.
+
 Runtime comparison for each characterization trace:
 
 - same initial scientific state;
