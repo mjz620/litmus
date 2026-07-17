@@ -283,6 +283,10 @@ type WorkflowCondition =
 
 Each condition contains only exact IDs and bounded structured values. No arbitrary expression strings, JavaScript, formula AST, JSONPath, dynamic property lookup, or user-authored query language.
 
+The implemented LC2-104 field contract uses explicit instance/state keys for equipment-state conditions, exact source/target filters for action evidence, explicit finite `minimum`/`maximum` plus `minimumInclusive`/`maximumInclusive` for observable tolerances, and predecessor/successor rule IDs for partial ordering. Equal observable bounds are legal only when both ends are inclusive. Parsing checks shape and bounds only; the hard validator later resolves IDs, state fields, observables, references, cycles, and rule compatibility.
+
+Structured expected/observed values use a closed tagged union: `null`, `boolean`, finite `number` with an optional unit ID, bounded `text`, bounded `text_list`, exact `identifier`, or bounded `identifier_list`. Arbitrary recursive JSON is intentionally unsupported; a new shape requires an explicit contract variant.
+
 ```ts
 interface WorkflowRule {
   readonly id: string;
@@ -307,6 +311,8 @@ interface WorkflowRule {
   readonly points?: number;
 }
 ```
+
+V2 rubric evidence is also typed rather than stored as an undifferentiated string list. Each criterion maps objectives and rules to one or more strict evidence entries of kind `rule_diagnosis`, `semantic_event`, `observable`, or `student_response`, retaining the exact assessment-mode and passing-policy IDs needed for lossless v1 migration. Instruction sections contain only an ID, title, guidance, and related rule IDs; their array order is presentation and never runtime control flow.
 
 Validator checks unique IDs, exact references, legal condition/rule combinations, tolerance bounds, contradictions, cycles in ordering edges, and statically unreachable success where detectable.
 

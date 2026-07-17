@@ -43,10 +43,11 @@ The repository currently has the transitional Composer foundation through the in
 - backward-compatible equipment and action definitions with exact state/configuration/visual/mechanical/schema/precondition/error/event-contract references;
 - reusable material-profile metadata over the existing reagent registry, including all three deterministic indicator choices and distilled water, with exact quantity and configuration-schema metadata;
 - framework-free chemistry-model contracts and deterministic exact provider resolution (the production provider registry is intentionally empty).
+- strict bounded v2 building blocks for closed workflow conditions, rules, presentation-only instructions, typed rubric evidence mappings, tagged structured evidence values, and diagnoses.
 
-It does not yet have structured v2 conditions, a v2 schema/migration/validator, a generic runtime, constraint evaluator, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. Stage 1A is metadata and validation groundwork; the current v1 runtime still uses the titration compatibility adapter.
+It does not yet have the top-level v2 schema/migration/validator, a generic runtime, constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. The implemented contracts are validation groundwork; the current v1 runtime still uses the titration compatibility adapter.
 
-The next unblocked implementation ticket is `LC2-104`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
+The next unblocked implementation ticket is `LC2-105`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
 
 ## Non-negotiable implementation sequence
 

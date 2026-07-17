@@ -74,12 +74,13 @@ The implemented Composer surface currently includes:
 - A titration-specific runtime assembler and exact adapters.
 - An initial server-side Lab Authoring Agent route with constrained registry inspection and deterministic validation.
 - Stage 1A exact capability, equipment, action, material, quantity, configuration-schema, and chemistry-model metadata contracts.
+- LC2-104 structural v2 condition, rule, instruction, rubric/evidence, and diagnosis contracts, independent of evaluation and runnability.
 - A pure deterministic chemistry-model provider resolver over injected verified metadata; the production model registry is intentionally empty.
 
 It does **not** yet include:
 
-- Structured v2 condition/rule/diagnosis schemas or a v2 workflow validator.
-- A v2 constraint-based workflow evaluator or structured diagnoses.
+- A top-level v2 workflow schema, migration, or hard validator. The reusable v2 condition/rule/instruction/rubric/diagnosis building blocks now exist but do not resolve references or grant runnability.
+- A v2 constraint-based workflow evaluator or runtime-produced diagnoses.
 - A setup-driven production student runtime/scene.
 - A teacher visual composer or shared editing command layer.
 - Composer draft/version persistence, preview, approval, or assignment.

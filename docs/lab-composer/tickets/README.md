@@ -15,9 +15,10 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | `LC2-102` | Complete | Reusable material, quantity, and configuration-schema metadata |
 | `LC2-102A` | Complete | Corrective parity registration for bromothymol blue, methyl orange, and distilled-water rinse support |
 | `LC2-103` | Complete | Chemistry-model contracts and exact verified-provider resolver; production providers remain empty |
-| `LC2-104` onward | Not started | Verify current source before claiming otherwise |
+| `LC2-104` | Complete | Strict bounded condition, rule, instruction, rubric/evidence, and diagnosis contracts |
+| `LC2-105` onward | Not started | Verify current source before claiming otherwise |
 
-The next normal implementation ticket is `LC2-104`.
+The next normal implementation ticket is `LC2-105`.
 
 ## Dependency map
 

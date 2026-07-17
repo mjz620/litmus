@@ -30,7 +30,9 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 - material-profile, quantity-preset, and configuration-schema metadata over the existing v1 registries, including all three deterministic indicators and distilled-water rinse support;
 - deterministic chemistry-model provider/dependency resolution over injected verified metadata, with no production chemistry modules registered yet.
 
-This is not yet a capability-driven runtime. Family/engine IDs remain v1 compatibility authority, ordered steps remain runtime control flow, and the production student scene is fixed. The v2 conditions/schema/migration/validator, Workflow Judge, generic capability runtime, constraint diagnoses, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. Existing optional `workflowVersionId` fields remain provenance seams only.
+`LC2-104` adds the first v2 constraint contract layer: a closed ten-kind condition union, bounded workflow rules, presentation-only instruction sections, typed rubric evidence mappings, tagged JSON-safe evidence values, and structured diagnoses. These schemas do not evaluate conditions, resolve references, or make a draft runnable.
+
+This is not yet a capability-driven runtime. Family/engine IDs remain v1 compatibility authority, ordered steps remain runtime control flow, and the production student scene is fixed. The top-level v2 schema/migration/validator, Workflow Judge, generic capability runtime, constraint evaluator, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. Existing optional `workflowVersionId` fields remain provenance seams only.
 
 ## Deterministic/AI boundary
 
@@ -96,7 +98,7 @@ Lab Composer transitional implementation present in source/tests:
 - T0201–T0206-equivalent registry, schema, hashing, and hard-validation foundation under `src/lab-workflows/**` and `tests/lab-workflows/**`;
 - T0207 canonical titration seed/replay and T0208 titration-specific runtime assembler/adapters;
 - T0209 initial Lab Authoring Agent route and tests under `src/lib/agent/lab-authoring/**`, `src/app/api/lab-composer/author/**`, and `tests/ai/lab-composer/authoring/**`.
-- LC2-100–LC2-103 capability/equipment/action/material/configuration/chemistry-model contracts and exact-resolution tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
+- LC2-100–LC2-104 capability/equipment/action/material/configuration/chemistry-model/constraint contracts and exact structural tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
 
 The exact historical ticket completion reports were not added for these transitional files. Implementation status is based on current source and passing tests, not assumed ticket completion. T0210–T0220 are superseded by the capability-driven `LC2-*` sequence.
 
@@ -128,9 +130,10 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ## Latest local verification
 
 ```text
-npm run typecheck    pass — 2026-07-17 Stage 1A
-npm run lint         pass — 2026-07-17 Stage 1A
-npm test             pass — 60 files / 331 tests
+npm run typecheck    pass — 2026-07-17 LC2-104
+npm run lint         pass — 2026-07-17 LC2-104
+npm run format:check pass — 2026-07-17 LC2-104
+npm test             pass — 61 files / 346 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
 ```
 
@@ -145,4 +148,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-The next normal implementation ticket is `LC2-104`, structured condition, rule, instruction, rubric, and diagnosis schemas. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.
+The next normal implementation ticket is `LC2-105`, the strict version-discriminated `LabWorkflowSpec` v2 schema union. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.

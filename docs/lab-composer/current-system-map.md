@@ -55,6 +55,10 @@ Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows).
 
 The capability and chemistry-model snapshots are not added to v1 validation artifacts because the v1 validator does not consume them. Component/action/reagent/configuration snapshot bumps make artifacts carrying their old snapshots stale until revalidation, while canonical v1 workflow content hashes remain unchanged. LC2-107 owns adding the new authorities to v2 validation provenance.
 
+### V2 constraint contract building blocks
+
+[`src/lab-workflows/schema/conditions.ts`](../../src/lab-workflows/schema/conditions.ts) now defines the closed ten-kind condition union, bounded rules, presentation-only instruction sections, typed rubric evidence mappings, tagged structured evidence values, and structured diagnoses. These schemas are exported publicly but are not imported into or composed with the v1 schema. They perform structural validation only: exact registry/local-reference resolution, graph checks, rule compatibility, and runnability remain the responsibility of `LC2-107`, while condition evaluation remains missing until `LC2-203`.
+
 ## Composer runtime and fixture
 
 | Surface | Status | Source | Instruction |
@@ -64,7 +68,8 @@ The capability and chemistry-model snapshots are not added to v1 validation arti
 | titration adapter | Implemented, transitional | [`src/lab-workflows/adapters/titration`](../../src/lab-workflows/adapters/titration) | Make legacy dependency visible; retain through parity and historical replay |
 | titration workflow assembler | Implemented, transitional | [`src/lab-workflows/runtime/titrationRuntime.ts`](../../src/lab-workflows/runtime/titrationRuntime.ts) | Current steps are runtime control flow; do not generalize by adding family switches |
 | generic coordinator | Missing | future `src/lab-workflows/runtime/generic/**` | Build only after v2 contracts/validator exist |
-| constraint evaluator/diagnoses | Missing | future `src/lab-workflows/evaluation/**` | Consume observables/events; never calculate chemistry |
+| constraint contracts | Implemented, structural only | [`src/lab-workflows/schema/conditions.ts`](../../src/lab-workflows/schema/conditions.ts) | Closed bounded data; parsing does not resolve IDs or make a workflow runnable |
+| constraint evaluator/diagnoses | Missing | future `src/lab-workflows/evaluation/**` | Consume the implemented contracts plus observables/events; never calculate chemistry |
 | chemistry model contracts/resolution | Implemented metadata layer | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models) | pure exact provider/dependency resolution exists; production metadata is intentionally empty and no chemistry implementation was extracted |
 
 ## Production student UI and state
