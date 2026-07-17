@@ -192,7 +192,7 @@ The LC2-102 audit initially preserved only material profiles already present in 
 
 ## LC2-107 — Capability-driven v2 hard validator
 
-**Status:** Next unblocked ticket; not started.
+**Status:** Implemented on 2026-07-17.
 
 **Objective:** Add deterministic v2 validation and eligibility passes while preserving exact v1 validator behavior.
 
@@ -220,3 +220,5 @@ The LC2-102 audit initially preserved only material profiles already present in 
 **Manual verification:** Search v2 validator for family/engine compatibility reads. Only explicit legacy descriptor validation may inspect legacy IDs; they cannot grant capability compatibility.
 
 **Stop:** Do not implement auto-repair or infer missing IDs. Suggested IDs, if returned, come only from exact compatible registry results.
+
+**Implementation note:** The production chemistry-model registry and setup-driven runtime remain intentionally absent. Therefore the exact no-chemistry mechanical validation fixture is contract-level `runnable` while Preview/Assign stay disabled, and the migrated titration definition is `partially_supported` until LC2-300 registers verified chemistry providers and an executable compatibility adapter. These are explicit hard-validation results, not family-based dispatch.

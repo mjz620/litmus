@@ -6,7 +6,8 @@ import {
 } from "../../src/lab-workflows/hash";
 import {
   judgeDimensionSchema,
-  type LabWorkflowDraft
+  type LabWorkflowDraft,
+  type LabWorkflowSpec
 } from "../../src/lab-workflows";
 import {
   LAB_WORKFLOW_REGISTRY_SNAPSHOT_IDS,
@@ -25,8 +26,8 @@ function validate(input: unknown) {
   return validateLabWorkflowSpec(input, { checkedAt });
 }
 
-function expectSchemaValid(input: unknown) {
-  const outcome = validate(input);
+function expectSchemaValid(input: LabWorkflowSpec) {
+  const outcome = validateLabWorkflowSpec(input, { checkedAt });
   expect(outcome.schemaValid).toBe(true);
   if (!outcome.schemaValid) throw new Error("Expected a schema-valid outcome");
   return outcome;
@@ -324,7 +325,9 @@ describe("hard LabWorkflowSpec validation", () => {
       }
     };
 
-    const outcome = expectSchemaValid(unsafeClaim);
+    const outcome = expectSchemaValid(
+      unsafeClaim as unknown as LabWorkflowSpec
+    );
 
     expect(outcome.validation).toMatchObject({
       status: "rejected_for_safety",

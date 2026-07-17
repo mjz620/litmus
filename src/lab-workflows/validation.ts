@@ -41,6 +41,15 @@ import {
   type ValidationResult,
   type WorkflowSupportStatus
 } from "./schema";
+import type { LabWorkflowSpecV2 } from "./schema/v2";
+import {
+  evaluateLabWorkflowEligibilityV2,
+  validateLabWorkflowSpecV2,
+  type LabWorkflowV2RegistryContext,
+  type LabWorkflowV2ValidationOutcome
+} from "./validation/v2";
+
+export * from "./validation/v2";
 
 export const LAB_WORKFLOW_VALIDATOR_VERSION = "1.0.0" as const;
 
@@ -141,6 +150,8 @@ export interface LabWorkflowEligibility {
 export interface LabWorkflowValidationOptions {
   /** Injected to keep the validator deterministic and free of wall-clock reads. */
   readonly checkedAt: string;
+  /** Complete exact registry context used only by the v2 validator path. */
+  readonly v2Registries?: LabWorkflowV2RegistryContext;
 }
 
 export interface SchemaInvalidLabWorkflowValidation {
@@ -160,6 +171,10 @@ export interface SchemaValidLabWorkflowValidation {
 export type LabWorkflowValidationOutcome =
   | SchemaInvalidLabWorkflowValidation
   | SchemaValidLabWorkflowValidation;
+
+export type VersionedLabWorkflowValidationOutcome =
+  | LabWorkflowValidationOutcome
+  | LabWorkflowV2ValidationOutcome;
 
 interface IssueCollector {
   readonly issues: ValidationIssue[];
@@ -2068,7 +2083,7 @@ function validateResolvedWorkflow(
   });
 }
 
-export function validateLabWorkflowSpec(
+export function validateLabWorkflowSpecV1(
   input: unknown,
   options: LabWorkflowValidationOptions
 ): LabWorkflowValidationOutcome {
@@ -2136,11 +2151,39 @@ export function validateLabWorkflowSpec(
   });
 }
 
+export function validateLabWorkflowSpec(
+  input: LabWorkflowSpecV2,
+  options: LabWorkflowValidationOptions
+): LabWorkflowV2ValidationOutcome;
+export function validateLabWorkflowSpec(
+  input: LabWorkflowSpec,
+  options: LabWorkflowValidationOptions
+): LabWorkflowValidationOutcome;
+export function validateLabWorkflowSpec(
+  input: unknown,
+  options: LabWorkflowValidationOptions
+): VersionedLabWorkflowValidationOutcome;
+export function validateLabWorkflowSpec(
+  input: unknown,
+  options: LabWorkflowValidationOptions
+): VersionedLabWorkflowValidationOutcome {
+  const version =
+    typeof input === "object" && input !== null
+      ? Object.getOwnPropertyDescriptor(input, "schemaVersion")?.value
+      : undefined;
+  return version === "2.0.0"
+    ? validateLabWorkflowSpecV2(input, {
+        checkedAt: options.checkedAt,
+        ...(options.v2Registries ? { registries: options.v2Registries } : {})
+      })
+    : validateLabWorkflowSpecV1(input, options);
+}
+
 /**
  * Fail-closed hard-validation gate. Assignment callers must additionally record
  * explicit teacher approval; this function establishes runtime eligibility only.
  */
-export function evaluateLabWorkflowEligibility(
+export function evaluateLabWorkflowEligibilityV1(
   input: unknown,
   purpose: LabWorkflowEligibilityPurpose
 ): Readonly<LabWorkflowEligibility> {
@@ -2202,4 +2245,20 @@ export function evaluateLabWorkflowEligibility(
     purpose,
     failureCodes
   });
+}
+
+export function evaluateLabWorkflowEligibility(
+  input: unknown,
+  purpose: LabWorkflowEligibilityPurpose,
+  options: Pick<LabWorkflowValidationOptions, "v2Registries"> = {}
+): Readonly<LabWorkflowEligibility> {
+  const version =
+    typeof input === "object" && input !== null
+      ? Object.getOwnPropertyDescriptor(input, "schemaVersion")?.value
+      : undefined;
+  return version === "2.0.0"
+    ? evaluateLabWorkflowEligibilityV2(input, purpose, {
+        ...(options.v2Registries ? { registries: options.v2Registries } : {})
+      })
+    : evaluateLabWorkflowEligibilityV1(input, purpose);
 }

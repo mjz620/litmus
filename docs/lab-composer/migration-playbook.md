@@ -53,7 +53,7 @@ type ValidatedLabWorkflowSpec =
 type LabWorkflowSpec = LabWorkflowSpecV1 | LabWorkflowSpecV2;
 ```
 
-Implementation note: LC2-105 exports this behavior through the separately named `versionedLabWorkflowDraftSchema`, `versionedValidatedLabWorkflowSpecSchema`, and `versionedLabWorkflowSpecSchema` facades. Historical unversioned aliases remain pinned to v1 because the validator, runtime, and author-agent consumers are still v1-only. LC2-106 made the hash facade version-aware while preserving v1 bytes exactly; LC2-107 must promote validator-facing consumers deliberately. This avoids passing v2 into v1 normalization or accidentally widening legacy consumers.
+Implementation note: LC2-105 exports this behavior through the separately named `versionedLabWorkflowDraftSchema`, `versionedValidatedLabWorkflowSpecSchema`, and `versionedLabWorkflowSpecSchema` facades. Historical unversioned aliases remain pinned to v1 because runtime and author-agent consumers are still v1-only. LC2-106 made the hash facade version-aware while preserving v1 bytes exactly. LC2-107 added strict schema-version dispatch at the validation facade while retaining separately exported v1/v2 validators and byte/decision-stable v1 behavior. This avoids passing v2 into v1 normalization or accidentally widening legacy runtime consumers.
 
 Keep explicit versioned exports as well. Do not discriminate the union only by `supportStatus`; v1 and v2 share statuses. Parsing order is:
 
