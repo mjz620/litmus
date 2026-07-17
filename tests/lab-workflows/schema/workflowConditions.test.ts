@@ -53,6 +53,16 @@ const VALID_CONDITIONS = {
     minimumCount: 1,
     maximumCount: 3
   },
+  semantic_event_observed: {
+    kind: "semantic_event_observed",
+    eventTypeId: "event.read_meniscus.v1"
+  },
+  observation_recorded: {
+    kind: "observation_recorded",
+    observationKeyId: "observation.reported_volume_ml.v1",
+    eventTypeId: "event.read_meniscus.v1",
+    expectedValueSourceId: "observable.burette_reading_ml.v1"
+  },
   observable_within_tolerance: {
     kind: "observable_within_tolerance",
     observableId: "observable.burette_reading_ml.v1",
@@ -119,6 +129,8 @@ function assertConditionExhaustive(condition: WorkflowCondition): string {
     case "material_bound_to_container":
     case "action_observed":
     case "action_count_within_range":
+    case "semantic_event_observed":
+    case "observation_recorded":
     case "observable_within_tolerance":
     case "event_flag":
     case "rule_satisfied_before":
@@ -422,6 +434,12 @@ describe("v2 rubric and diagnosis schemas", () => {
       {
         kind: "semantic_event",
         eventTypeId: "event.dispense.v1",
+        required: true
+      },
+      {
+        kind: "semantic_event_observation",
+        observationKeyId: "observation.reported_volume_ml.v1",
+        eventTypeId: "event.read_meniscus.v1",
         required: true
       },
       {

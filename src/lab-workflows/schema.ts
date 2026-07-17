@@ -342,6 +342,14 @@ export const labWorkflowSpecSchema = z.discriminatedUnion("supportStatus", [
   validatedLabWorkflowSpecSchema
 ]);
 
+/**
+ * Explicit v1 names for migration code. The historical unversioned exports
+ * below remain v1-only until LC2-106/107 deliberately promote their consumers.
+ */
+export const labWorkflowDraftV1Schema = labWorkflowDraftSchema;
+export const validatedLabWorkflowSpecV1Schema = validatedLabWorkflowSpecSchema;
+export const labWorkflowSpecV1Schema = labWorkflowSpecSchema;
+
 export type RegistryId = z.infer<typeof registryIdSchema>;
 export type WorkflowSupportStatus = z.infer<typeof workflowSupportStatusSchema>;
 export type LabMetadata = z.infer<typeof labMetadataSchema>;
@@ -366,3 +374,6 @@ export type ValidatedLabWorkflowSpec = z.infer<
   typeof validatedLabWorkflowSpecSchema
 >;
 export type LabWorkflowSpec = z.infer<typeof labWorkflowSpecSchema>;
+export type LabWorkflowDraftV1 = LabWorkflowDraft;
+export type ValidatedLabWorkflowSpecV1 = ValidatedLabWorkflowSpec;
+export type LabWorkflowSpecV1 = LabWorkflowSpec;

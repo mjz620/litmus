@@ -75,11 +75,12 @@ The implemented Composer surface currently includes:
 - An initial server-side Lab Authoring Agent route with constrained registry inspection and deterministic validation.
 - Stage 1A exact capability, equipment, action, material, quantity, configuration-schema, and chemistry-model metadata contracts.
 - LC2-104 structural v2 condition, rule, instruction, rubric/evidence, and diagnosis contracts, independent of evaluation and runnability.
+- LC2-104A exact semantic-event/observation-key evidence variants and LC2-105 strict v2 draft/validated schemas with a staged version facade.
 - A pure deterministic chemistry-model provider resolver over injected verified metadata; the production model registry is intentionally empty.
 
 It does **not** yet include:
 
-- A top-level v2 workflow schema, migration, or hard validator. The reusable v2 condition/rule/instruction/rubric/diagnosis building blocks now exist but do not resolve references or grant runnability.
+- V1-to-v2 migration, v2 domain-separated hashing, or a v2 hard validator. The reusable v2 contracts and root schemas exist but do not resolve references or grant runnability.
 - A v2 constraint-based workflow evaluator or runtime-produced diagnoses.
 - A setup-driven production student runtime/scene.
 - A teacher visual composer or shared editing command layer.

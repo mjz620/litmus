@@ -44,10 +44,12 @@ The repository currently has the transitional Composer foundation through the in
 - reusable material-profile metadata over the existing reagent registry, including all three deterministic indicator choices and distilled water, with exact quantity and configuration-schema metadata;
 - framework-free chemistry-model contracts and deterministic exact provider resolution (the production provider registry is intentionally empty).
 - strict bounded v2 building blocks for closed workflow conditions, rules, presentation-only instructions, typed rubric evidence mappings, tagged structured evidence values, and diagnoses.
+- strict `LabWorkflowSpec` v2 draft/validated schemas with setup, layout, action availability, coach/retry, rubric, safety, presentation, compatibility, provenance, and validation-artifact data;
+- a separately named schema-version facade that parses v1 or v2 without exposing v2 to the still-v1 hash and validator paths.
 
-It does not yet have the top-level v2 schema/migration/validator, a generic runtime, constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. The implemented contracts are validation groundwork; the current v1 runtime still uses the titration compatibility adapter.
+It does not yet have v1-to-v2 migration, domain-separated v2 hashing, a v2 hard validator, a generic runtime, constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. The implemented schemas are structural only; the current v1 runtime still uses the titration compatibility adapter.
 
-The next unblocked implementation ticket is `LC2-105`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
+The next unblocked implementation ticket is `LC2-106`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
 
 ## Non-negotiable implementation sequence
 

@@ -59,6 +59,8 @@ export const WORKFLOW_CONDITION_KINDS = Object.freeze([
   "material_bound_to_container",
   "action_observed",
   "action_count_within_range",
+  "semantic_event_observed",
+  "observation_recorded",
   "observable_within_tolerance",
   "event_flag",
   "rule_satisfied_before",
@@ -147,6 +149,18 @@ export const actionCountWithinRangeConditionSchema = z
     path: ["maximumCount"]
   });
 
+export const semanticEventObservedConditionSchema = z.strictObject({
+  kind: z.literal("semantic_event_observed"),
+  eventTypeId: registryIdSchema
+});
+
+export const observationRecordedConditionSchema = z.strictObject({
+  kind: z.literal("observation_recorded"),
+  observationKeyId: registryIdSchema,
+  eventTypeId: registryIdSchema.optional(),
+  expectedValueSourceId: registryIdSchema.optional()
+});
+
 export const observableWithinToleranceConditionSchema = z
   .strictObject({
     kind: z.literal("observable_within_tolerance"),
@@ -207,6 +221,8 @@ export const workflowConditionSchema = z.discriminatedUnion("kind", [
   materialBoundToContainerConditionSchema,
   actionObservedConditionSchema,
   actionCountWithinRangeConditionSchema,
+  semanticEventObservedConditionSchema,
+  observationRecordedConditionSchema,
   observableWithinToleranceConditionSchema,
   eventFlagConditionSchema,
   ruleSatisfiedBeforeConditionSchema,
@@ -272,6 +288,12 @@ export const rubricEvidenceMappingSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("semantic_event"),
     eventTypeId: registryIdSchema,
+    required: z.boolean()
+  }),
+  z.strictObject({
+    kind: z.literal("semantic_event_observation"),
+    observationKeyId: registryIdSchema,
+    eventTypeId: registryIdSchema.optional(),
     required: z.boolean()
   }),
   z.strictObject({
@@ -355,6 +377,12 @@ export type ActionObservedCondition = z.infer<
 >;
 export type ActionCountWithinRangeCondition = z.infer<
   typeof actionCountWithinRangeConditionSchema
+>;
+export type SemanticEventObservedCondition = z.infer<
+  typeof semanticEventObservedConditionSchema
+>;
+export type ObservationRecordedCondition = z.infer<
+  typeof observationRecordedConditionSchema
 >;
 export type ObservableWithinToleranceCondition = z.infer<
   typeof observableWithinToleranceConditionSchema

@@ -245,6 +245,8 @@ interface LabWorkflowSpecV2 {
   readonly coachPolicy: CoachPolicySpec;
   readonly rubric: RubricSpecV2;
   readonly safetyPolicyIds: readonly SafetyPolicyId[];
+  readonly safetyBindings: readonly SafetyBinding[];
+  readonly presentation: PresentationSpec;
   readonly compatibility?: LegacyCompatibilityDescriptor;
   readonly provenance?: MigrationProvenance;
   readonly supportStatus: WorkflowSupportStatus;
@@ -259,8 +261,9 @@ Key rules:
 - `equipment` instances reference exact equipment definition/configuration IDs.
 - `materials` use exact registered profiles and quantities.
 - `layout` is bounded and validated; it contains transforms/slots, not component code.
-- `permittedActions` are global lab permissions plus source/target instance bindings. Rules determine correctness.
+- `permittedActions` are global lab permissions plus source/target instance bindings, bounded parameter/attempt constraints, and rule-based availability gates. Rules determine correctness and action availability is checked before mutation.
 - `instructions` reference rules but do not control runtime progression.
+- coach policy retains bounded trigger and adaptive-retry policy; safety bindings scope exact global policies to setup instances; presentation retains non-authoritative labels, teacher rationale, equipment context, and student prompts.
 - New/edited/migrated drafts are unvalidated until deterministic validation produces a matching artifact.
 
 ## Structured conditions and rules
@@ -274,6 +277,8 @@ type WorkflowCondition =
   | MaterialBoundToContainerCondition
   | ActionObservedCondition
   | ActionCountWithinRangeCondition
+  | SemanticEventObservedCondition
+  | ObservationRecordedCondition
   | ObservableWithinToleranceCondition
   | EventFlagCondition
   | RuleSatisfiedBeforeCondition
