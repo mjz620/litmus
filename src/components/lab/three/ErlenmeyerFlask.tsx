@@ -19,7 +19,7 @@ import {
 import { LAB_PALETTE } from "./labPalette";
 
 const tileMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.ceramic,
+  color: LAB_PALETTE.muralBlue,
   roughness: 0.72,
   metalness: 0
 });

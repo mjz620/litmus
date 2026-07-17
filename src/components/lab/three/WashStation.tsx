@@ -1,6 +1,10 @@
 import { Html } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
-import { type CSSProperties, useMemo } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  useMemo
+} from "react";
 import {
   CanvasTexture,
   MeshBasicMaterial,
@@ -14,13 +18,17 @@ import { LAB_PALETTE } from "./labPalette";
 interface WashStationProps {
   focused: boolean;
   preparationEnabled: boolean;
+  selectedLiquid: WashLiquid | null;
+  funnelSelected: boolean;
   onWashBottleClick: () => void;
   onTitrantBottleClick: () => void;
   onFunnelClick: () => void;
 }
 
+export type WashLiquid = "water" | "titrant";
+
 const trayMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.ceramic,
+  color: LAB_PALETTE.muralBlue,
   roughness: 0.76,
   metalness: 0
 });
@@ -52,7 +60,7 @@ const HOTSPOT_LABEL_STYLE: CSSProperties = {
   background: "color-mix(in srgb, var(--lab-surface) 94%, transparent)",
   boxShadow: "var(--lab-floating-shadow)",
   color: "var(--lab-ink)",
-  fontFamily: "system-ui, sans-serif",
+  fontFamily: "var(--font-ui)",
   fontSize: "0.66rem",
   fontWeight: 750,
   lineHeight: 1,
@@ -95,6 +103,8 @@ function getWaterLabelTexture(): CanvasTexture | null {
 export function WashStation({
   focused,
   preparationEnabled,
+  selectedLiquid,
+  funnelSelected,
   onWashBottleClick,
   onTitrantBottleClick,
   onFunnelClick
@@ -117,6 +127,7 @@ export function WashStation({
 
       <group
         position={[WASH.washBottleX, 0, 0]}
+        scale={selectedLiquid === "water" ? 1.06 : 1}
         onClick={hotspotsEnabled ? clickHandler(onWashBottleClick) : undefined}
       >
         <mesh position={[0, 0.095, 0]} material={washBottleMaterial}>
@@ -138,6 +149,9 @@ export function WashStation({
             <meshBasicMaterial map={waterLabel} />
           </mesh>
         )}
+        {focused && selectedLiquid === "water" && (
+          <SelectionRing radius={0.063} />
+        )}
         {hotspotsEnabled && (
           <mesh position={[0, 0.11, 0]} material={hotspotMaterial}>
             <boxGeometry args={[0.11, 0.22, 0.12]} />
@@ -155,6 +169,7 @@ export function WashStation({
 
       <group
         position={[WASH.titrantBottleX, 0, 0]}
+        scale={selectedLiquid === "titrant" ? 1.06 : 1}
         onClick={
           hotspotsEnabled ? clickHandler(onTitrantBottleClick) : undefined
         }
@@ -177,6 +192,9 @@ export function WashStation({
           <planeGeometry args={[0.072, 0.04]} />
           <meshBasicMaterial color={LAB_PALETTE.ceramic} />
         </mesh>
+        {focused && selectedLiquid === "titrant" && (
+          <SelectionRing radius={0.061} />
+        )}
         {hotspotsEnabled && (
           <mesh position={[0, 0.105, 0]} material={hotspotMaterial}>
             <boxGeometry args={[0.105, 0.21, 0.115]} />
@@ -194,6 +212,7 @@ export function WashStation({
 
       <group
         position={[WASH.funnelX, 0, 0]}
+        scale={funnelSelected ? 1.06 : 1}
         onClick={hotspotsEnabled ? clickHandler(onFunnelClick) : undefined}
       >
         <mesh position={[0, 0.15, 0]} material={fixtureMaterial}>
@@ -202,6 +221,7 @@ export function WashStation({
         <mesh position={[0, 0.075, 0]} material={fixtureMaterial}>
           <cylinderGeometry args={[0.011, 0.011, 0.08, 10]} />
         </mesh>
+        {focused && funnelSelected && <SelectionRing radius={0.064} />}
         {hotspotsEnabled && (
           <mesh position={[0, 0.115, 0]} material={hotspotMaterial}>
             <boxGeometry args={[0.09, 0.21, 0.11]} />
@@ -216,6 +236,31 @@ export function WashStation({
           />
         )}
       </group>
+    </group>
+  );
+}
+
+function SelectionRing({ radius }: { radius: number }) {
+  return (
+    <group>
+      <mesh position={[0, 0.029, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[radius * 1.05, 28]} />
+        <meshBasicMaterial
+          color={LAB_PALETTE.selectionTeal}
+          transparent
+          opacity={0.16}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh position={[0, 0.031, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[radius, 0.005, 8, 28]} />
+        <meshBasicMaterial
+          color={LAB_PALETTE.selectionTeal}
+          transparent
+          opacity={0.95}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   );
 }
@@ -249,7 +294,12 @@ function HotspotLabel({
           cursor: interactive ? "pointer" : "default",
           pointerEvents: interactive ? "auto" : "none"
         }}
-        onClick={onActivate}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event: ReactMouseEvent<HTMLSpanElement>) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onActivate?.();
+        }}
       >
         {label}
       </span>

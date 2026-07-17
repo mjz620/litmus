@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { type KeyboardEvent, useEffect } from "react";
+import { type KeyboardEvent, useEffect, useState } from "react";
 
 import { useLabUiStore } from "../../../stores/labUiStore";
 import { TitrationControls } from "./TitrationControls";
@@ -15,7 +15,11 @@ const TitrationScene = dynamic(
   () => import("./TitrationScene").then((module) => module.TitrationScene),
   {
     ssr: false,
-    loading: () => <p role="status">Loading the 3D bench…</p>
+    loading: () => (
+      <p className={styles.loading} role="status">
+        Loading the 3D bench…
+      </p>
+    )
   }
 );
 
@@ -26,6 +30,7 @@ const TitrationScene = dynamic(
  */
 export function TitrationWorkspace() {
   const focused = useLabUiStore((state) => state.focused);
+  const [controlsOpen, setControlsOpen] = useState(false);
 
   useEffect(
     () => () => {
@@ -41,6 +46,13 @@ export function TitrationWorkspace() {
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Escape") return;
+
+    if (controlsOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      setControlsOpen(false);
+      return;
+    }
 
     const {
       lookActive,
@@ -63,14 +75,38 @@ export function TitrationWorkspace() {
   }
 
   return (
-    <div className={styles.workspace} onKeyDown={handleKeyDown}>
-      <TitrationScene />
-      <aside className={styles.controlPanel} aria-label="Lab controls">
-        <TitrationControls
-          visibleGroups={getVisibleControlGroups(focused)}
-          contextLabel={focused ? EQUIPMENT[focused].name : undefined}
-        />
-      </aside>
+    <div
+      className={styles.workspace}
+      data-precision-controls-open={controlsOpen ? "true" : "false"}
+      onKeyDown={handleKeyDown}
+    >
+      <TitrationScene
+        precisionControlsOpen={controlsOpen}
+        onPrecisionControlsChange={setControlsOpen}
+      />
+      {controlsOpen && (
+        <div className={styles.drawer} role="presentation">
+          <div className={styles.drawerHeader}>
+            <div>
+              <p>Accessibility surface</p>
+              <h2>Precision controls</h2>
+            </div>
+            <button
+              type="button"
+              aria-label="Close precision controls"
+              onClick={() => setControlsOpen(false)}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+          <aside className={styles.controlPanel} aria-label="Lab controls">
+            <TitrationControls
+              visibleGroups={getVisibleControlGroups(focused)}
+              contextLabel={focused ? EQUIPMENT[focused].name : undefined}
+            />
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

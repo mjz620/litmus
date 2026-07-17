@@ -1,7 +1,8 @@
 import type { ExperimentId } from "../../experiments/registry";
 
 const pathsByExperimentId = {
-  acid_base_titration: "/lab/titration"
+  acid_base_titration: "/lab/titration",
+  precipitation_solubility: "/lab/precipitation"
 } as const satisfies Record<ExperimentId, `/lab/${string}`>;
 
 export function getExperimentPath(

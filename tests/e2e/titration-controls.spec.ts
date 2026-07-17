@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+import {
+  addIndicator,
+  openLabNotebook,
+  openPHGraph,
+  openPrecisionControls,
+  prepareBuretteWithTitrant
+} from "./labHelpers";
+
 test("titration controls dispatch typed actions and update engine state", async ({
   page
 }) => {
@@ -14,6 +22,9 @@ test("titration controls dispatch typed actions and update engine state", async 
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
+  await openPrecisionControls(page);
+  await openLabNotebook(page);
+  await openPHGraph(page);
   const scene = page.getByRole("region", { name: "Interactive lab bench" });
   const notebook = page.getByRole("complementary", { name: "Session notes" });
   await expect(scene).toHaveAttribute("data-burette-fill", "0.000");
@@ -29,35 +40,33 @@ test("titration controls dispatch typed actions and update engine state", async 
     exact: true
   });
 
-  await expect(fillButton).toBeEnabled();
+  await expect(fillButton).toBeDisabled();
   await expect(addButton).toBeDisabled();
 
+  await page.getByRole("button", { name: "Select distilled water" }).click();
+  await page.getByRole("button", { name: "Select fill funnel" }).click();
   await page.getByRole("button", { name: "Rinse with water" }).click();
   await expect(
     page.getByText("Rinsed with water — dilution risk", { exact: true })
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Rinse with titrant" }).click();
-  await expect(
-    page.getByText("Conditioned with titrant", { exact: true })
-  ).toBeVisible();
-
-  await fillButton.click();
+  await prepareBuretteWithTitrant(page);
   await expect(scene).toHaveAttribute("data-burette-fill", "1.000");
-  await expect(fillButton).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add refill" })).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Rinse with titrant" })
-  ).toBeDisabled();
-  await expect(addButton).toBeEnabled();
+  ).toHaveCount(0);
+  await expect(addButton).toBeDisabled();
   await expect(
     page.getByText("50.00 mL available", { exact: true })
   ).toBeVisible();
   await expect(notebook.getByText("Titrate toward the endpoint")).toBeVisible();
 
-  await page.getByLabel("2. Indicator").selectOption("methyl_orange");
+  await addIndicator(page, "methyl_orange", "Methyl orange");
   await expect(
     notebook.getByText("methyl orange", { exact: true })
   ).toBeVisible();
+  await expect(addButton).toBeEnabled();
 
   await page.getByLabel("Volume to add (mL)").fill("0.10");
   await page.getByLabel("Delivery time (seconds)").fill("4");
@@ -66,7 +75,7 @@ test("titration controls dispatch typed actions and update engine state", async 
   await expect(scene).toHaveAttribute("data-flask-color", "red");
 
   await expect(
-    page.getByText("0.10 mL", { exact: true }).first()
+    page.getByText("0.10 mL cumulative", { exact: true })
   ).toBeVisible();
   await expect(
     page.getByText("49.90 mL available", { exact: true })

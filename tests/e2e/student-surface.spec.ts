@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { generateTitrationSessionConfig } from "../../src/experiments/titration/sessionConfig";
 import { equivalenceVolumeML } from "../../src/experiments/titration/titration";
+import { openLabNotebook } from "./labHelpers";
 
 /**
  * Pick deterministic regression seeds whose generated values make leak checks
@@ -43,6 +44,7 @@ for (const seed of regressionSeeds) {
     const equivalenceML = equivalenceVolumeML(config);
 
     await page.goto(`/lab/titration?seed=${seed}`);
+    await openLabNotebook(page);
     const notebook = page.getByRole("complementary", {
       name: "Session notes"
     });
@@ -94,6 +96,7 @@ test("a shared seed produces the same configuration on both routes without expos
   expect(JSON.parse(devConfigText)).toEqual(expectedConfig);
 
   await page.goto(`/lab/titration?seed=${seed}`);
+  await openLabNotebook(page);
   const notebook = page.getByRole("complementary", { name: "Session notes" });
   await expect(notebook).toBeVisible();
 

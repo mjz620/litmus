@@ -1,11 +1,11 @@
 .card {
   display: grid;
-  gap: 1.25rem;
-  padding: clamp(1.5rem, 4vw, 2rem);
-  border: 1px solid #d8e2df;
-  border-radius: 1.25rem;
-  background: #ffffff;
-  box-shadow: 0 1rem 2.5rem rgb(23 33 43 / 7%);
+  gap: var(--space-6);
+  padding: clamp(1.25rem, 4vw, 1.75rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .cardHeader {
@@ -17,7 +17,7 @@
 
 .availability,
 .version {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -25,13 +25,13 @@
 .availability {
   padding: 0.4rem 0.65rem;
   border-radius: 999px;
-  background: #e6f4f1;
-  color: #115e59;
+  background: var(--color-success-soft);
+  color: var(--color-success);
   text-transform: uppercase;
 }
 
 .version {
-  color: #52616b;
+  color: var(--color-ink-muted);
 }
 
 .card h2 {
@@ -41,7 +41,7 @@
 
 .description {
   margin: 0;
-  color: #52616b;
+  color: var(--color-ink-muted);
   line-height: 1.65;
 }
 
@@ -54,12 +54,12 @@
 
 .details div {
   padding: 0.85rem;
-  border-radius: 0.8rem;
-  background: #f4f7f6;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
 }
 
 .details dt {
-  color: #52616b;
+  color: var(--color-ink-muted);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -75,18 +75,16 @@
 .cta {
   justify-self: start;
   padding: 0.8rem 1.1rem;
-  border-radius: 0.75rem;
-  background: #0f766e;
-  color: #ffffff;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
   font-weight: 700;
   text-decoration: none;
 }
 
 .cta:focus-visible,
 .cta:hover {
-  outline: 3px solid #99f6e4;
-  outline-offset: 3px;
-  background: #115e59;
+  background: var(--color-primary-hover);
 }
 
 @media (max-width: 38rem) {

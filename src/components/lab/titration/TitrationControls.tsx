@@ -7,13 +7,19 @@ import {
   useState
 } from "react";
 
+import type { SemanticEvent } from "../../../experiments/shared";
 import {
   formatBuretteVolume,
   formatPH
 } from "../../../experiments/titration/display";
 import type { IndicatorId } from "../../../experiments/titration/titration";
-import { useLabStore } from "../../../stores/labStore";
+import { isTitrationState, useLabStore } from "../../../stores/labStore";
+import { getLabSounds } from "../three/labSounds";
 import { type ControlGroupId, getVisibleControlGroups } from "./equipment";
+import {
+  getIndicatorLabel,
+  IndicatorSelectionDialog
+} from "./IndicatorSelectionDialog";
 import {
   FLOW_RATES_ML_PER_S,
   type FlowDetent,
@@ -45,15 +51,34 @@ export function TitrationControls({
   visibleGroups = getVisibleControlGroups(null),
   contextLabel
 }: TitrationControlsProps = {}) {
-  const state = useLabStore((store) => store.state);
+  const state = useLabStore((store) =>
+    isTitrationState(store.state) ? store.state : null
+  );
   const eventQueue = useLabStore((store) => store.eventQueue);
   const dispatch = useLabStore((store) => store.dispatch);
+  const sessionId = useLabStore((store) => store.sessionId);
   const [additionVolume, setAdditionVolume] = useState("0.10");
   const [additionDuration, setAdditionDuration] = useState("4");
   const [reportedMeniscus, setReportedMeniscus] = useState("0.00");
+  const [fillVolume, setFillVolume] = useState("50.00");
   const [inputError, setInputError] = useState<string | null>(null);
+  const [indicatorCandidate, setIndicatorCandidate] = useState<IndicatorId>(
+    state?.config.indicator ?? "phenolphthalein"
+  );
+  const [pendingIndicator, setPendingIndicator] = useState<IndicatorId | null>(
+    null
+  );
+  const [preparationLiquid, setPreparationLiquid] = useState<
+    "water" | "titrant" | null
+  >(null);
+  const [funnelSelected, setFunnelSelected] = useState(false);
   const dispense = useDispenseGesture({
-    availableML: state?.buretteAvailableML ?? 0
+    availableML: state?.buretteAvailableML ?? 0,
+    onCommit: () =>
+      playDeliverySounds(useLabStore.getState().eventQueue.slice(-1)),
+    onDetentChange: () => getLabSounds().playFromGesture("valve"),
+    onGestureStart: () => getLabSounds().playFromGesture("valve"),
+    onGestureEnd: () => getLabSounds().playFromGesture("valve")
   });
 
   if (!state) return null;
@@ -61,18 +86,49 @@ export function TitrationControls({
   const latestPH = eventQueue.findLast(
     ({ observation }) => typeof observation.pH === "number"
   )?.observation.pH;
-  const canPrepareBurette =
-    state.titrantAddedML === 0 && state.buretteAvailableML === 0;
+  const canRinseBurette =
+    state.fillCount === 0 && state.buretteAvailableML === 0;
+  const hasRinsedBurette =
+    state.buretteConditioned || state.titrantDilutionFactor < 1;
+  const needsRinse = canRinseBurette && !hasRinsedBurette;
+  const preparationReady = preparationLiquid === "titrant" && funnelSelected;
+  const remainingFillCapacityML =
+    state.config.buretteCapacityML - state.buretteAvailableML;
   const availableVolumeML = state.buretteAvailableML;
   const hasAvailableTitrant = availableVolumeML > 0;
+  const indicatorAdded = state.indicatorAdded;
   const isDispensing = dispense.state.isHolding;
+  const canFillBurette =
+    remainingFillCapacityML > 0 && !isDispensing && preparationReady;
   const canHoldDispense =
-    hasAvailableTitrant && dispense.state.selectedDetent !== "closed";
+    indicatorAdded &&
+    hasAvailableTitrant &&
+    dispense.state.selectedDetent !== "closed";
   const conditioningStatus = state.buretteConditioned
     ? "Conditioned with titrant"
     : state.titrantDilutionFactor < 1
       ? "Rinsed with water — dilution risk"
       : "Not conditioned";
+
+  function eventsSince(count: number): SemanticEvent[] {
+    return useLabStore.getState().eventQueue.slice(count);
+  }
+
+  function playDeliverySounds(events = eventQueue.slice(-1)) {
+    const sounds = getLabSounds();
+    sounds.playFromGesture("drop");
+    if (
+      events.some(
+        (event) =>
+          event.flags.includes("endpoint_overshoot") ||
+          event.evidence.some(
+            ({ reason }) => reason === "controlled_addition_near_endpoint"
+          )
+      )
+    ) {
+      sounds.playFromGesture("endpoint", sessionId ?? "unscoped-session");
+    }
+  }
 
   function handleAddition(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +147,10 @@ export function TitrationControls({
       setInputError("Fill the burette before adding titrant.");
       return;
     }
+    if (!indicatorAdded) {
+      setInputError("Review and add one indicator before adding titrant.");
+      return;
+    }
     if (volumeML > availableVolumeML) {
       setInputError(
         `Only ${formatBuretteVolume(availableVolumeML)} mL remains in the burette.`
@@ -99,7 +159,9 @@ export function TitrationControls({
     }
 
     setInputError(null);
+    const eventCount = eventQueue.length;
     dispatch({ type: "add_titrant", volumeML, durationS });
+    playDeliverySounds(eventsSince(eventCount));
   }
 
   function handleMeniscusReading(event: FormEvent<HTMLFormElement>) {
@@ -113,6 +175,38 @@ export function TitrationControls({
 
     setInputError(null);
     dispatch({ type: "read_meniscus", reportedML });
+  }
+
+  function handleFill() {
+    const volumeML = Number(fillVolume);
+    if (!Number.isFinite(volumeML) || volumeML <= 0) {
+      setInputError("Enter a fill volume greater than zero.");
+      return;
+    }
+    if (volumeML > remainingFillCapacityML + 1e-9) {
+      setInputError(
+        `Only ${formatBuretteVolume(remainingFillCapacityML)} mL fits before capacity.`
+      );
+      return;
+    }
+    setInputError(null);
+    dispatch({ type: "fill_burette", volumeML });
+    getLabSounds().playFromGesture("rinse_fill");
+    setPreparationLiquid(null);
+    setFunnelSelected(false);
+  }
+
+  function handleRinse() {
+    if (!preparationLiquid || !funnelSelected || !needsRinse) return;
+    dispatch({ type: "rinse_burette", solvent: preparationLiquid });
+    getLabSounds().playFromGesture("rinse_fill");
+  }
+
+  function confirmIndicatorAddition() {
+    if (!pendingIndicator || indicatorAdded) return;
+    dispatch({ type: "select_indicator", indicator: pendingIndicator });
+    getLabSounds().playFromGesture("indicator");
+    setPendingIndicator(null);
   }
 
   function handleHoldPointerDown(event: PointerEvent<HTMLButtonElement>) {
@@ -156,8 +250,12 @@ export function TitrationControls({
         <div
           className={styles.liveReading}
           aria-label="Current engine readings"
+          aria-live="polite"
         >
-          <span>{formatBuretteVolume(state.titrantAddedML)} mL</span>
+          <span>{formatBuretteVolume(state.titrantAddedML)} mL cumulative</span>
+          <span>
+            {formatBuretteVolume(state.buretteReadingML)} mL current reading
+          </span>
           <span>{formatBuretteVolume(availableVolumeML)} mL available</span>
           {typeof latestPH === "number" && <span>pH {formatPH(latestPH)}</span>}
         </div>
@@ -168,40 +266,93 @@ export function TitrationControls({
           <fieldset className={styles.controlGroup}>
             <legend>1. Prepare burette</legend>
             <p className={styles.groupStatus}>{conditioningStatus}</p>
+            <p className={styles.note}>
+              Select a liquid and the fill funnel before rinsing or filling.
+            </p>
+            <div
+              className={styles.buttonRow}
+              role="group"
+              aria-label="Preparation liquid"
+            >
+              <button
+                type="button"
+                aria-pressed={preparationLiquid === "water"}
+                disabled={!canRinseBurette || !needsRinse}
+                onClick={() => setPreparationLiquid("water")}
+              >
+                Select distilled water
+              </button>
+              <button
+                type="button"
+                aria-pressed={preparationLiquid === "titrant"}
+                disabled={!canRinseBurette && remainingFillCapacityML <= 0}
+                onClick={() => setPreparationLiquid("titrant")}
+              >
+                Select titrant
+              </button>
+              <button
+                type="button"
+                aria-pressed={funnelSelected}
+                disabled={remainingFillCapacityML <= 0}
+                onClick={() => setFunnelSelected((current) => !current)}
+              >
+                {funnelSelected ? "Funnel selected" : "Select fill funnel"}
+              </button>
+            </div>
+            {needsRinse && (
+              <button
+                className={styles.primaryButton}
+                type="button"
+                disabled={!preparationLiquid || !funnelSelected}
+                onClick={handleRinse}
+              >
+                {preparationLiquid
+                  ? `Rinse with ${preparationLiquid}`
+                  : "Select rinse setup"}
+              </button>
+            )}
+            <label>
+              Amount to add to burette (mL)
+              <input
+                type="number"
+                min="0.01"
+                max={remainingFillCapacityML}
+                step="0.01"
+                value={fillVolume}
+                onChange={(event) => setFillVolume(event.currentTarget.value)}
+                aria-describedby="burette-availability"
+                disabled={!canFillBurette}
+              />
+            </label>
             <div className={styles.buttonRow}>
               <button
                 type="button"
-                disabled={!canPrepareBurette}
+                disabled={!canFillBurette}
                 onClick={() =>
-                  dispatch({ type: "rinse_burette", solvent: "water" })
+                  setFillVolume(formatBuretteVolume(remainingFillCapacityML))
                 }
               >
-                Rinse with water
+                Full-capacity preset
               </button>
               <button
+                className={styles.primaryButton}
                 type="button"
-                disabled={!canPrepareBurette}
-                onClick={() =>
-                  dispatch({ type: "rinse_burette", solvent: "titrant" })
-                }
+                disabled={!canFillBurette}
+                onClick={handleFill}
               >
-                Rinse with titrant
+                {state.fillCount === 0 ? "Fill burette" : "Add refill"}
               </button>
             </div>
-            <button
-              className={styles.primaryButton}
-              type="button"
-              disabled={!canPrepareBurette}
-              onClick={() => dispatch({ type: "fill_burette" })}
-            >
-              Fill burette
-            </button>
-            <p className={styles.note}>
+            <p className={styles.note} id="burette-availability">
               {hasAvailableTitrant
                 ? `${formatBuretteVolume(availableVolumeML)} mL remains available.`
-                : state.titrantAddedML > 0
-                  ? "The burette is empty. This practice run supports one pre-run fill."
-                  : "The burette is empty. Rinse it before filling for correct technique."}
+                : needsRinse
+                  ? "Choose a liquid and the funnel, then confirm the rinse."
+                  : !preparationReady
+                    ? "The burette is rinsed. Select titrant and the funnel before filling."
+                    : state.fillCount > 0
+                      ? "The burette is empty. Add a full or custom partial refill to continue."
+                      : "The burette is empty. Rinse it before filling for correct technique."}
             </p>
           </fieldset>
         )}
@@ -211,12 +362,14 @@ export function TitrationControls({
             <label htmlFor="indicator">2. Indicator</label>
             <select
               id="indicator"
-              value={state.config.indicator}
+              value={
+                state.indicatorAdded
+                  ? state.config.indicator
+                  : indicatorCandidate
+              }
+              disabled={state.indicatorAdded}
               onChange={(event) =>
-                dispatch({
-                  type: "select_indicator",
-                  indicator: event.currentTarget.value as IndicatorId
-                })
+                setIndicatorCandidate(event.currentTarget.value as IndicatorId)
               }
             >
               {indicatorOptions.map((indicator) => (
@@ -226,8 +379,19 @@ export function TitrationControls({
               ))}
             </select>
             <p className={styles.note}>
-              Selection is sent to the experiment engine as a typed action.
+              {state.indicatorAdded
+                ? `${getIndicatorLabel(state.config.indicator)} is already in the flask and cannot be changed.`
+                : "Review the transition range and observed colors before confirming one addition."}
             </p>
+            {!state.indicatorAdded && (
+              <button
+                className={styles.primaryButton}
+                type="button"
+                onClick={() => setPendingIndicator(indicatorCandidate)}
+              >
+                Review indicator details
+              </button>
+            )}
           </div>
         )}
 
@@ -334,7 +498,9 @@ export function TitrationControls({
             <button
               className={styles.primaryButton}
               type="submit"
-              disabled={!hasAvailableTitrant || isDispensing}
+              disabled={
+                !state.indicatorAdded || !hasAvailableTitrant || isDispensing
+              }
             >
               Add titrant
             </button>
@@ -363,7 +529,7 @@ export function TitrationControls({
             <button
               type="button"
               onClick={() =>
-                setReportedMeniscus(formatBuretteVolume(state.titrantAddedML))
+                setReportedMeniscus(formatBuretteVolume(state.buretteReadingML))
               }
             >
               Use displayed reading
@@ -379,6 +545,13 @@ export function TitrationControls({
         <p className={styles.inputError} role="alert">
           {inputError}
         </p>
+      )}
+      {pendingIndicator && !state.indicatorAdded && (
+        <IndicatorSelectionDialog
+          indicator={pendingIndicator}
+          onCancel={() => setPendingIndicator(null)}
+          onConfirm={confirmIndicatorAddition}
+        />
       )}
     </section>
   );

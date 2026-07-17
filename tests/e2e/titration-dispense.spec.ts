@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+import {
+  addIndicator,
+  openPrecisionControls,
+  prepareBuretteWithTitrant
+} from "./labHelpers";
+
 test("holding at slow flow commits segmented titrant additions", async ({
   page
 }) => {
@@ -14,12 +20,13 @@ test("holding at slow flow commits segmented titrant additions", async ({
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
+  await openPrecisionControls(page);
 
   const scene = page.getByRole("region", { name: "Interactive lab bench" });
-  await page.getByRole("button", { name: "Rinse with titrant" }).click();
-  await page.getByRole("button", { name: "Fill burette" }).click();
+  await prepareBuretteWithTitrant(page);
+  await addIndicator(page, "phenolphthalein", "Phenolphthalein");
   await expect(scene).toHaveAttribute("data-burette-fill", "1.000");
-  await expect(page.getByTestId("dev-event-count")).toHaveText("2");
+  await expect(page.getByTestId("dev-event-count")).toHaveText("3");
 
   await page.getByLabel("Flow detent").selectOption("slow");
   const holdButton = page.locator("button[data-dispensing]");

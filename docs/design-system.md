@@ -1,7 +1,38 @@
-# LabBench in-lab design system
+# LabBench product and in-lab design system
 
-Status: implementation specification for T0141 and T0142. This document is
-normative for the student lab workspace and 3D bench.
+Status: implementation specification for the application shell, student lab
+workspace, and 3D bench. The T0141 and T0142 scientific-display requirements
+remain normative within this broader product system.
+
+## Application-wide foundation
+
+Every product route uses the same visual foundation from `src/app/globals.css`.
+The `--color-*`, `--font-*`, `--text-*`, `--space-*`, `--radius-*`,
+`--shadow-*`, and `--motion-*` variables are the canonical application tokens.
+Lab routes alias those values to `--lab-*` variables so scene-specific
+components preserve their established contract without creating a second
+palette.
+
+Use `ProductShell`, `ProductHeader`, and `PageHeader` for application pages.
+Forms and content screens use the lightweight `.ui-card`, `.ui-form`,
+`.ui-field`, `.ui-input`, `.ui-button*`, `.ui-notice`, and `.ui-empty`
+primitives. Purpose-built lab, analytics, and report components may retain
+their own layout CSS, but their colors, type, controls, focus states, radii,
+and elevation must resolve to the global tokens.
+
+The hierarchy is intentional:
+
+1. Page title or current lab objective.
+2. Primary action or next required procedure.
+3. Live measurements and manipulated equipment state.
+4. Safety and validation warnings.
+5. AI coaching, clearly identified with the coach color family.
+6. Optional context, history, and secondary navigation.
+
+Application surfaces are opaque or nearly opaque by default. Transparency is
+reserved for compact overlays inside the 3D viewport where it preserves scene
+context without reducing contrast. Avoid decorative glass blur, glow, and
+large ornamental gradients.
 
 ## Product character
 
@@ -38,11 +69,16 @@ receive sky colors as uniforms rather than contain numeric color literals.
 | `wood` | `#B97842` | Cabinet bodies and indicator shelf |
 | `woodDark` | `#80502F` | Cabinet doors, recesses, reagent-bottle brown |
 | `wall` | `#E8EEE9` | Diorama walls |
+| `ceiling` | `#F3F5F0` | Sealed classroom ceiling |
 | `floor` | `#CBD4CF` | Classroom floor |
 | `wallTrim` | `#47736D` | Wall-top trim and restrained environmental accent |
+| `safetyRed` | `#B94A4A` | Safety-sign cross and danger identity |
+| `safetyGreen` | `#397B64` | Safety station and storage identity |
+| `safetyPaper` | `#FFF6D8` | Printed safety-sign substrate |
 | `ceramic` | `#F7F3E9` | Drip tile and clean white fixtures |
 | `fixtureDark` | `#394348` | Stand base, clamps, sink basin |
 | `fixtureMetal` | `#AAB5B8` | Rods, faucet, handles, funnel |
+| `stopcockHandle` | `#168FC7` | High-visibility burette valve handle |
 | `glass` | `#E8F7F4` | High-tier glass tint |
 | `glassAttenuation` | `#D5ECE6` | High-tier transmitted-glass attenuation |
 | `glassFallback` | `#D8EAE6` | Reduced-tier transparent glass |
@@ -50,15 +86,15 @@ receive sky colors as uniforms rather than contain numeric color literals.
 | `graduationInk` | `#102A34` | Every graduation, numeral, unit, and reading ring |
 | `hoverMint` | `#56D6C1` | Hover shell and active 3D affordance |
 | `selectionTeal` | `#0F766E` | Selected shell/ring and equipment identity state |
-| `phenolphthalein` | `#E56B9B` | Phenolphthalein bottle cap and full-pink observation |
+| `phenolphthalein` | `#EAA2BA` | Phenolphthalein bottle cap and full-pink observation |
 | `bromothymolBlue` | `#4D86D8` | Bromothymol-blue bottle cap and blue observation |
 | `methylOrange` | `#EC8B32` | Methyl-orange bottle cap and orange observation |
 | `colorlessLiquid` | `#E6F5F1` | Colorless flask observation |
-| `faintPinkLiquid` | `#F5B5CC` | Faint-pink flask observation |
+| `faintPinkLiquid` | `#F9D5E0` | Faint-pink flask observation |
 | `yellowLiquid` | `#F0CF4A` | Yellow flask observation |
 | `greenLiquid` | `#53AC75` | Green flask observation |
 | `redLiquid` | `#DF5B5B` | Red flask observation |
-| `skyHorizon` | `#F5C5A9` | Warm sky at the open wall line |
+| `skyHorizon` | `#F5C5A9` | Warm fallback environment outside the sealed shell |
 | `skyMiddle` | `#BEDDE6` | Soft blue transition |
 | `skyZenith` | `#A8DEC8` | Mint-blue zenith |
 | `sceneFallback` | `#D5E3DF` | Solid reduced-tier Canvas background |
@@ -143,11 +179,31 @@ changes rendering cost only. Graduation and label materials must be unlit,
 `toneMapped={false}`, and ordered after glass/liquid so lighting cannot erase
 measurement information.
 
+## Room containment and composition
+
+`benchLayout.ts` owns the room shell just as it owns equipment placement. The
+shell is six explicit, overlapping boundary surfaces: floor, ceiling, front,
+back, left, and right walls. Four cap trims and four continuous baseboards hide
+edge seams. The right wall must always be real geometry; camera limits and DOM
+overlays are not acceptable substitutes for a complete room.
+
+The authored camera remains inside the shell and its reachable yaw/pitch rays
+must terminate on a room surface. The Canvas uses near/far planes of 0.03/60
+to retain close equipment detail without clipping the room. The sky dome and
+solid reduced-tier background remain fallback world treatments only and must
+not be visible from a valid camera direction.
+
+Environmental detail stays secondary to the active island. The rear service
+counter, side storage, safety panel, ceiling fixtures, sink, mural, trim, and
+cabinet faces provide scale and a functioning-classroom context without adding
+unrelated interactive objects. These fixtures use centralized palette and
+layout values and do not participate in chemistry or experiment state.
+
 ## Lighting and shadows
 
 ### Required rig
 
-The open-top diorama uses three real lights and the existing high-tier room
+The sealed classroom uses three real lights and the existing high-tier room
 environment:
 
 | Light | Position | High quality | Reduced graphics | Shadow |
@@ -157,8 +213,9 @@ environment:
 | Cool fill | `[-2.2, 2.4, -1.4]` | 0.45 | 0.55 | Never |
 
 Keep the room environment in the high tier and omit it in reduced graphics as
-today. Do not add point lights, emissive ceiling panels, contact-shadow
-components, ambient occlusion, or post-processing.
+today. Ceiling fixture meshes may use a low-intensity emissive material to read
+as practical fittings, but they are not light sources. Do not add point lights,
+contact-shadow components, ambient occlusion, or post-processing.
 
 The one permitted shadow uses explicit `PCFShadowMap`, a 512 × 512 map, camera
 bounds left/right `-1.8/1.8`, top/bottom `2.2/-0.4`, near/far `0.1/8`, and
@@ -245,19 +302,37 @@ dispensing is active, but remove repetition that is merely decorative.
 
 ## Typography
 
-- Use the local system stack only; do not add a font dependency or CDN.
-- Headings: `ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif`,
-  weight 750–800, tight letter spacing no lower than `-0.035em`.
-- Body and controls: `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-  sans-serif`, weight 450–700.
-- Measurements: the body stack with `font-variant-numeric: tabular-nums`.
+- Typography is defined centrally in `src/app/globals.css`. Components must use
+  the semantic `type-*` classes or the `--font-*` and `--type-*` tokens; do not
+  declare a new font stack inside a component.
+- The single Adobe Fonts Web Project contains `tomarik-display` (Tomarik
+  Display, regular) and `neulis-sans` (Neulis Sans regular, medium, semibold,
+  and bold). Load its generated `https://use.typekit.net/<kit>.css` URL by
+  setting `NEXT_PUBLIC_ADOBE_FONTS_STYLESHEET` in the deployment environment.
+  The root layout preconnects and loads that stylesheet only when it is a valid
+  Adobe URL. Until the project owner provides the kit URL, the intentional
+  Trebuchet/Avenir/Segoe fallbacks remain active. Never self-host or commit
+  Adobe font files.
+- `--font-display` / Tomarik is reserved for the product mark, experiment and
+  page titles, major section headings, welcome screens, and completion states.
+  Use its regular weight and compact spacing; never use it for instructions,
+  controls, tables, safety information, coach messages, or measurements.
+- `--font-ui` / Neulis Sans is the default for body copy, instructions,
+  buttons, navigation, panels, forms, dialogs, tooltips, coach content, and
+  teacher surfaces. Prefer regular, medium, and semibold weights; use bold
+  only for a focused emphasis.
+- `--font-instrument` is limited to live scientific readouts such as burette
+  readings, pH, timers, temperatures, and concentrations. Pair it with
+  tabular numerals. Ordinary UI text and procedural numbering stay in Neulis.
+- Use sentence case. Tiny equipment labels, safety classifications, and
+  instrument units may use uppercase at no more than `0.04em` tracking. Avoid
+  all-caps page furniture and heavy/tracked headings.
 - Root size is 16 px. Body copy is 0.9375 rem minimum; supporting copy is 0.8125
   rem minimum; interactive labels are 0.8125 rem minimum. Canvas-only labels
   may use 0.75 rem when their DOM equivalent is present.
-- Use sentence case. Eyebrows may use uppercase at 0.075em tracking. Avoid
-  exclamation points and childish reward language.
 - Always place a normal space between a value and unit in prose (`12.50 mL`).
-  Preserve the experiment's required decimal precision and use tabular digits.
+  Preserve the experiment's required decimal precision and use the instrument
+  token for live numeric displays.
 
 ## UI tokens and components
 
@@ -267,14 +342,14 @@ and 48 px.
 | Token | Value |
 | --- | --- |
 | Small radius | 10 px |
-| Card radius | 18 px |
+| Card radius | 16 px |
 | Pill radius | 999 px |
 | Control border | 1 px `lab-border` |
 | Focus ring | 3 px `lab-focus`, 2 px offset |
 | Card shadow | `0 16px 40px rgb(23 33 43 / 8%)` |
 | Floating-chip shadow | `0 6px 18px rgb(23 33 43 / 16%)` |
 | Control minimum height | 44 px |
-| Main content maximum width | 100 rem |
+| Main content maximum width | 90 rem |
 
 ### Buttons
 
@@ -292,6 +367,8 @@ and 48 px.
 - Main bench/notebook cards use `lab-surface`, card radius, one border, and the
   card shadow. Nested groups use `lab-surface-muted`, small radius, and no
   shadow.
+- Application cards use the global 16 px radius. Pill radii are reserved for
+  compact statuses and segmented controls, not large containers.
 - Keep related label, current value, and action in one group. Do not place a
   shadow around every field.
 - At narrow widths, stack controls before shrinking type or touch targets.
@@ -386,6 +463,21 @@ simulation actions, and reduced motion must not imply muted audio.
   it does not remove graduations, meniscus curvature, labels, hit targets, or
   feedback text.
 
+## Student confirmation patterns
+
+- Indicator bottles open the same in-simulation review dialog as the precision
+  controls. The dialog shows the deterministic transition range and low,
+  transition, and high-pH colors before the single allowed addition is sent to
+  the experiment engine.
+- Burette preparation is a visible two-part setup: a student selects either
+  distilled water or titrant and separately selects the funnel. Rinsing or
+  filling is unavailable until both selections are present.
+- New coach comments open the lab-coach surface automatically. The persistent
+  coach control remains available for reopening or dismissing it.
+- A recommended checkpoint retry is never automatic. The report first explains
+  that the completed session remains saved, then requires the student to choose
+  whether to create a new child practice session from the verified checkpoint.
+
 ## T0141 implementation checklist
 
 T0141 is conformant only when all items below are true:
@@ -404,3 +496,35 @@ T0141 is conformant only when all items below are true:
   state table without changing interaction semantics.
 - Camera, demand-loop, reduced-motion, existing e2e selectors, and chemistry
   engine files remain unchanged in behavior.
+
+## Project-owner review record
+
+Status: accepted by the project owner on 2026-07-17. Agent conformance review
+is complete, and the separately required owner approval has been recorded.
+
+The owner review should answer these concrete questions:
+
+1. Does the product character feel playful and inviting for middle/high-school
+   students without reading as childish or toy-like?
+2. Are the exact palette, typography, shape, material, lighting, shadow,
+   interaction, motion, measurement, and sound rules acceptable as the
+   normative direction for the lab?
+3. Are scientific legibility, accessibility fallbacks, and the reduced-quality
+   hardware path prioritized correctly?
+4. Is the one-key high-tier shadow decision acceptable given the documented
+   measured cost and rollback threshold?
+5. May T0140 be marked accepted as written, or are specific revisions required?
+
+Objective evidence available to the reviewer:
+
+- T0141 implemented the centralized palette/material/lighting rules and its
+  conformance tests pass.
+- T0142 implemented the specified gesture-gated procedural sound rules and its
+  policy/invocation tests pass.
+- The complete pre–Lab Composer gate passes strict TypeScript, ESLint,
+  formatting, 187 unit/component tests, 25 Chromium tests, and the constrained
+  actual-render profile.
+
+- Owner decision: **approved**
+- Reviewer/date: **project owner / 2026-07-17**
+- Requested revisions, if any: **none**

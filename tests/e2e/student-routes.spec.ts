@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { openLabNotebook } from "./labHelpers";
+
 test("guest can open the experiment catalog and student lab notebook", async ({
   page
 }) => {
@@ -18,8 +20,13 @@ test("guest can open the experiment catalog and student lab notebook", async ({
     page.getByRole("heading", { level: 2, name: "Acid–Base Titration" })
   ).toBeVisible();
 
-  await page.getByRole("link", { name: "Start practice" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Acid–Base Titration" })
+    .getByRole("link", { name: "Start practice" })
+    .click();
   await expect(page).toHaveURL(/\/lab\/titration$/);
+  await openLabNotebook(page);
 
   const notebook = page.getByRole("complementary", { name: "Session notes" });
   await expect(
@@ -28,7 +35,7 @@ test("guest can open the experiment catalog and student lab notebook", async ({
   await expect(notebook.getByText("concentration unknown")).toBeVisible();
   await expect(notebook.getByText("Prepare the burette")).toBeVisible();
   await expect(
-    page.getByText("Practice mode — progress is not saved yet")
+    page.getByText(/Practice mode — ready|Progress saved/)
   ).toBeVisible();
 
   const bodyText = (await page.locator("body").innerText()).toLowerCase();
@@ -62,8 +69,12 @@ test("dev route shows fresh seeds per session and replays explicit seeds", async
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
   const secondSeed = await devSeed.innerText();
 
-  expect(firstSeed).toMatch(/^guest-/);
-  expect(secondSeed).toMatch(/^guest-/);
+  expect(firstSeed).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+  );
+  expect(secondSeed).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+  );
   expect(secondSeed).not.toBe(firstSeed);
 
   await page.goto("/dev/lab/titration?seed=replay-alpha");

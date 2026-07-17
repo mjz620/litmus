@@ -7,12 +7,13 @@ import {
   type TitrationAction
 } from "../../../experiments/titration/titration";
 import { useLabStore } from "../../../stores/labStore";
+import { getLabSounds } from "../three/labSounds";
 
 export type TitrationIntent =
   | { type: "indicator_bottle_clicked"; indicator: IndicatorId }
   | { type: "wash_bottle_clicked" }
   | { type: "titrant_bottle_clicked" }
-  | { type: "funnel_clicked" };
+  | { type: "funnel_clicked"; volumeML: number };
 
 export interface TitrationIntentHandlers {
   onIndicatorBottleClick: (indicator: IndicatorId) => void;
@@ -36,7 +37,7 @@ export function actionForTitrationIntent(
     case "titrant_bottle_clicked":
       return { type: "rinse_burette", solvent: "titrant" };
     case "funnel_clicked":
-      return { type: "fill_burette" };
+      return { type: "fill_burette", volumeML: intent.volumeML };
   }
 }
 
@@ -46,23 +47,42 @@ export function actionForTitrationIntent(
  */
 export function useTitrationIntents(): TitrationIntentHandlers {
   const dispatch = useLabStore((store) => store.dispatch);
+  const fillVolumeML = useLabStore((store) => {
+    const state = store.state;
+    return state && "buretteAvailableML" in state
+      ? state.config.buretteCapacityML - state.buretteAvailableML
+      : 0;
+  });
 
   return useMemo(
     () => ({
-      onIndicatorBottleClick: (indicator: IndicatorId) =>
+      onIndicatorBottleClick: (indicator: IndicatorId) => {
         dispatch(
           actionForTitrationIntent({
             type: "indicator_bottle_clicked",
             indicator
           })
-        ),
-      onWashBottleClick: () =>
-        dispatch(actionForTitrationIntent({ type: "wash_bottle_clicked" })),
-      onTitrantBottleClick: () =>
-        dispatch(actionForTitrationIntent({ type: "titrant_bottle_clicked" })),
-      onFunnelClick: () =>
-        dispatch(actionForTitrationIntent({ type: "funnel_clicked" }))
+        );
+        getLabSounds().playFromGesture("indicator");
+      },
+      onWashBottleClick: () => {
+        dispatch(actionForTitrationIntent({ type: "wash_bottle_clicked" }));
+        getLabSounds().playFromGesture("rinse_fill");
+      },
+      onTitrantBottleClick: () => {
+        dispatch(actionForTitrationIntent({ type: "titrant_bottle_clicked" }));
+        getLabSounds().playFromGesture("rinse_fill");
+      },
+      onFunnelClick: () => {
+        dispatch(
+          actionForTitrationIntent({
+            type: "funnel_clicked",
+            volumeML: fillVolumeML
+          })
+        );
+        getLabSounds().playFromGesture("rinse_fill");
+      }
     }),
-    [dispatch]
+    [dispatch, fillVolumeML]
   );
 }

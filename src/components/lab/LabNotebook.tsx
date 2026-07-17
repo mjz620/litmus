@@ -4,7 +4,7 @@ import {
   formatBuretteVolume,
   formatPH
 } from "../../experiments/titration/display";
-import { useLabStore } from "../../stores/labStore";
+import { isTitrationState, useLabStore } from "../../stores/labStore";
 import {
   getProcedureStage,
   getProcedureStageLabel
@@ -20,7 +20,9 @@ import styles from "./LabNotebook.module.css";
  * or other internal engine values.
  */
 export function LabNotebook() {
-  const state = useLabStore((store) => store.state);
+  const state = useLabStore((store) =>
+    isTitrationState(store.state) ? store.state : null
+  );
   const eventQueue = useLabStore((store) => store.eventQueue);
 
   if (!state) return null;

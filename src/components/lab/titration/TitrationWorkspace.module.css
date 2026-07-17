@@ -1,44 +1,112 @@
 .workspace {
-  --simulation-canvas-height: clamp(32rem, 68vh, 50rem);
+  --simulation-canvas-height: clamp(42rem, 79vh, 64rem);
 
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(19rem, 24vw, 23rem);
-  align-items: start;
-  gap: 1rem;
+  position: relative;
   min-width: 0;
-  margin-top: 1.25rem;
-  padding: 1rem;
+  isolation: isolate;
+}
+
+.loading {
+  display: grid;
+  min-height: 24rem;
+  margin: 0;
+  place-items: center;
   border: 1px solid var(--lab-border);
-  border-radius: 1.125rem;
+  border-radius: var(--radius-lg);
+  background: var(--lab-surface-muted);
+  color: var(--lab-ink-muted);
+  font-weight: 750;
+}
+
+.drawer {
+  position: absolute;
+  z-index: 12;
+  top: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(24rem, calc(100% - 1.7rem));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--lab-primary) 36%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--lab-surface);
+  box-shadow: 0 1rem 2.5rem rgb(20 48 42 / 24%);
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.9rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--lab-border);
   background: var(--lab-surface-muted);
 }
 
-.controlPanel {
-  align-self: start;
-  max-height: calc(var(--simulation-canvas-height) + 10.5rem);
-  overflow-y: auto;
-  border: 1px solid var(--lab-border);
-  border-radius: 0.625rem;
-  background: var(--lab-surface);
-  box-shadow: var(--lab-card-shadow);
-  scrollbar-gutter: stable;
+.drawerHeader p,
+.drawerHeader h2 {
+  margin: 0;
 }
 
-@media (max-width: 72rem) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.drawerHeader p {
+  color: var(--lab-primary);
+  font-size: 0.68rem;
+  font-weight: var(--type-ui-semibold);
+  letter-spacing: 0.035em;
+}
 
-  .controlPanel {
-    max-height: none;
-    overflow: visible;
-  }
+.drawerHeader h2 {
+  margin-top: 0.14rem;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: var(--type-ui-semibold);
+}
+
+.drawerHeader button {
+  display: grid;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-md);
+  background: var(--lab-surface);
+  color: var(--lab-primary);
+  cursor: pointer;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.drawerHeader button:hover,
+.drawerHeader button:focus-visible {
+  border-color: var(--lab-primary);
+  background: var(--lab-primary-soft);
+}
+
+.drawerHeader button:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: 2px;
+}
+
+.controlPanel {
+  min-height: 0;
+  overflow-y: auto;
+  background: transparent;
+  scrollbar-gutter: stable;
 }
 
 @media (max-width: 46rem) {
   .workspace {
-    --simulation-canvas-height: clamp(24rem, 62vh, 34rem);
+    --simulation-canvas-height: clamp(34rem, 76svh, 46rem);
+  }
 
-    padding: 0.7rem;
+  .drawer {
+    top: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.45rem;
+    width: calc(100% - 0.9rem);
+    border-radius: 1rem;
   }
 }

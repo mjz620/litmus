@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 
+import { EventInspector } from "../../../../components/lab/EventInspector";
 import { PHCurve } from "../../../../components/lab/PHCurve";
 import { TitrationWorkspace } from "../../../../components/lab/titration/TitrationWorkspace";
+import { PrecipitationWorkspace } from "../../../../components/lab/precipitation/PrecipitationWorkspace";
 import { useLabSession } from "../../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../../experiments/registry";
+import { isTitrationState } from "../../../../stores/labStore";
 
 import styles from "./page.module.css";
 
@@ -39,6 +42,16 @@ export function DevLabShell({
     isPending,
     isReady
   } = useLabSession({ experimentId, replaySeed });
+  const titrationState = isTitrationState(state) ? state : null;
+  const chartMaxVolumeML = titrationState
+    ? Math.max(
+        titrationState.config.buretteCapacityML,
+        Math.ceil(
+          titrationState.titrantAddedML /
+            titrationState.config.buretteCapacityML
+        ) * titrationState.config.buretteCapacityML
+      )
+    : 0;
 
   const studentPath = replaySeed
     ? `/lab/${routeSegment}?seed=${encodeURIComponent(replaySeed)}`
@@ -85,11 +98,17 @@ export function DevLabShell({
 
           {isReady && state && (
             <>
-              <TitrationWorkspace />
-              <PHCurve
-                points={state.curve}
-                maxVolumeML={state.config.buretteCapacityML}
-              />
+              {titrationState ? (
+                <>
+                  <TitrationWorkspace />
+                  <PHCurve
+                    points={titrationState.curve}
+                    maxVolumeML={chartMaxVolumeML}
+                  />
+                </>
+              ) : (
+                <PrecipitationWorkspace />
+              )}
             </>
           )}
         </section>
@@ -173,19 +192,12 @@ export function DevLabShell({
             )}
           </section>
 
-          <section aria-label="Generated configuration">
-            <h3>Generated configuration</h3>
-            <pre className={styles.raw} data-testid="dev-config">
-              {state ? JSON.stringify(state.config, null, 2) : "—"}
-            </pre>
-          </section>
-
-          <section aria-label="Raw engine state">
-            <h3>Raw engine state</h3>
-            <pre className={styles.raw} data-testid="dev-raw-state">
-              {state ? JSON.stringify(state, null, 2) : "—"}
-            </pre>
-          </section>
+          <EventInspector
+            sessionSeed={state?.sessionSeed ?? null}
+            events={eventQueue}
+            studentModel={studentModel}
+            engineState={state}
+          />
         </aside>
       </div>
     </main>

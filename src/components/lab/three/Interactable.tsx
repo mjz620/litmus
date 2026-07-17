@@ -27,12 +27,12 @@ interface InteractableProps {
 
 const LABEL_STYLE: CSSProperties = {
   padding: "0.38rem 0.62rem",
-  border: "1px solid color-mix(in srgb, var(--lab-primary) 35%, transparent)",
-  borderRadius: "999px",
-  background: "color-mix(in srgb, var(--lab-surface) 94%, transparent)",
+  border: "1px solid var(--lab-border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--lab-hud-surface)",
   boxShadow: "var(--lab-floating-shadow)",
   color: "var(--lab-primary)",
-  fontFamily: "system-ui, sans-serif",
+  fontFamily: "var(--font-body)",
   fontSize: "0.76rem",
   fontWeight: 750,
   lineHeight: 1,

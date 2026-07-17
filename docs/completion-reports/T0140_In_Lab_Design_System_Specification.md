@@ -29,6 +29,9 @@
   keeps reduced graphics shadow-free.
 - Added a concrete T0141 conformance checklist, including palette ownership,
   contrast tests, shadow limits, quality-tier checks, and behavior invariants.
+- Added an explicit project-owner review record that separates objective
+  conformance evidence from the subjective approval decision.
+- Recorded project-owner approval on 2026-07-17 with no requested revisions.
 
 ### Files changed
 
@@ -87,6 +90,8 @@ shadow candidate used for measurement was fully reverted before verification.
 - No external reference image was supplied or committed; the visual read-through
   used the ticket's written art direction, UX handoff, and current rendered
   scene.
+- Project-owner approval was received and recorded after the complete
+  pre–Lab Composer implementation and conformance audit.
 
 ### Risks / limitations
 
@@ -95,8 +100,9 @@ shadow candidate used for measurement was fully reverted before verification.
   rollback check on Chromebook-class hardware if available.
 - The p95 frame samples were noisy, so the decision uses median interval and
   exact draw-call deltas. The spec records this limitation explicitly.
-- Project-owner aesthetic review remains a manual acceptance step after this
-  implementation-ready document is delivered.
+- Physical-device aesthetic and accessibility validation can still reveal
+  deployment-specific refinements, but the T0140 owner-review acceptance gate
+  is complete.
 - T0141 must preserve the chemistry-owned observed-color meanings while moving
   their render colors into the centralized 3D palette.
 

@@ -2,17 +2,18 @@
 
 import { Canvas } from "@react-three/fiber";
 import {
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useRef,
-  useState
+  useState,
+  useSyncExternalStore
 } from "react";
 
+import { CoachPanel } from "../../coach/CoachPanel";
 import type { SemanticEvent } from "../../../experiments/shared";
 import { formatBuretteVolume } from "../../../experiments/titration/display";
 import type { TitrationState } from "../../../experiments/titration/titration";
-import { useLabStore } from "../../../stores/labStore";
+import { isTitrationState, useLabStore } from "../../../stores/labStore";
 import { useLabUiStore } from "../../../stores/labUiStore";
 import {
   LOOK_RECENTER_EVENT,
@@ -21,13 +22,19 @@ import {
 } from "../three/BenchCameraControls";
 import { BuretteDispenseProvider } from "../three/Burette";
 import { LabScene } from "../three/LabScene";
+import type { WashLiquid } from "../three/WashStation";
 import { CAMERA_POSES } from "../three/benchLayout";
 import type { GlassQuality } from "../three/glassMaterials";
+import { getLabSounds } from "../three/labSounds";
 import {
   getBuretteFillFraction,
   getFlaskLiquidColor
 } from "../three/sceneProjection";
 import { EQUIPMENT, EQUIPMENT_IDS, type EquipmentId } from "./equipment";
+import {
+  getIndicatorLabel,
+  IndicatorSelectionDialog
+} from "./IndicatorSelectionDialog";
 import {
   getProcedureStage,
   type TitrationProcedureStage
@@ -36,25 +43,6 @@ import { useDispenseGesture } from "./useDispenseGesture";
 import { useTitrationIntents } from "./useTitrationIntents";
 
 import styles from "./TitrationScene.module.css";
-
-const PROMPT_STRIP_STYLE: CSSProperties = {
-  position: "absolute",
-  top: "0.75rem",
-  right: "0.75rem",
-  left: "0.75rem",
-  zIndex: 2,
-  margin: 0,
-  padding: "0.48rem 0.75rem",
-  border: "1px solid rgba(15, 118, 110, 0.3)",
-  borderRadius: "0.7rem",
-  background: "rgba(255, 255, 255, 0.94)",
-  boxShadow: "0 0.3rem 0.9rem rgba(15, 23, 42, 0.12)",
-  color: "#115e59",
-  fontSize: "0.78rem",
-  fontWeight: 700,
-  lineHeight: 1.35,
-  pointerEvents: "none"
-};
 
 const NEAR_ENDPOINT_EVIDENCE = new Set([
   "flow_rate_high_near_endpoint",
@@ -95,7 +83,7 @@ function hasRecentEndpointOvershoot(events: readonly SemanticEvent[]): boolean {
 
 function getContextualPrompt(
   stage: TitrationProcedureStage,
-  state: Pick<TitrationState, "titrantAddedML">,
+  state: Pick<TitrationState, "indicatorAdded" | "titrantAddedML">,
   nearEndpoint: boolean,
   endpointOvershot: boolean
 ): string {
@@ -103,6 +91,9 @@ function getContextualPrompt(
     case "prepare_burette":
       return "Next: use the wash station to rinse with titrant, then fill the burette.";
     case "add_titrant":
+      if (!state.indicatorAdded) {
+        return "Next: review one indicator's transition range, then confirm adding it to the flask.";
+      }
       if (endpointOvershot) {
         return "Endpoint passed: close the stopcock and record the burette reading.";
       }
@@ -123,16 +114,44 @@ function getContextualPrompt(
 /**
  * The visual chemistry lab. Renders engine-state projections, exposes
  * selectable equipment through both 3D pointer interaction and keyboard
- * focusable buttons, and frames the camera on the selection. Precision
- * actions stay in the 2D contextual controls.
+ * focusable buttons, and frames the camera on the selection. The equipment
+ * rail, coach, and optional accessibility controls live over the bench so the
+ * simulation remains the student's primary workspace.
  */
-export function TitrationScene() {
+interface TitrationSceneProps {
+  precisionControlsOpen: boolean;
+  onPrecisionControlsChange: (open: boolean) => void;
+}
+
+export function TitrationScene({
+  precisionControlsOpen,
+  onPrecisionControlsChange
+}: TitrationSceneProps) {
   const canvasFrameRef = useRef<HTMLDivElement>(null);
   const [webGLReady, setWebGLReady] = useState(false);
   const [autoQuality, setAutoQuality] = useState<GlassQuality>("high");
   const [reducedGraphics, setReducedGraphics] = useState(false);
-  const state = useLabStore((store) => store.state);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const latestCoachMessageRef = useRef<string | null>(null);
+  const [pendingIndicator, setPendingIndicator] = useState<
+    TitrationState["config"]["indicator"] | null
+  >(null);
+  const [indicatorAddition, setIndicatorAddition] = useState<{
+    indicator: TitrationState["config"]["indicator"];
+    sequence: number;
+  } | null>(null);
+  const [selectedWashLiquid, setSelectedWashLiquid] =
+    useState<WashLiquid | null>(null);
+  const [funnelSelected, setFunnelSelected] = useState(false);
+  const [indicatorActivity, setIndicatorActivity] = useState<string | null>(
+    null
+  );
+  const state = useLabStore((store) =>
+    isTitrationState(store.state) ? store.state : null
+  );
   const eventQueue = useLabStore((store) => store.eventQueue);
+  const coachMessages = useLabStore((store) => store.coachMessages);
+  const sessionId = useLabStore((store) => store.sessionId);
   const focused = useLabUiStore((store) => store.focused);
   const hovered = useLabUiStore((store) => store.hovered);
   const lookActive = useLabUiStore((store) => store.lookActive);
@@ -142,12 +161,52 @@ export function TitrationScene() {
   const clearFocus = useLabUiStore((store) => store.clearFocus);
   const titrationIntents = useTitrationIntents();
   const physicalDispense = useDispenseGesture({
-    availableML: state?.buretteAvailableML ?? 0
+    availableML: state?.buretteAvailableML ?? 0,
+    onCommit: () => {
+      const sounds = getLabSounds();
+      sounds.playFromGesture("drop");
+      const latestEvent = useLabStore.getState().eventQueue.at(-1);
+      if (
+        latestEvent &&
+        (latestEvent.flags.includes("endpoint_overshoot") ||
+          latestEvent.evidence.some(
+            ({ reason }) => reason === "controlled_addition_near_endpoint"
+          ))
+      ) {
+        sounds.playFromGesture("endpoint", sessionId ?? "unscoped-session");
+      }
+    },
+    onDetentChange: () => getLabSounds().playFromGesture("valve"),
+    onGestureStart: () => getLabSounds().playFromGesture("valve"),
+    onGestureEnd: () => getLabSounds().playFromGesture("valve")
   });
+  const soundMuted = useSyncExternalStore(
+    (listener) => getLabSounds().subscribe(listener),
+    () => getLabSounds().isMuted(),
+    () => true
+  );
 
   useEffect(() => {
     if (focused) setLookActive(false);
   }, [focused, setLookActive]);
+
+  useEffect(() => {
+    const latestCoachMessage = coachMessages.findLast(
+      (message) => message.role === "coach"
+    );
+    if (!latestCoachMessage) return;
+    if (latestCoachMessageRef.current === latestCoachMessage.id) return;
+
+    latestCoachMessageRef.current = latestCoachMessage.id;
+    setCoachOpen(true);
+  }, [coachMessages]);
+
+  useEffect(() => {
+    if (!indicatorActivity) return;
+
+    const timeout = window.setTimeout(() => setIndicatorActivity(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [indicatorActivity]);
 
   useEffect(() => {
     const frame = canvasFrameRef.current;
@@ -205,8 +264,21 @@ export function TitrationScene() {
   if (!state) return null;
 
   const quality: GlassQuality = reducedGraphics ? "low" : autoQuality;
+  const indicatorAdded = state.indicatorAdded;
   const canPrepareBurette =
-    state.titrantAddedML === 0 && state.buretteAvailableML === 0;
+    state.fillCount === 0 ||
+    state.buretteAvailableML < state.config.buretteCapacityML;
+  const hasRinsedBurette =
+    state.buretteConditioned || state.titrantDilutionFactor < 1;
+  const needsRinse =
+    state.fillCount === 0 &&
+    state.buretteAvailableML === 0 &&
+    !hasRinsedBurette;
+  const washSetupComplete = Boolean(selectedWashLiquid && funnelSelected);
+  const canConfirmWashSetup =
+    washSetupComplete &&
+    (needsRinse || selectedWashLiquid === "titrant") &&
+    canPrepareBurette;
   const latestObservedColor = eventQueue.findLast(
     ({ observation }) => typeof observation.observedColor === "string"
   )?.observation.observedColor;
@@ -235,6 +307,7 @@ export function TitrationScene() {
   }
 
   function handleCanvasKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
     if (focused) return;
 
     const steps: Partial<Record<string, LookStepDetail>> = {
@@ -253,8 +326,54 @@ export function TitrationScene() {
   }
 
   function recenterView() {
-    window.dispatchEvent(new Event(LOOK_RECENTER_EVENT));
+    setLookActive(false);
+    clearFocus();
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event(LOOK_RECENTER_EVENT));
+    });
     canvasFrameRef.current?.focus();
+  }
+
+  function handleIndicatorBottleClick(
+    indicator: TitrationState["config"]["indicator"]
+  ) {
+    if (indicatorAdded) return;
+    setPendingIndicator(indicator);
+  }
+
+  function confirmIndicatorAddition() {
+    if (!pendingIndicator || indicatorAdded) return;
+    titrationIntents.onIndicatorBottleClick(pendingIndicator);
+    setIndicatorAddition((current) => ({
+      indicator: pendingIndicator,
+      sequence: (current?.sequence ?? 0) + 1
+    }));
+    setIndicatorActivity(
+      `Adding ${getIndicatorLabel(pendingIndicator)} to the flask…`
+    );
+    setPendingIndicator(null);
+    setFocused("flask");
+  }
+
+  function confirmWashSetup() {
+    if (!selectedWashLiquid || !funnelSelected || !canConfirmWashSetup) return;
+
+    if (needsRinse) {
+      if (selectedWashLiquid === "water") {
+        titrationIntents.onWashBottleClick();
+      } else {
+        titrationIntents.onTitrantBottleClick();
+      }
+      setIndicatorActivity(
+        `Burette rinsed with ${selectedWashLiquid}. Keep titrant and the funnel selected to fill.`
+      );
+      return;
+    }
+
+    titrationIntents.onFunnelClick();
+    setIndicatorActivity("Burette filled through the selected funnel.");
+    setSelectedWashLiquid(null);
+    setFunnelSelected(false);
   }
 
   return (
@@ -262,7 +381,15 @@ export function TitrationScene() {
       className={styles.scene}
       aria-labelledby="three-scene-heading"
       data-burette-fill={fillFraction.toFixed(3)}
+      data-burette-conditioned={state.buretteConditioned ? "true" : "false"}
+      data-burette-fill-count={state.fillCount}
       data-flask-color={latestObservedColor ?? "colorless"}
+      data-selected-indicator={
+        state.indicatorAdded ? state.config.indicator : "none"
+      }
+      data-indicator-added={state.indicatorAdded ? "true" : "false"}
+      data-wash-liquid={selectedWashLiquid ?? "none"}
+      data-funnel-selected={funnelSelected ? "true" : "false"}
       data-selected-equipment={focused ?? "none"}
       data-look-active={lookActive ? "true" : "false"}
       data-dispensing={physicalDispense.state.isHolding ? "true" : "false"}
@@ -270,69 +397,6 @@ export function TitrationScene() {
       data-procedure-stage={procedureStage}
       data-near-endpoint={nearEndpoint ? "true" : "false"}
     >
-      <div className={styles.headingRow}>
-        <div>
-          <p className={styles.eyebrow}>Chemistry classroom</p>
-          <h2 id="three-scene-heading">Interactive lab bench</h2>
-        </div>
-        <div className={styles.headingActions}>
-          <span className={styles.status} role="status" aria-live="polite">
-            {physicalDispense.state.isHolding
-              ? `${physicalDispense.state.pendingML.toFixed(3)} mL pending`
-              : "Valve closed"}
-          </span>
-          <button
-            type="button"
-            className={styles.qualityToggle}
-            aria-pressed={reducedGraphics}
-            onClick={() => setReducedGraphics((current) => !current)}
-          >
-            Reduced graphics
-          </button>
-          <span className={styles.status} role="status" aria-live="polite">
-            {webGLReady ? "3D bench ready" : "Starting 3D bench…"}
-          </span>
-        </div>
-      </div>
-
-      <div
-        className={styles.equipmentBar}
-        role="group"
-        aria-label="Selectable equipment"
-      >
-        {EQUIPMENT_IDS.map((equipmentId) => (
-          <button
-            key={equipmentId}
-            type="button"
-            aria-pressed={focused === equipmentId}
-            className={styles.equipmentButton}
-            onClick={() =>
-              focused === equipmentId ? clearFocus() : handleSelect(equipmentId)
-            }
-            onMouseEnter={() => setHovered(equipmentId)}
-            onMouseLeave={() => setHovered(null)}
-            onFocus={() => setHovered(equipmentId)}
-            onBlur={() => setHovered(null)}
-          >
-            {EQUIPMENT[equipmentId].name}
-          </button>
-        ))}
-        {focused && (
-          <button
-            type="button"
-            className={styles.exitButton}
-            onClick={clearFocus}
-          >
-            ← Back to full bench
-          </button>
-        )}
-      </div>
-
-      <p className={styles.instructions} aria-live="polite">
-        {infoEquipment
-          ? `${EQUIPMENT[infoEquipment].name}: ${EQUIPMENT[infoEquipment].purpose}${infoEquipment === "burette" && focused === "burette" ? " Drag the white stopcock handle downward through the flow detents; release it to close the valve." : ""}`
-          : "Click the simulation panel to initiate panning, then move the cursor toward its edges. Select equipment to focus on it; precise actions stay in the controls panel."}
-      </p>
       <p className={styles.srSummary}>{visualSummary}</p>
 
       <div
@@ -345,20 +409,119 @@ export function TitrationScene() {
         aria-label="Interactive 3D lab camera"
         onKeyDown={handleCanvasKeyDown}
       >
-        <p
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          data-contextual-prompt={procedureStage}
-          style={{
-            ...PROMPT_STRIP_STYLE,
-            top: lookActive ? "3.6rem" : PROMPT_STRIP_STYLE.top
-          }}
-        >
-          {contextualPrompt}
-        </p>
+        <div className={styles.sceneHud}>
+          <div className={styles.headingRow}>
+            <div className={styles.identityPlaque}>
+              <span className={styles.labMark} aria-hidden="true">
+                ⚗
+              </span>
+              <div>
+                <p className={styles.eyebrow}>Chemistry classroom</p>
+                <h2 id="three-scene-heading">Interactive lab bench</h2>
+              </div>
+            </div>
+            <div className={styles.headingActions}>
+              <span className={styles.status} role="status" aria-live="polite">
+                {physicalDispense.state.isHolding
+                  ? `${physicalDispense.state.pendingML.toFixed(3)} mL pending`
+                  : "Valve closed"}
+              </span>
+              <button
+                type="button"
+                className={styles.utilityButton}
+                aria-pressed={precisionControlsOpen}
+                onClick={() => {
+                  setLookActive(false);
+                  onPrecisionControlsChange(!precisionControlsOpen);
+                }}
+              >
+                <span aria-hidden="true">⌁</span> Precision controls
+              </button>
+              <button
+                type="button"
+                className={styles.utilityButton}
+                aria-pressed={reducedGraphics}
+                onClick={() => {
+                  setLookActive(false);
+                  setReducedGraphics((current) => !current);
+                }}
+              >
+                Reduced graphics
+              </button>
+              <button
+                type="button"
+                className={styles.utilityButton}
+                aria-pressed={soundMuted}
+                aria-label={
+                  soundMuted ? "Unmute lab sounds" : "Mute lab sounds"
+                }
+                onClick={() => {
+                  setLookActive(false);
+                  const nextMuted = !soundMuted;
+                  getLabSounds().setMuted(nextMuted);
+                }}
+              >
+                {soundMuted ? "Sound off" : "Sound on"}
+              </button>
+              <span className={styles.readyStatus} role="status">
+                <span aria-hidden="true" />
+                {webGLReady ? "3D bench ready" : "Starting 3D bench…"}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className={styles.equipmentBar}
+            role="group"
+            aria-label="Selectable equipment"
+          >
+            {EQUIPMENT_IDS.map((equipmentId) => (
+              <button
+                key={equipmentId}
+                type="button"
+                aria-pressed={focused === equipmentId}
+                className={styles.equipmentButton}
+                onClick={() =>
+                  focused === equipmentId
+                    ? clearFocus()
+                    : handleSelect(equipmentId)
+                }
+                onMouseEnter={() => setHovered(equipmentId)}
+                onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(equipmentId)}
+                onBlur={() => setHovered(null)}
+              >
+                {EQUIPMENT[equipmentId].name}
+              </button>
+            ))}
+            {focused && (
+              <button
+                type="button"
+                className={styles.exitButton}
+                onClick={clearFocus}
+              >
+                ← Back to full bench
+              </button>
+            )}
+          </div>
+
+          <p
+            className={styles.prompt}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-contextual-prompt={procedureStage}
+          >
+            <span aria-hidden="true">✦</span> {contextualPrompt}
+          </p>
+        </div>
         <Canvas
-          camera={{ position: [...CAMERA_POSES.overview.position], fov: 42 }}
+          camera={{
+            position: [...CAMERA_POSES.overview.position],
+            fov: 42,
+            near: 0.03,
+            far: 60
+          }}
           dpr={[1, 1.5]}
           frameloop="demand"
           gl={{
@@ -384,23 +547,34 @@ export function TitrationScene() {
         >
           <BuretteDispenseProvider
             controller={physicalDispense}
-            enabled={focused === "burette"}
+            enabled={focused === "burette" && state.indicatorAdded}
           >
             <LabScene
               buretteAvailableML={state.buretteAvailableML}
               buretteCapacityML={state.config.buretteCapacityML}
               flaskLiquidColor={flaskLiquidColor}
-              selectedIndicator={state.config.indicator}
+              selectedIndicator={
+                state.indicatorAdded ? state.config.indicator : null
+              }
+              indicatorSelectionEnabled={!state.indicatorAdded}
+              indicatorAddition={indicatorAddition}
               canPrepareBurette={canPrepareBurette}
+              selectedWashLiquid={selectedWashLiquid}
+              funnelSelected={funnelSelected}
               quality={quality}
               selected={focused}
               hovered={hovered}
               onHover={setHovered}
               onSelect={handleSelect}
-              onIndicatorBottleClick={titrationIntents.onIndicatorBottleClick}
-              onWashBottleClick={titrationIntents.onWashBottleClick}
-              onTitrantBottleClick={titrationIntents.onTitrantBottleClick}
-              onFunnelClick={titrationIntents.onFunnelClick}
+              onIndicatorBottleClick={handleIndicatorBottleClick}
+              onIndicatorAdditionComplete={(sequence) => {
+                setIndicatorAddition((current) =>
+                  current?.sequence === sequence ? null : current
+                );
+              }}
+              onWashBottleClick={() => setSelectedWashLiquid("water")}
+              onTitrantBottleClick={() => setSelectedWashLiquid("titrant")}
+              onFunnelClick={() => setFunnelSelected((current) => !current)}
             />
           </BuretteDispenseProvider>
         </Canvas>
@@ -409,6 +583,92 @@ export function TitrationScene() {
             Looking around — move cursor to edges to pan · Esc to release
           </span>
         )}
+        {indicatorActivity && (
+          <p className={styles.activityToast} role="status" aria-live="polite">
+            {indicatorActivity}
+          </p>
+        )}
+        {focused === "washStation" && (
+          <section
+            className={styles.washSetup}
+            aria-labelledby="wash-setup-heading"
+          >
+            <p className={styles.washEyebrow}>Selected preparation setup</p>
+            <h3 id="wash-setup-heading">Liquid + funnel required</h3>
+            <div className={styles.washSelections} aria-live="polite">
+              <span data-selected={selectedWashLiquid ? "true" : "false"}>
+                Liquid: {selectedWashLiquid ?? "not selected"}
+              </span>
+              <span data-selected={funnelSelected ? "true" : "false"}>
+                Funnel: {funnelSelected ? "selected" : "not selected"}
+              </span>
+            </div>
+            <p>
+              {needsRinse
+                ? "Choose distilled water or titrant and select the funnel before rinsing."
+                : state.buretteAvailableML === 0
+                  ? "Rinse complete. Select titrant and the funnel to fill the burette."
+                  : "Select titrant and the funnel before adding a refill."}
+            </p>
+            <button
+              type="button"
+              disabled={!canConfirmWashSetup}
+              onClick={confirmWashSetup}
+            >
+              {needsRinse
+                ? selectedWashLiquid
+                  ? `Rinse with ${selectedWashLiquid}`
+                  : "Complete rinse setup"
+                : state.fillCount === 0
+                  ? "Fill burette"
+                  : "Add refill"}
+            </button>
+          </section>
+        )}
+        {pendingIndicator && !state.indicatorAdded && (
+          <IndicatorSelectionDialog
+            indicator={pendingIndicator}
+            onCancel={() => setPendingIndicator(null)}
+            onConfirm={confirmIndicatorAddition}
+          />
+        )}
+        <p className={styles.instructions} aria-live="polite">
+          {infoEquipment
+            ? `${EQUIPMENT[infoEquipment].name}: ${EQUIPMENT[infoEquipment].purpose}${infoEquipment === "burette" && focused === "burette" ? " Drag the bright blue stopcock handle downward through the flow detents; release it to close the valve." : ""}`
+            : "Click the simulation panel to initiate panning, then move the cursor toward its edges. Select equipment to focus on it."}
+        </p>
+        <div className={styles.coachDock}>
+          {coachOpen && (
+            <div
+              className={styles.coachDialog}
+              role="dialog"
+              aria-labelledby="coach-heading"
+            >
+              <button
+                type="button"
+                className={styles.coachClose}
+                aria-label="Close lab coach"
+                onClick={() => setCoachOpen(false)}
+              >
+                ×
+              </button>
+              <CoachPanel />
+            </div>
+          )}
+          <button
+            type="button"
+            className={styles.coachButton}
+            aria-expanded={coachOpen}
+            aria-controls="coach-heading"
+            onClick={() => setCoachOpen((current) => !current)}
+          >
+            <span aria-hidden="true">✦</span>
+            {coachOpen ? "Hide lab coach" : "Ask lab coach"}
+            {coachMessages.length > 0 && (
+              <span className={styles.coachCount}>{coachMessages.length}</span>
+            )}
+          </button>
+        </div>
         <button
           type="button"
           className={styles.recenterButton}

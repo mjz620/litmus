@@ -17,6 +17,8 @@ describe("3D scene projections", () => {
 
   it("maps engine observation colors to presentation colors", () => {
     expect(getFlaskLiquidColor("pink")).toBe(LAB_PALETTE.phenolphthalein);
+    expect(getFlaskLiquidColor("faint pink")).toBe(LAB_PALETTE.faintPinkLiquid);
+    expect(LAB_PALETTE.faintPinkLiquid).not.toBe(LAB_PALETTE.phenolphthalein);
     expect(getFlaskLiquidColor("yellow")).toBe(LAB_PALETTE.yellowLiquid);
     expect(getFlaskLiquidColor("unknown")).toBe(LAB_PALETTE.colorlessLiquid);
     expect(getFlaskLiquidColor()).toBe(LAB_PALETTE.colorlessLiquid);

@@ -1,110 +1,155 @@
 .bar {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  width: min(100%, 100rem);
-  margin: 0 auto 1rem;
-  padding: 0.5rem 0;
+  gap: 1rem;
+  width: min(100%, 116rem);
+  min-height: 4.5rem;
+  margin: 0 auto 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-lg);
+  background: var(--lab-surface);
+  box-shadow: var(--lab-card-shadow);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.mark {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: #d98963;
+  color: #3b2922;
+  font-size: 1.45rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .identity h1 {
-  margin: 0.45rem 0 0;
-  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
-  font-size: clamp(1.7rem, 4vw, 2.5rem);
-  letter-spacing: -0.035em;
+  overflow: hidden;
+  margin: 0.18rem 0 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.05rem, 2vw, 1.42rem);
+  letter-spacing: -0.018em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .backLink {
   color: var(--lab-primary);
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   text-decoration: none;
 }
 
 .backLink:focus-visible,
 .backLink:hover {
   text-decoration: underline;
-  text-underline-offset: 0.25rem;
+  text-underline-offset: 0.22rem;
 }
 
 .stage {
   display: inline-block;
-  margin-top: 0.55rem;
-  padding: 0.35rem 0.7rem;
+  margin-top: 0.18rem;
+  padding: 0.28rem 0.58rem;
   border-radius: 999px;
   background: var(--lab-primary-soft);
   color: var(--lab-primary);
-  font-size: 0.8rem;
-  font-weight: 750;
+  font-size: 0.68rem;
+  font-weight: 800;
 }
 
 .session {
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.55rem;
-  justify-items: end;
 }
 
 .saveStatus {
   color: var(--lab-ink-muted);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
-.actions button {
-  min-height: 2.75rem;
-  padding: 0.45rem 0.85rem;
-  border: 1px solid var(--lab-border);
-  border-radius: 0.625rem;
+.actions button,
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.65rem;
+  padding: 0.42rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--lab-primary) 38%, white);
+  border-radius: var(--radius-md);
   background: var(--lab-surface);
-  color: var(--lab-ink);
-  font-size: 0.82rem;
-  font-weight: 700;
+  color: var(--lab-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
   transition:
     background-color 120ms ease-out,
     border-color 120ms ease-out,
     transform 120ms ease-out;
 }
 
-.actions button:disabled {
-  color: var(--lab-ink-muted);
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.actions button:hover:not(:disabled),
-.actions button:focus-visible {
+.actions button:hover,
+.actions button:focus-visible,
+.actions a:hover,
+.actions a:focus-visible {
   border-color: var(--lab-primary);
   background: var(--lab-primary-soft);
 }
 
-.actions button:focus-visible {
+.actions button:focus-visible,
+.actions a:focus-visible {
   outline: 3px solid var(--lab-focus);
   outline-offset: 2px;
 }
 
-.actions button:active:not(:disabled) {
+.actions button:active {
   transform: translateY(1px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .actions button {
+  .actions button,
+  .actions a {
     transition: none;
   }
 }
 
-@media (max-width: 32rem) {
+@media (max-width: 42rem) {
   .bar {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
   }
 
   .session {
-    justify-items: start;
+    justify-content: space-between;
+  }
+
+  .identity h1 {
+    max-width: 78vw;
   }
 }

@@ -102,6 +102,16 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+function recordOptionalPerformanceFrame(): void {
+  if (process.env.NODE_ENV === "production") return;
+  const probe = (
+    globalThis as typeof globalThis & {
+      __labbenchLabFrameProbe?: (timestampMS: number) => void;
+    }
+  ).__labbenchLabFrameProbe;
+  probe?.(performance.now());
+}
+
 /**
  * Frame the camera on the requested pose. Pose changes tween briefly on the
  * demand frameloop and snap instantly under prefers-reduced-motion. The full
@@ -217,6 +227,7 @@ export function BenchCameraControls({ pose }: BenchCameraControlsProps) {
   }, [camera, invalidate, pose]);
 
   useFrame((_, deltaS) => {
+    recordOptionalPerformanceFrame();
     const tween = tweenRef.current;
     if (tween) {
       tween.elapsedS = Math.min(FOCUS_DURATION_S, tween.elapsedS + deltaS);

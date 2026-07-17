@@ -338,6 +338,10 @@ function sanitizeAvailableML(availableML: number): number {
 
 interface UseDispenseGestureOptions {
   availableML: number;
+  onCommit?: (commit: DispenseCommit) => void;
+  onDetentChange?: (detent: FlowDetent) => void;
+  onGestureStart?: () => void;
+  onGestureEnd?: () => void;
 }
 
 export interface DispenseGestureController {
@@ -349,9 +353,27 @@ export interface DispenseGestureController {
 
 /** Browser-event and animation-frame adapter around the pure reducer. */
 export function useDispenseGesture({
-  availableML
+  availableML,
+  onCommit,
+  onDetentChange,
+  onGestureStart,
+  onGestureEnd
 }: UseDispenseGestureOptions): DispenseGestureController {
   const dispatch = useLabStore((store) => store.dispatch);
+  const callbacksRef = useRef({
+    onCommit,
+    onDetentChange,
+    onGestureStart,
+    onGestureEnd
+  });
+  useEffect(() => {
+    callbacksRef.current = {
+      onCommit,
+      onDetentChange,
+      onGestureStart,
+      onGestureEnd
+    };
+  }, [onCommit, onDetentChange, onGestureEnd, onGestureStart]);
   const stateRef = useRef(createDispenseGestureState("dropwise", availableML));
   const [state, setState] = useState(() =>
     createDispenseGestureState("dropwise", availableML)
@@ -369,6 +391,7 @@ export function useDispenseGesture({
           volumeML: commit.volumeML,
           durationS: commit.durationS
         });
+        callbacksRef.current.onCommit?.(commit);
       }
     },
     [dispatch]
@@ -376,26 +399,38 @@ export function useDispenseGesture({
 
   const setDetent = useCallback(
     (detent: FlowDetent) => {
+      const previous = stateRef.current.selectedDetent;
       applyEvent({
         type: "select_detent",
         detent,
         nowMS: performance.now()
       });
+      if (stateRef.current.selectedDetent !== previous) {
+        callbacksRef.current.onDetentChange?.(detent);
+      }
     },
     [applyEvent]
   );
 
   const start = useCallback(() => {
+    const wasHolding = stateRef.current.isHolding;
     applyEvent({
       type: "start",
       nowMS: performance.now(),
       availableML
     });
+    if (!wasHolding && stateRef.current.isHolding) {
+      callbacksRef.current.onGestureStart?.();
+    }
   }, [applyEvent, availableML]);
 
   const end = useCallback(
     (reason: DispenseEndReason) => {
+      const wasHolding = stateRef.current.isHolding;
       applyEvent({ type: "end", nowMS: performance.now(), reason });
+      if (wasHolding && !stateRef.current.isHolding) {
+        callbacksRef.current.onGestureEnd?.();
+      }
     },
     [applyEvent]
   );

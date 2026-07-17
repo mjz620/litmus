@@ -14,8 +14,12 @@ function makeState(overrides: Partial<TitrationState> = {}): TitrationState {
   return {
     config: EXAMPLE_STRONG,
     sessionSeed: null,
+    indicatorAdded: false,
     titrantAddedML: 0,
     buretteAvailableML: 0,
+    buretteReadingML: 50,
+    fillCount: 0,
+    fillHistory: [],
     buretteConditioned: false,
     titrantDilutionFactor: 1,
     tSim: 0,

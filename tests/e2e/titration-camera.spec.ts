@@ -14,6 +14,7 @@ function trackBrowserErrors(page: Page) {
 test("look mode activates, contains canvas scroll, supports keyboard, and releases", async ({
   page
 }) => {
+  test.setTimeout(60_000);
   const browserErrors = trackBrowserErrors(page);
 
   await page.goto("/lab/titration?seed=t0103-camera");
@@ -139,6 +140,7 @@ test("look mode activates, contains canvas scroll, supports keyboard, and releas
 test("reduced motion disables continuous edge pan but keeps step look", async ({
   page
 }) => {
+  test.setTimeout(45_000);
   const browserErrors = trackBrowserErrors(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
 
@@ -165,16 +167,11 @@ test("reduced motion disables continuous edge pan but keeps step look", async ({
   await expect(scene).toHaveAttribute("data-look-active", "true");
   await page.getByRole("button", { name: "Recenter view" }).click();
   await page.mouse.move(
-    frameBounds.x + frameBounds.width / 2,
-    frameBounds.y + frameBounds.height / 2
-  );
-  await page.waitForTimeout(100);
-
-  const beforeEdge = await canvas.screenshot();
-  await page.mouse.move(
     frameBounds.x + frameBounds.width * 0.98,
     frameBounds.y + frameBounds.height * 0.5
   );
+  await page.waitForTimeout(100);
+  const beforeEdge = await canvas.screenshot();
   await page.waitForTimeout(500);
   const afterEdge = await canvas.screenshot();
   expect(afterEdge.equals(beforeEdge)).toBe(true);

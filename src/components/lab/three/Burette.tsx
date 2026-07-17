@@ -51,8 +51,10 @@ const clampMaterial = new MeshStandardMaterial({
   metalness: 0
 });
 const stopcockMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.ceramic,
-  roughness: 0.76,
+  color: LAB_PALETTE.stopcockHandle,
+  emissive: LAB_PALETTE.stopcockHandle,
+  emissiveIntensity: 0.16,
+  roughness: 0.58,
   metalness: 0
 });
 const meniscusMaterial = new MeshBasicMaterial({

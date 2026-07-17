@@ -1,6 +1,6 @@
 import { Html } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { MeshBasicMaterial, MeshStandardMaterial } from "three";
 
 import type { IndicatorId } from "../../../experiments/titration/titration";
@@ -15,7 +15,9 @@ interface IndicatorBottle {
 
 interface IndicatorShelfProps {
   focused: boolean;
-  selectedIndicator: IndicatorId;
+  selectionEnabled: boolean;
+  selectedIndicator: IndicatorId | null;
+  pouringIndicator: IndicatorId | null;
   onBottleClick: (indicator: IndicatorId) => void;
 }
 
@@ -60,7 +62,7 @@ const HOTSPOT_LABEL_STYLE: CSSProperties = {
   background: "color-mix(in srgb, var(--lab-surface) 94%, transparent)",
   boxShadow: "var(--lab-floating-shadow)",
   color: "var(--lab-ink)",
-  fontFamily: "system-ui, sans-serif",
+  fontFamily: "var(--font-ui)",
   fontSize: "0.64rem",
   fontWeight: 750,
   lineHeight: 1,
@@ -73,7 +75,9 @@ const HOTSPOT_LABEL_STYLE: CSSProperties = {
  */
 export function IndicatorShelf({
   focused,
+  selectionEnabled,
   selectedIndicator,
+  pouringIndicator,
   onBottleClick
 }: IndicatorShelfProps) {
   return (
@@ -90,10 +94,7 @@ export function IndicatorShelf({
 
       {INDICATOR_BOTTLES.map((bottle, index) => {
         const x = (index - 1) * SHELF.bottleSpacing;
-        const pulledForward =
-          focused && selectedIndicator === bottle.id
-            ? SHELF.selectedPullForwardZ
-            : 0;
+        const isSelected = selectedIndicator === bottle.id;
         const bodyCenterY = SHELF.riserHeight + SHELF.bottleBodyHeight / 2;
         const capCenterY =
           SHELF.riserHeight +
@@ -102,14 +103,15 @@ export function IndicatorShelf({
 
         function handleClick(event: ThreeEvent<MouseEvent>) {
           event.stopPropagation();
-          if (focused) onBottleClick(bottle.id);
+          if (focused && selectionEnabled) onBottleClick(bottle.id);
         }
 
         return (
           <group
             key={bottle.id}
-            position={[x, 0, pulledForward]}
-            onClick={focused ? handleClick : undefined}
+            position={[x, 0, 0]}
+            visible={pouringIndicator !== bottle.id}
+            onClick={focused && selectionEnabled ? handleClick : undefined}
           >
             <mesh position={[0, bodyCenterY, 0]} material={bottleMaterial}>
               <cylinderGeometry
@@ -148,7 +150,24 @@ export function IndicatorShelf({
               <meshBasicMaterial color={bottle.capColor} />
             </mesh>
 
-            {focused && (
+            {focused && isSelected && (
+              <mesh
+                position={[0, SHELF.riserHeight + 0.01, 0]}
+                rotation={[Math.PI / 2, 0, 0]}
+              >
+                <torusGeometry
+                  args={[SHELF.bottleRadius * 1.18, 0.004, 8, 24]}
+                />
+                <meshBasicMaterial
+                  color={LAB_PALETTE.selectionTeal}
+                  transparent
+                  opacity={0.8}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
+
+            {focused && selectionEnabled && (
               <>
                 <mesh position={[0, bodyCenterY, 0]} material={hotspotMaterial}>
                   <boxGeometry args={[0.12, 0.16, 0.11]} />
@@ -168,7 +187,12 @@ export function IndicatorShelf({
                       cursor: "pointer",
                       pointerEvents: "auto"
                     }}
-                    onClick={() => onBottleClick(bottle.id)}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event: ReactMouseEvent<HTMLSpanElement>) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onBottleClick(bottle.id);
+                    }}
                   >
                     {bottle.label}
                   </span>

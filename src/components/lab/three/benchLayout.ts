@@ -16,6 +16,7 @@ export const ROOM = {
   floorY: 0,
   ceilingY: 3.1,
   backWallZ: -1.7,
+  frontWallZ: 2.8,
   sideWallX: 2.6,
   width: 5.2,
   depth: 4.5
@@ -32,8 +33,144 @@ export const WALLS = (() => {
     bodyHeight: height - trimHeight,
     trimHeight,
     trimDepth: 0.12,
+    ceilingThickness: 0.2,
+    baseboardHeight: 0.09,
+    baseboardDepth: 0.035,
     fixtureTopY: height - trimHeight - 0.08
   } as const;
+})();
+
+export type RoomShellSurfaceId =
+  | "floor"
+  | "ceiling"
+  | "back-wall"
+  | "front-wall"
+  | "left-wall"
+  | "right-wall";
+
+export interface RoomShellSurface {
+  readonly id: RoomShellSurfaceId;
+  readonly material: "floor" | "wall" | "ceiling";
+  readonly position: Vec3;
+  readonly size: Vec3;
+}
+
+/** Six physical planes close the room; the sky remains only a world fallback. */
+export const ROOM_SHELL: readonly RoomShellSurface[] = [
+  {
+    id: "floor",
+    material: "floor",
+    position: [0, -0.03, ROOM.backWallZ + ROOM.depth / 2],
+    size: [ROOM.width, 0.06, ROOM.depth]
+  },
+  {
+    id: "ceiling",
+    material: "ceiling",
+    position: [
+      0,
+      WALLS.height + WALLS.ceilingThickness / 2,
+      ROOM.backWallZ + ROOM.depth / 2
+    ],
+    size: [ROOM.width, WALLS.ceilingThickness, ROOM.depth]
+  },
+  {
+    id: "back-wall",
+    material: "wall",
+    position: [0, WALLS.bodyHeight / 2, ROOM.backWallZ],
+    size: [ROOM.width, WALLS.bodyHeight, WALLS.thickness]
+  },
+  {
+    id: "front-wall",
+    material: "wall",
+    position: [0, WALLS.bodyHeight / 2, ROOM.frontWallZ],
+    size: [ROOM.width, WALLS.bodyHeight, WALLS.thickness]
+  },
+  {
+    id: "left-wall",
+    material: "wall",
+    position: [
+      -ROOM.sideWallX,
+      WALLS.bodyHeight / 2,
+      ROOM.backWallZ + ROOM.depth / 2
+    ],
+    size: [WALLS.thickness, WALLS.bodyHeight, ROOM.depth]
+  },
+  {
+    id: "right-wall",
+    material: "wall",
+    position: [
+      ROOM.sideWallX,
+      WALLS.bodyHeight / 2,
+      ROOM.backWallZ + ROOM.depth / 2
+    ],
+    size: [WALLS.thickness, WALLS.bodyHeight, ROOM.depth]
+  }
+] as const;
+
+export interface RoomTrimSegment {
+  readonly id: string;
+  readonly kind: "cap" | "baseboard";
+  readonly position: Vec3;
+  readonly size: Vec3;
+}
+
+/** Continuous cap trim and baseboards make every room junction intentional. */
+export const ROOM_TRIM: readonly RoomTrimSegment[] = (() => {
+  const centerZ = ROOM.backWallZ + ROOM.depth / 2;
+  const capY = WALLS.height - WALLS.trimHeight / 2;
+  const baseY = WALLS.baseboardHeight / 2;
+  const inset = WALLS.thickness / 2 + WALLS.baseboardDepth / 2;
+
+  return [
+    {
+      id: "back-cap",
+      kind: "cap",
+      position: [0, capY, ROOM.backWallZ],
+      size: [ROOM.width, WALLS.trimHeight, WALLS.trimDepth]
+    },
+    {
+      id: "front-cap",
+      kind: "cap",
+      position: [0, capY, ROOM.frontWallZ],
+      size: [ROOM.width, WALLS.trimHeight, WALLS.trimDepth]
+    },
+    {
+      id: "left-cap",
+      kind: "cap",
+      position: [-ROOM.sideWallX, capY, centerZ],
+      size: [WALLS.trimDepth, WALLS.trimHeight, ROOM.depth]
+    },
+    {
+      id: "right-cap",
+      kind: "cap",
+      position: [ROOM.sideWallX, capY, centerZ],
+      size: [WALLS.trimDepth, WALLS.trimHeight, ROOM.depth]
+    },
+    {
+      id: "back-baseboard",
+      kind: "baseboard",
+      position: [0, baseY, ROOM.backWallZ + inset],
+      size: [ROOM.width, WALLS.baseboardHeight, WALLS.baseboardDepth]
+    },
+    {
+      id: "front-baseboard",
+      kind: "baseboard",
+      position: [0, baseY, ROOM.frontWallZ - inset],
+      size: [ROOM.width, WALLS.baseboardHeight, WALLS.baseboardDepth]
+    },
+    {
+      id: "left-baseboard",
+      kind: "baseboard",
+      position: [-ROOM.sideWallX + inset, baseY, centerZ],
+      size: [WALLS.baseboardDepth, WALLS.baseboardHeight, ROOM.depth]
+    },
+    {
+      id: "right-baseboard",
+      kind: "baseboard",
+      position: [ROOM.sideWallX - inset, baseY, centerZ],
+      size: [WALLS.baseboardDepth, WALLS.baseboardHeight, ROOM.depth]
+    }
+  ] as const;
 })();
 
 /** Procedural sky shell surrounding the open-top room. */
@@ -208,7 +345,6 @@ export const SHELF = {
   bottleRadius: 0.036,
   bottleBodyHeight: 0.11,
   bottleCapHeight: 0.045,
-  selectedPullForwardZ: 0.065,
   get topY() {
     return this.baseY + this.riserHeight;
   },
@@ -252,6 +388,42 @@ export const BENCH_ALCOVE = {
   muralHeight: 0.82,
   scallopCenterY: 2.34,
   scallopRadius: 0.11
+} as const;
+
+/** Restrained secondary fixtures that establish a functioning classroom. */
+export const CLASSROOM_FIXTURES = {
+  serviceCounter: {
+    x: 0.62,
+    z: ROOM.backWallZ + 0.22,
+    width: 3.35,
+    depth: 0.36,
+    topY: 0.88,
+    topThickness: 0.055,
+    cabinetHeight: 0.78,
+    doorCount: 4
+  },
+  sideStorage: {
+    x: ROOM.sideWallX - 0.2,
+    z: -0.42,
+    width: 0.32,
+    depth: 1.12,
+    height: 1.82,
+    doorCount: 2
+  },
+  safetyPanel: {
+    x: ROOM.sideWallX - WALLS.thickness / 2 - 0.018,
+    y: 1.92,
+    z: 0.48,
+    width: 0.54,
+    height: 0.7
+  },
+  ceilingLights: {
+    y: WALLS.height - 0.018,
+    z: 0.15,
+    width: 0.72,
+    depth: 0.28,
+    xPositions: [-1.2, 1.2] as const
+  }
 } as const;
 
 /** Camera poses for the full bench and each focused equipment view. */

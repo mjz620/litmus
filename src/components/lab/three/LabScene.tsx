@@ -8,11 +8,12 @@ import { BenchCameraControls } from "./BenchCameraControls";
 import { Burette } from "./Burette";
 import { ClassroomEnvironment } from "./ClassroomEnvironment";
 import { ErlenmeyerFlask } from "./ErlenmeyerFlask";
+import { IndicatorAddition } from "./IndicatorAddition";
 import { IndicatorShelf } from "./IndicatorShelf";
 import { Interactable } from "./Interactable";
 import { SceneEnvironment } from "./SceneEnvironment";
 import { SkyDome } from "./SkyDome";
-import { WashStation } from "./WashStation";
+import { type WashLiquid, WashStation } from "./WashStation";
 import {
   BURETTE,
   CAMERA_POSES,
@@ -29,14 +30,19 @@ interface LabSceneProps {
   buretteAvailableML: number;
   buretteCapacityML: number;
   flaskLiquidColor: string;
-  selectedIndicator: IndicatorId;
+  selectedIndicator: IndicatorId | null;
+  indicatorSelectionEnabled: boolean;
+  indicatorAddition: { indicator: IndicatorId; sequence: number } | null;
   canPrepareBurette: boolean;
+  selectedWashLiquid: WashLiquid | null;
+  funnelSelected: boolean;
   quality: GlassQuality;
   selected: EquipmentId | null;
   hovered: EquipmentId | null;
   onHover: (equipment: EquipmentId | null) => void;
   onSelect: (equipment: EquipmentId) => void;
   onIndicatorBottleClick: (indicator: IndicatorId) => void;
+  onIndicatorAdditionComplete: (sequence: number) => void;
   onWashBottleClick: () => void;
   onTitrantBottleClick: () => void;
   onFunnelClick: () => void;
@@ -93,13 +99,18 @@ export function LabScene({
   buretteCapacityML,
   flaskLiquidColor,
   selectedIndicator,
+  indicatorSelectionEnabled,
+  indicatorAddition,
   canPrepareBurette,
+  selectedWashLiquid,
+  funnelSelected,
   quality,
   selected,
   hovered,
   onHover,
   onSelect,
   onIndicatorBottleClick,
+  onIndicatorAdditionComplete,
   onWashBottleClick,
   onTitrantBottleClick,
   onFunnelClick
@@ -234,7 +245,7 @@ export function LabScene({
                 args={[
                   SHELF.width + 0.06,
                   SHELF.totalHeight + 0.04,
-                  SHELF.depth + SHELF.selectedPullForwardZ + 0.06
+                  SHELF.depth + 0.06
                 ]}
               />
             ),
@@ -249,7 +260,9 @@ export function LabScene({
         >
           <IndicatorShelf
             focused={selected === "indicatorShelf"}
+            selectionEnabled={indicatorSelectionEnabled}
             selectedIndicator={selectedIndicator}
+            pouringIndicator={indicatorAddition?.indicator ?? null}
             onBottleClick={onIndicatorBottleClick}
           />
         </Interactable>
@@ -279,12 +292,22 @@ export function LabScene({
           <WashStation
             focused={selected === "washStation"}
             preparationEnabled={canPrepareBurette}
+            selectedLiquid={selectedWashLiquid}
+            funnelSelected={funnelSelected}
             onWashBottleClick={onWashBottleClick}
             onTitrantBottleClick={onTitrantBottleClick}
             onFunnelClick={onFunnelClick}
           />
         </Interactable>
       </group>
+
+      {indicatorAddition && (
+        <IndicatorAddition
+          indicator={indicatorAddition.indicator}
+          sequence={indicatorAddition.sequence}
+          onComplete={onIndicatorAdditionComplete}
+        />
+      )}
 
       <BenchCameraControls pose={pose} />
     </>

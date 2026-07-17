@@ -39,7 +39,14 @@ describe("PHCurve", () => {
 
   it("changes from empty state to plotted engine-owned curve data", () => {
     const initial = titration.createInitialState(EXAMPLE_STRONG);
-    const filled = titration.step(initial, { type: "fill_burette" }).state;
+    const withIndicator = titration.step(initial, {
+      type: "select_indicator",
+      indicator: "phenolphthalein"
+    }).state;
+    const filled = titration.step(withIndicator, {
+      type: "fill_burette",
+      volumeML: 50
+    }).state;
     const updated = titration.step(filled, {
       type: "add_titrant",
       volumeML: 0.1,

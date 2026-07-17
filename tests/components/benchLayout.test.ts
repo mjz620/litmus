@@ -6,12 +6,15 @@ import {
   BENCH_VIEW,
   BURETTE,
   CAMERA_POSES,
+  CLASSROOM_FIXTURES,
   EQUIPMENT_ANCHOR,
   FLASK,
   FLASK_RIM_Y,
   ISLAND,
   LOOK_LIMITS,
   ROOM,
+  ROOM_SHELL,
+  ROOM_TRIM,
   SHELF,
   SKY_DOME,
   STAND,
@@ -285,31 +288,81 @@ describe("bench layout geometry invariants", () => {
     expect(BURETTE.graduationLength).toBeGreaterThan(0);
   });
 
-  it("keeps equipment and cameras inside the room", () => {
+  it("keeps equipment and every authored camera inside the sealed room", () => {
     expect(BURETTE.tubeTopY).toBeLessThan(ROOM.ceilingY);
     expect(STAND.rodTopY).toBeLessThan(ROOM.ceilingY);
     expect(EQUIPMENT_ANCHOR.z).toBeGreaterThan(ROOM.backWallZ);
 
     for (const pose of Object.values(CAMERA_POSES)) {
+      expect(pose.position[0]).toBeGreaterThan(-ROOM.sideWallX);
+      expect(pose.position[0]).toBeLessThan(ROOM.sideWallX);
       expect(pose.position[1]).toBeGreaterThan(ROOM.floorY);
       expect(pose.position[1]).toBeLessThan(ROOM.ceilingY);
       expect(pose.position[2]).toBeGreaterThan(ROOM.backWallZ);
+      expect(pose.position[2]).toBeLessThan(ROOM.frontWallZ);
     }
   });
 
-  it("caps the open-top diorama walls and trim at the shared wall height", () => {
+  it("joins the wall cap and ceiling at the shared wall height", () => {
     expect(WALLS.height).toBeCloseTo(3, 10);
     expect(WALLS.bodyHeight + WALLS.trimHeight).toBeCloseTo(WALLS.height, 10);
     expect(WALLS.fixtureTopY).toBeLessThan(WALLS.bodyHeight);
     expect(BURETTE.tubeTopY).toBeLessThanOrEqual(WALLS.height);
     expect(STAND.rodTopY).toBeLessThanOrEqual(WALLS.height);
     expect(WALLS.height).toBeLessThan(ROOM.ceilingY);
+    const ceiling = ROOM_SHELL.find(({ id }) => id === "ceiling")!;
+    expect(ceiling.position[1] - ceiling.size[1] / 2).toBeCloseTo(
+      WALLS.height,
+      10
+    );
   });
 
-  it("keeps the open top outside every authored focus frustum", () => {
+  it("keeps every authored focus frustum on the wall below the ceiling", () => {
     for (const pose of Object.values(CAMERA_POSES)) {
       expect(topFrustumYAtBackWall(pose)).toBeLessThan(WALLS.bodyHeight);
     }
+  });
+
+  it("defines all six room boundaries including the formerly missing right wall", () => {
+    expect(ROOM.frontWallZ).toBeCloseTo(ROOM.backWallZ + ROOM.depth, 10);
+    expect(ROOM_SHELL.map(({ id }) => id).sort()).toEqual([
+      "back-wall",
+      "ceiling",
+      "floor",
+      "front-wall",
+      "left-wall",
+      "right-wall"
+    ]);
+
+    const leftWall = ROOM_SHELL.find(({ id }) => id === "left-wall")!;
+    const rightWall = ROOM_SHELL.find(({ id }) => id === "right-wall")!;
+    expect(leftWall.position[0]).toBeCloseTo(-ROOM.sideWallX, 10);
+    expect(rightWall.position[0]).toBeCloseTo(ROOM.sideWallX, 10);
+    expect(leftWall.size).toEqual(rightWall.size);
+    expect(rightWall.size[2]).toBeCloseTo(ROOM.depth, 10);
+  });
+
+  it("runs continuous cap trim and baseboards around all four walls", () => {
+    expect(ROOM_TRIM.filter(({ kind }) => kind === "cap")).toHaveLength(4);
+    expect(ROOM_TRIM.filter(({ kind }) => kind === "baseboard")).toHaveLength(
+      4
+    );
+    expect(ROOM_TRIM.map(({ id }) => id)).toContain("right-cap");
+    expect(ROOM_TRIM.map(({ id }) => id)).toContain("right-baseboard");
+  });
+
+  it("keeps the secondary classroom fixtures inside the room shell", () => {
+    const counter = CLASSROOM_FIXTURES.serviceCounter;
+    const storage = CLASSROOM_FIXTURES.sideStorage;
+    const safety = CLASSROOM_FIXTURES.safetyPanel;
+
+    expect(counter.x - counter.width / 2).toBeGreaterThan(-ROOM.sideWallX);
+    expect(counter.x + counter.width / 2).toBeLessThan(ROOM.sideWallX);
+    expect(counter.z - counter.depth / 2).toBeGreaterThan(ROOM.backWallZ);
+    expect(storage.x + storage.width / 2).toBeLessThanOrEqual(ROOM.sideWallX);
+    expect(storage.height).toBeLessThan(WALLS.bodyHeight);
+    expect(safety.x).toBeLessThan(ROOM.sideWallX);
+    expect(safety.y + safety.height / 2).toBeLessThan(WALLS.bodyHeight);
   });
 
   it("keeps the sky dome well outside the room shell", () => {
@@ -347,7 +400,7 @@ describe("bench layout geometry invariants", () => {
     expect(BENCH_VIEW.target[2]).toBeLessThan(islandMaxZ);
   });
 
-  it("bounds look offsets away from the open wall-top seam", () => {
+  it("bounds look offsets within the sealed side walls", () => {
     const deltaX = BENCH_VIEW.target[0] - BENCH_VIEW.position[0];
     const deltaY = BENCH_VIEW.target[1] - BENCH_VIEW.position[1];
     const deltaZ = BENCH_VIEW.target[2] - BENCH_VIEW.position[2];
@@ -363,6 +416,16 @@ describe("bench layout geometry invariants", () => {
 
     for (const yawOffset of [LOOK_LIMITS.minYaw, LOOK_LIMITS.maxYaw]) {
       const yaw = neutralYaw + yawOffset;
+      const pitch = highestPitch;
+      const directionX = Math.sin(yaw) * Math.cos(pitch);
+      const directionY = Math.sin(pitch);
+      const directionZ = -Math.cos(yaw) * Math.cos(pitch);
+      const sideX = directionX < 0 ? -ROOM.sideWallX : ROOM.sideWallX;
+      const distanceToSide = (sideX - BENCH_VIEW.position[0]) / directionX;
+      const sideIntersectionY =
+        BENCH_VIEW.position[1] + directionY * distanceToSide;
+      const sideIntersectionZ =
+        BENCH_VIEW.position[2] + directionZ * distanceToSide;
       const distanceAlongRay = distanceToBackWall / Math.cos(yaw);
       const wallTopPitch = Math.atan2(
         WALLS.height - BENCH_VIEW.position[1],
@@ -371,6 +434,11 @@ describe("bench layout geometry invariants", () => {
 
       expect(Math.abs(yaw)).toBeLessThan(Math.PI / 2);
       expect(highestPitch).toBeLessThan(wallTopPitch);
+      expect(distanceToSide).toBeGreaterThan(0);
+      expect(sideIntersectionY).toBeGreaterThan(ROOM.floorY);
+      expect(sideIntersectionY).toBeLessThan(WALLS.height);
+      expect(sideIntersectionZ).toBeGreaterThan(ROOM.backWallZ);
+      expect(sideIntersectionZ).toBeLessThan(ROOM.frontWallZ);
     }
   });
 });

@@ -35,8 +35,11 @@ describe("physical titration intent mapping", () => {
   });
 
   it("maps the funnel to the existing fill action", () => {
-    expect(actionForTitrationIntent({ type: "funnel_clicked" })).toEqual({
-      type: "fill_burette"
+    expect(
+      actionForTitrationIntent({ type: "funnel_clicked", volumeML: 50 })
+    ).toEqual({
+      type: "fill_burette",
+      volumeML: 50
     });
   });
 });
