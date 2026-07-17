@@ -345,6 +345,15 @@ describe("LabWorkflowSpec v2 schema", () => {
     expect(minimum).not.toHaveProperty("catalog");
     expect(minimum).not.toHaveProperty("compatibility");
     expect(labWorkflowDraftV2Schema.safeParse(minimum).success).toBe(true);
+    expect(
+      labWorkflowDraftV2Schema.safeParse({
+        ...createFullV2Draft(),
+        compatibility: {
+          ...createFullV2Draft().compatibility!,
+          runtimeAdapterId: "runtime-adapter.invented.v1"
+        }
+      }).success
+    ).toBe(false);
   });
 
   it("rejects v1-only fields and unknown nested fields", () => {
@@ -565,7 +574,7 @@ describe("strict schema-version facade", () => {
     ).toBe(false);
   });
 
-  it("keeps compatibility aliases and pre-LC2-106 hashing v1-only", () => {
+  it("keeps compatibility aliases v1-only while hashing by version", () => {
     const v1 = createSchemaValidWorkflowDraft();
     const v2 = createMinimalV2Draft();
 
@@ -574,6 +583,7 @@ describe("strict schema-version facade", () => {
     expect(hashLabWorkflowSpec(v1)).toBe(
       "sha256:adc83cc11fc51b63b8481716c605dfbf9859adb31e7c0f0e8b943031457ab1ff"
     );
-    expect(() => hashLabWorkflowSpec(v2)).toThrow();
+    expect(hashLabWorkflowSpec(v2)).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(hashLabWorkflowSpec(v2)).not.toBe(hashLabWorkflowSpec(v1));
   });
 });

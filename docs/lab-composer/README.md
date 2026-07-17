@@ -31,11 +31,11 @@ Then inspect every source and test file named by the active ticket. Documentatio
 
 ## Current safe starting point
 
-The repository currently has the transitional Composer foundation through the initial author route plus the Stage 1A capability contracts:
+The repository currently has the transitional Composer foundation through `LC2-106`, including the Stage 1 capability contracts and pure schema migration:
 
 - exact v1 registries for the supported titration workflow;
 - `LabWorkflowSpec` `1.0.0`;
-- canonical hashing, hard validation, and current-hash eligibility;
+- version-aware canonical hashing with frozen v1 bytes and a domain-separated v2 preimage, while hard validation and current eligibility remain v1-only;
 - canonical titration seed and replay validation;
 - a titration-specific runtime assembler that still uses ordered steps as control flow;
 - an initial family-oriented Lab Authoring Agent route.
@@ -43,13 +43,15 @@ The repository currently has the transitional Composer foundation through the in
 - backward-compatible equipment and action definitions with exact state/configuration/visual/mechanical/schema/precondition/error/event-contract references;
 - reusable material-profile metadata over the existing reagent registry, including all three deterministic indicator choices and distilled water, with exact quantity and configuration-schema metadata;
 - framework-free chemistry-model contracts and deterministic exact provider resolution (the production provider registry is intentionally empty).
-- strict bounded v2 building blocks for closed workflow conditions, rules, presentation-only instructions, typed rubric evidence mappings, tagged structured evidence values, and diagnoses.
+- strict bounded v2 building blocks for the closed thirteen-kind workflow-condition union, rules, presentation-only instructions, typed rubric evidence mappings, tagged structured evidence values, and diagnoses;
 - strict `LabWorkflowSpec` v2 draft/validated schemas with setup, layout, action availability, coach/retry, rubric, safety, presentation, compatibility, provenance, and validation-artifact data;
-- a separately named schema-version facade that parses v1 or v2 without exposing v2 to the still-v1 hash and validator paths.
+- a separately named schema-version facade that parses v1 or v2 while historical unversioned aliases and the hard validator remain v1-only;
+- pure exact v1-to-v2 migration that preserves all supported v1 setup, workflow, coach, retry, rubric, safety, and presentation semantics or fails closed;
+- version-aware hashing that preserves v1 bytes and uses the frozen `lab-workflow-spec\0schema=2.0.0\0` domain for strict JSON-safe v2 content.
 
-It does not yet have v1-to-v2 migration, domain-separated v2 hashing, a v2 hard validator, a generic runtime, constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. The implemented schemas are structural only; the current v1 runtime still uses the titration compatibility adapter.
+It does not yet have a v2 hard validator, generic runtime, constraint evaluator implementation, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. Migrated v2 output is deliberately `draft_unvalidated`; the current production runtime still uses the v1 titration compatibility path.
 
-The next unblocked implementation ticket is `LC2-106`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work first.
+The next unblocked implementation ticket is `LC2-107`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start runtime, UI, or agent work before v2 hard validation.
 
 ## Non-negotiable implementation sequence
 

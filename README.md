@@ -16,9 +16,9 @@ Many students enter a physical chemistry lab knowing the written procedure but n
 - Context-triggered text/voice coaching and structured report evaluation, with credential-free mock behavior for local/demo use.
 - Student, teacher, technical, and resettable judge-demo paths; core student practice requires no auth.
 - Keyboard-accessible 2D controls, reduced motion/graphics, lazy-loaded demand-rendered 3D, and gesture-gated synthesized audio.
-- Transitional Lab Composer v1 contracts: exact titration registries, strict `LabWorkflowSpec` schema, canonical hashing, deterministic hard validation, a checked-in titration workflow/replay gate, a titration-specific assembler, and an initial constrained Author Agent route.
+- Transitional Lab Composer contracts: exact capability/equipment/action/material/model registries, strict versioned `LabWorkflowSpec` schemas, pure v1-to-v2 migration, version-aware canonical hashing, deterministic v1 hard validation, a checked-in titration workflow/replay gate, a titration-specific assembler, and an initial constrained Author Agent route.
 
-The Composer foundation is not yet a capability-driven authoring product. It remains tied to one titration engine, mandatory family metadata, rigid ordered steps, and a fixed student scene. The current migration evolves that v1 IR into reusable equipment/action/material/model capabilities and constraint-based workflows while preserving deterministic truth and existing behavior. Unsupported workflows remain non-runnable.
+The Composer foundation now has capability-oriented contracts and a migratable v2 IR, but it is not yet a capability-driven authoring/runtime product. It remains tied to one titration engine, mandatory family metadata, rigid ordered steps, and a fixed student scene. The current migration evolves that v1 IR into reusable equipment/action/material/model capabilities and constraint-based workflows while preserving deterministic truth and existing behavior. Unsupported workflows remain non-runnable.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ Student gesture
 Key areas:
 
 - `src/experiments/`: chemistry truth, experiment contracts, replay, and plugin registry.
-- `src/lab-workflows/`: Composer v1 schemas, exact registries, hashing, validation, canonical workflow, runtime adapters, and the capability-migration package boundary.
+- `src/lab-workflows/`: versioned Composer schemas, exact registries, migration, hashing, v1 validation, canonical workflow, runtime adapters, and the capability-migration package boundary.
 - `src/stores/`: typed runtime state and action dispatch.
 - `src/lib/agent/`: trigger policy, constrained prompts, and structured response contracts.
 - `src/lib/persistence/` and `supabase/`: checkpoint contracts, schema, RLS, and repositories.

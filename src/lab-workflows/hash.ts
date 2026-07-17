@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 
-import { labWorkflowSpecSchema, type LabWorkflowSpec } from "./schema";
+import type { LabWorkflowSpecV1 } from "./schema";
+import {
+  versionedLabWorkflowSpecSchema,
+  type LabWorkflowSpecV2
+} from "./schema/v2";
 
 export const LAB_WORKFLOW_HASH_ALGORITHM = "sha256" as const;
+export const LAB_WORKFLOW_HASH_DOMAIN_V2 =
+  "lab-workflow-spec\0schema=2.0.0\0" as const;
 
 const EXCLUDED_ROOT_FIELDS = new Set([
   "supportStatus",
@@ -10,15 +16,113 @@ const EXCLUDED_ROOT_FIELDS = new Set([
   "judgeCritique"
 ]);
 
-export type HashableLabWorkflowSpec = Omit<
-  LabWorkflowSpec,
+export type HashableLabWorkflowSpecV1 = Omit<
+  LabWorkflowSpecV1,
   "supportStatus" | "validation" | "judgeCritique"
 >;
+export type HashableLabWorkflowSpecV2 = Omit<
+  LabWorkflowSpecV2,
+  "supportStatus" | "validation" | "judgeCritique"
+>;
+export type HashableVersionedLabWorkflowSpec =
+  | HashableLabWorkflowSpecV1
+  | HashableLabWorkflowSpecV2;
+/** Historical compatibility type alias. */
+export type HashableLabWorkflowSpec = HashableLabWorkflowSpecV1;
 
 function compareCodeUnits(left: string, right: string): number {
   if (left < right) return -1;
   if (left > right) return 1;
   return 0;
+}
+
+function assertJsonData(
+  value: unknown,
+  path: string,
+  activeObjects: Set<object>
+): void {
+  if (value === null) return;
+  switch (typeof value) {
+    case "boolean":
+    case "string":
+      return;
+    case "number":
+      if (!Number.isFinite(value)) {
+        throw new TypeError(`Cannot hash non-finite number at ${path}`);
+      }
+      return;
+    case "undefined":
+    case "bigint":
+    case "function":
+    case "symbol":
+      throw new TypeError(`Cannot hash ${typeof value} at ${path}`);
+    case "object": {
+      if (activeObjects.has(value)) {
+        throw new TypeError(`Cannot hash cyclic data at ${path}`);
+      }
+      const prototype = Object.getPrototypeOf(value);
+      const isArray = Array.isArray(value);
+      if (
+        (!isArray && prototype !== Object.prototype && prototype !== null) ||
+        (isArray && prototype !== Array.prototype)
+      ) {
+        throw new TypeError(`Cannot hash non-plain object at ${path}`);
+      }
+
+      activeObjects.add(value);
+      try {
+        if (isArray) {
+          const allowedKeys = new Set<string>(["length"]);
+          for (let index = 0; index < value.length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, index);
+            if (!descriptor) {
+              throw new TypeError(
+                `Cannot hash sparse array value at ${path}[${index}]`
+              );
+            }
+            if (!descriptor.enumerable || !("value" in descriptor)) {
+              throw new TypeError(
+                `Cannot hash hidden or accessor array value at ${path}[${index}]`
+              );
+            }
+            allowedKeys.add(String(index));
+            assertJsonData(
+              descriptor.value,
+              `${path}[${index}]`,
+              activeObjects
+            );
+          }
+          for (const key of Reflect.ownKeys(value)) {
+            if (typeof key !== "string" || !allowedKeys.has(key)) {
+              throw new TypeError(
+                `Cannot hash custom array property at ${path}`
+              );
+            }
+          }
+          return;
+        }
+
+        for (const key of Reflect.ownKeys(value)) {
+          if (typeof key !== "string") {
+            throw new TypeError(`Cannot hash symbol-keyed property at ${path}`);
+          }
+          const descriptor = Object.getOwnPropertyDescriptor(value, key);
+          if (
+            !descriptor ||
+            !descriptor.enumerable ||
+            !("value" in descriptor)
+          ) {
+            throw new TypeError(
+              `Cannot hash hidden or accessor property at ${path}.${key}`
+            );
+          }
+          assertJsonData(descriptor.value, `${path}.${key}`, activeObjects);
+        }
+      } finally {
+        activeObjects.delete(value);
+      }
+    }
+  }
 }
 
 function canonicalJson(value: unknown, path: string): string {
@@ -78,23 +182,49 @@ function canonicalJson(value: unknown, path: string): string {
  */
 export function getHashableLabWorkflowSpec(
   input: unknown
-): HashableLabWorkflowSpec {
-  const parsed = labWorkflowSpecSchema.parse(input);
+): HashableVersionedLabWorkflowSpec {
+  if (typeof input === "object" && input !== null) {
+    const versionDescriptor = Object.getOwnPropertyDescriptor(
+      input,
+      "schemaVersion"
+    );
+    if (
+      !versionDescriptor ||
+      !versionDescriptor.enumerable ||
+      !("value" in versionDescriptor)
+    ) {
+      throw new TypeError(
+        "Cannot hash a workflow without an enumerable data schemaVersion"
+      );
+    }
+    if (versionDescriptor.value === "2.0.0") {
+      assertJsonData(input, "$", new Set());
+    }
+  }
+  const parsed = versionedLabWorkflowSpecSchema.parse(input);
   return Object.fromEntries(
     Object.entries(parsed).filter(([key]) => !EXCLUDED_ROOT_FIELDS.has(key))
-  ) as HashableLabWorkflowSpec;
+  ) as HashableVersionedLabWorkflowSpec;
 }
 
 export function canonicalizeLabWorkflowSpec(input: unknown): string {
   return canonicalJson(getHashableLabWorkflowSpec(input), "$");
 }
 
+export function serializeLabWorkflowSpecHashPreimage(input: unknown): string {
+  const hashable = getHashableLabWorkflowSpec(input);
+  const canonicalSpec = canonicalJson(hashable, "$");
+  return hashable.schemaVersion === "2.0.0"
+    ? `${LAB_WORKFLOW_HASH_DOMAIN_V2}${canonicalSpec}`
+    : canonicalSpec;
+}
+
 export function hashLabWorkflowSpec(input: unknown): string {
-  const canonicalSpec = canonicalizeLabWorkflowSpec(input);
+  const preimage = serializeLabWorkflowSpecHashPreimage(input);
   return `${LAB_WORKFLOW_HASH_ALGORITHM}:${createHash(
     LAB_WORKFLOW_HASH_ALGORITHM
   )
-    .update(canonicalSpec, "utf8")
+    .update(preimage, "utf8")
     .digest("hex")}`;
 }
 

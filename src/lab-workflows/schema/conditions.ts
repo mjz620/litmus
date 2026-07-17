@@ -61,6 +61,7 @@ export const WORKFLOW_CONDITION_KINDS = Object.freeze([
   "action_count_within_range",
   "semantic_event_observed",
   "observation_recorded",
+  "registered_completion_policy_satisfied",
   "observable_within_tolerance",
   "event_flag",
   "rule_satisfied_before",
@@ -161,6 +162,13 @@ export const observationRecordedConditionSchema = z.strictObject({
   expectedValueSourceId: registryIdSchema.optional()
 });
 
+export const registeredCompletionPolicySatisfiedConditionSchema =
+  z.strictObject({
+    kind: z.literal("registered_completion_policy_satisfied"),
+    completionPolicyId: registryIdSchema,
+    evidenceRuleIds: requiredReferenceListSchema
+  });
+
 export const observableWithinToleranceConditionSchema = z
   .strictObject({
     kind: z.literal("observable_within_tolerance"),
@@ -194,7 +202,8 @@ export const observableWithinToleranceConditionSchema = z
 export const eventFlagConditionSchema = z.strictObject({
   kind: z.literal("event_flag"),
   flagId: registryIdSchema,
-  presence: z.enum(["present", "absent"])
+  presence: z.enum(["present", "absent"]),
+  eventTypeId: registryIdSchema.optional()
 });
 
 export const ruleSatisfiedBeforeConditionSchema = z.strictObject({
@@ -223,6 +232,7 @@ export const workflowConditionSchema = z.discriminatedUnion("kind", [
   actionCountWithinRangeConditionSchema,
   semanticEventObservedConditionSchema,
   observationRecordedConditionSchema,
+  registeredCompletionPolicySatisfiedConditionSchema,
   observableWithinToleranceConditionSchema,
   eventFlagConditionSchema,
   ruleSatisfiedBeforeConditionSchema,
@@ -383,6 +393,9 @@ export type SemanticEventObservedCondition = z.infer<
 >;
 export type ObservationRecordedCondition = z.infer<
   typeof observationRecordedConditionSchema
+>;
+export type RegisteredCompletionPolicySatisfiedCondition = z.infer<
+  typeof registeredCompletionPolicySatisfiedConditionSchema
 >;
 export type ObservableWithinToleranceCondition = z.infer<
   typeof observableWithinToleranceConditionSchema

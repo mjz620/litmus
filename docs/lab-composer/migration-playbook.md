@@ -53,7 +53,7 @@ type ValidatedLabWorkflowSpec =
 type LabWorkflowSpec = LabWorkflowSpecV1 | LabWorkflowSpecV2;
 ```
 
-Staged implementation note: LC2-105 exports this behavior through the separately named `versionedLabWorkflowDraftSchema`, `versionedValidatedLabWorkflowSpecSchema`, and `versionedLabWorkflowSpecSchema` facades. Historical unversioned aliases remain pinned to v1 because the existing hash, validator, runtime, and author-agent consumers are v1-only. LC2-106 introduces domain-separated v2 hashing before any hash consumer is promoted; LC2-107 then promotes validator-facing consumers deliberately. This avoids silently hashing v2 with the v1 algorithm or passing v2 into v1 normalization.
+Implementation note: LC2-105 exports this behavior through the separately named `versionedLabWorkflowDraftSchema`, `versionedValidatedLabWorkflowSpecSchema`, and `versionedLabWorkflowSpecSchema` facades. Historical unversioned aliases remain pinned to v1 because the validator, runtime, and author-agent consumers are still v1-only. LC2-106 made the hash facade version-aware while preserving v1 bytes exactly; LC2-107 must promote validator-facing consumers deliberately. This avoids passing v2 into v1 normalization or accidentally widening legacy consumers.
 
 Keep explicit versioned exports as well. Do not discriminate the union only by `supportStatus`; v1 and v2 share statuses. Parsing order is:
 
@@ -66,7 +66,7 @@ Keep explicit versioned exports as well. Do not discriminate the union only by `
 
 ## Stage D — Migrate v1 to v2 deterministically
 
-`migrateV1ToV2()` is a pure data transform. It does not validate, execute the engine, or make a draft runnable.
+`migrateLabWorkflowV1ToV2()` is a pure data transform. It does not validate, execute the engine, or make a draft runnable.
 
 Migration procedure:
 
@@ -86,6 +86,8 @@ Migration procedure:
 
 Failure is explicit for any unmapped ID or unsupported semantic. Never drop a field silently, invent a closest ID, or emit a partially runnable approximation.
 
+Implemented compatibility details: event-flag conditions retain their exact event-type scope; registered completion policies carry bounded evidence-rule IDs; optional v1 steps are rejected because no skip behavior is characterized; and safety text/severity must exactly match the registered policy.
+
 Golden migration assertions:
 
 - input v1 canonical hash is unchanged;
@@ -93,22 +95,22 @@ Golden migration assertions:
 - migrated local IDs are stable;
 - the output is unvalidated;
 - strict precedence matches current runtime rejection/acceptance;
-- validation of migrated output produces its own v2 hash;
+- migrated output has its own stable domain-separated v2 hash but remains unvalidated;
 - editing either setup or rules invalidates validation.
 
 ## Stage E — Version-aware hashing
 
 Preserve `hashLabWorkflowSpec(v1)` output exactly. Do not prepend a new domain string to v1 input.
 
-For v2, canonicalize the strict hashable v2 payload and hash a domain-separated representation such as:
+For v2, canonicalize the strict hashable v2 payload and hash using the frozen preimage prefix:
 
 ```text
 lab-workflow-spec\0schema=2.0.0\0<canonical-json>
 ```
 
-The exact byte representation must be frozen by test before use. Exclude only validator- and Judge-owned derived artifacts. Include compatibility/migration provenance when it affects execution; document any excluded audit metadata.
+LC2-106 freezes that exact UTF-8 byte representation, with no BOM, newline, Unicode normalization, or trailing delimiter. It excludes only root validator/Judge-owned `supportStatus`, `validation`, and `judgeCritique` artifacts; compatibility and migration provenance remain hashed.
 
-Never hash raw unparsed input, JavaScript object insertion order, wall-clock validation time, or LLM prose outside the schema.
+Never hash unvalidated raw object shape, JavaScript object insertion order, wall-clock validation time, or LLM prose outside the schema. The v2 preflight rejects explicit `undefined`, sparse/custom arrays, non-finite numbers, non-plain objects, cycles, symbols, accessors, and non-enumerable properties before strict schema parsing. Historical v1 optional-`undefined` normalization remains unchanged for compatibility.
 
 ## Stage F — Run v1 and v2 validators side by side
 

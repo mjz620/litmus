@@ -63,6 +63,11 @@ const VALID_CONDITIONS = {
     eventTypeId: "event.read_meniscus.v1",
     expectedValueSourceId: "observable.burette_reading_ml.v1"
   },
+  registered_completion_policy_satisfied: {
+    kind: "registered_completion_policy_satisfied",
+    completionPolicyId: "completion.all_required_observations.v1",
+    evidenceRuleIds: ["rule.meniscus_recorded"]
+  },
   observable_within_tolerance: {
     kind: "observable_within_tolerance",
     observableId: "observable.burette_reading_ml.v1",
@@ -75,7 +80,8 @@ const VALID_CONDITIONS = {
   event_flag: {
     kind: "event_flag",
     flagId: "flag.endpoint_overshoot.v1",
-    presence: "absent"
+    presence: "absent",
+    eventTypeId: "event.add_titrant.v1"
   },
   rule_satisfied_before: {
     kind: "rule_satisfied_before",
@@ -131,6 +137,7 @@ function assertConditionExhaustive(condition: WorkflowCondition): string {
     case "action_count_within_range":
     case "semantic_event_observed":
     case "observation_recorded":
+    case "registered_completion_policy_satisfied":
     case "observable_within_tolerance":
     case "event_flag":
     case "rule_satisfied_before":

@@ -30,11 +30,13 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 - material-profile, quantity-preset, and configuration-schema metadata over the existing v1 registries, including all three deterministic indicators and distilled-water rinse support;
 - deterministic chemistry-model provider/dependency resolution over injected verified metadata, with no production chemistry modules registered yet.
 
-`LC2-104/104A` add the first v2 constraint contract layer: a closed twelve-kind condition union, bounded workflow rules, presentation-only instruction sections, typed rubric evidence mappings, tagged JSON-safe evidence values, and structured diagnoses. The event/observation variants keep semantic-event observations distinct from chemistry observables.
+`LC2-104/104A` add the first v2 constraint contract layer, which `LC2-106` narrowly extends for lossless migration: a closed thirteen-kind condition union, bounded workflow rules, presentation-only instruction sections, typed rubric evidence mappings, tagged JSON-safe evidence values, and structured diagnoses. Event/observation variants keep semantic-event observations distinct from chemistry observables; the exact registered-completion-policy variant preserves legacy completion semantics without permitting authored code.
 
-`LC2-105` adds strict v2 draft/validated schemas for setup, layout, action permissions, coach/retry policy, rubric, safety, presentation, explicit legacy compatibility, migration provenance, and validation artifacts. A separately named schema-version facade parses either version; existing unversioned aliases intentionally remain v1-only until version-aware hashing and validation land.
+`LC2-105` adds strict v2 draft/validated schemas for setup, layout, action permissions, coach/retry policy, rubric, safety, presentation, explicit legacy compatibility, migration provenance, and validation artifacts. A separately named schema-version facade parses either version; existing unversioned aliases intentionally remain v1-only while legacy consumers migrate.
 
-This is not yet a capability-driven runtime. Family/engine IDs remain v1 compatibility authority, ordered steps remain runtime control flow, and the production student scene is fixed. V1-to-v2 migration, v2 hashing/validation, the Workflow Judge, generic capability runtime, constraint evaluator, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. Existing optional `workflowVersionId` fields remain provenance seams only.
+`LC2-106` adds a pure exact v1-to-v2 migration with frozen registry provenance and stable generated constraints. Unsupported or unmapped semantics fail closed, and every migrated draft is unvalidated. Hashing now dispatches by schema version: v1 outputs remain frozen and v2 hashes a strict JSON payload under an exact schema domain.
+
+This is not yet a capability-driven runtime. Family/engine IDs remain v1 compatibility authority, ordered steps remain runtime control flow, and the production student scene is fixed. V2 hard validation, the Workflow Judge, generic capability runtime, constraint evaluator, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. Existing optional `workflowVersionId` fields remain provenance seams only.
 
 ## Deterministic/AI boundary
 
@@ -100,7 +102,7 @@ Lab Composer transitional implementation present in source/tests:
 - T0201–T0206-equivalent registry, schema, hashing, and hard-validation foundation under `src/lab-workflows/**` and `tests/lab-workflows/**`;
 - T0207 canonical titration seed/replay and T0208 titration-specific runtime assembler/adapters;
 - T0209 initial Lab Authoring Agent route and tests under `src/lib/agent/lab-authoring/**`, `src/app/api/lab-composer/author/**`, and `tests/ai/lab-composer/authoring/**`.
-- LC2-100–LC2-105 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts and exact structural tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
+- LC2-100–LC2-106 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, version-aware hashing, and exact tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
 
 The exact historical ticket completion reports were not added for these transitional files. Implementation status is based on current source and passing tests, not assumed ticket completion. T0210–T0220 are superseded by the capability-driven `LC2-*` sequence.
 
@@ -132,10 +134,10 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ## Latest local verification
 
 ```text
-npm run typecheck    pass — 2026-07-17 LC2-105
-npm run lint         pass — 2026-07-17 LC2-105
-npm run format:check pass — 2026-07-17 LC2-105
-npm test             pass — 62 files / 357 tests
+npm run typecheck    pass — 2026-07-17 LC2-106
+npm run lint         pass — 2026-07-17 LC2-106
+npm run format:check pass — 2026-07-17 LC2-106
+npm test             pass — 64 files / 369 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
 ```
 
@@ -150,4 +152,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-The next normal implementation ticket is `LC2-106`, pure v1-to-v2 migration and version-aware hashing. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.
+The next normal implementation ticket is `LC2-107`, capability-driven v2 hard validation. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.

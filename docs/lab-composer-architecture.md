@@ -1,7 +1,7 @@
 # Capability-Driven Lab Composer Architecture
 
-**Status:** Phase 0 architecture correction; **Last audited:** 2026-07-17
-**Scope of this document:** characterize the current repository, preserve the original workflow intention, and define an incremental migration. It does not claim that the target contracts or Level 2 runtime are implemented.
+**Status:** Phase 1 contracts implemented through `LC2-106`; **Last audited:** 2026-07-17
+**Scope of this document:** characterize the current repository, preserve the original workflow intention, and define an incremental migration. Implemented-status statements are updated as tickets land; the generic Level 2 runtime is not yet implemented.
 
 ## Executive conclusion
 
@@ -76,11 +76,12 @@ The implemented Composer surface currently includes:
 - Stage 1A exact capability, equipment, action, material, quantity, configuration-schema, and chemistry-model metadata contracts.
 - LC2-104 structural v2 condition, rule, instruction, rubric/evidence, and diagnosis contracts, independent of evaluation and runnability.
 - LC2-104A exact semantic-event/observation-key evidence variants and LC2-105 strict v2 draft/validated schemas with a staged version facade.
+- LC2-106 pure exact v1-to-v2 migration with frozen provenance, explicit legacy compatibility, stable generated IDs, and domain-separated strict-JSON v2 hashing while preserving v1 hash behavior.
 - A pure deterministic chemistry-model provider resolver over injected verified metadata; the production model registry is intentionally empty.
 
 It does **not** yet include:
 
-- V1-to-v2 migration, v2 domain-separated hashing, or a v2 hard validator. The reusable v2 contracts and root schemas exist but do not resolve references or grant runnability.
+- A v2 hard validator. Migration output is always structurally parsed but unvalidated and non-runnable; exact reference resolution, graph validation, and eligibility remain `LC2-107` work.
 - A v2 constraint-based workflow evaluator or runtime-produced diagnoses.
 - A setup-driven production student runtime/scene.
 - A teacher visual composer or shared editing command layer.
@@ -194,8 +195,8 @@ Existing persisted sessions and demo traces identify static experiment versions 
 | StudentModel fold | Reusable unchanged initially | Continue consuming evidence; future objective/rubric mappings may extend context without network dependency |
 | Store checkpoint and coach queues | Reusable through an adapter | Generic session store can retain nonblocking consumers while replacing experiment-ID unions incrementally |
 | Checkpoint repository and API | Reusable through an adapter | Add immutable lab version provenance without breaking v1 payloads or idempotency |
-| `LabWorkflowSpec` v1 | Requiring a backward-compatible contract extension | Evolve as schema v2; keep strict v1 parser and deterministic migration |
-| Canonical hashing and current-hash eligibility | Reusable through an adapter | Preserve v1 hash exactly; domain-separate v2 hashes and bind validation to exact migrated/current content |
+| `LabWorkflowSpec` v1 | Requiring a backward-compatible contract extension | Strict v1 and v2 schemas plus deterministic migration are implemented; keep historical unversioned aliases pinned to v1 until consumer promotion is reviewed |
+| Canonical hashing and current-hash eligibility | Reusable through an adapter | Version-aware hashing now preserves v1 bytes and domain-separates v2; `LC2-107` must bind v2 validation/eligibility to the exact current hash |
 | Hard validation framework | Reusable through an adapter | Replace family authority with exact capability, schema, adapter, material, model, rule, and safety resolution |
 | Component registry | Reusable through an adapter | Stage 1A added equipment capabilities and exact references while preserving v1 fields; future runtime tickets consume them |
 | Action registry | Reusable through an adapter | Stage 1A added source/target capabilities, schemas, preconditions, errors, events, behavior, and adapter IDs without changing execution |
@@ -500,13 +501,15 @@ Only after this Level 2 path works without an LLM may the agent call the same ex
 
 1. Keep the exact strict `LabWorkflowSpec` v1 parser and v1 canonical hash behavior.
 2. Define a discriminated `schemaVersion` union for v1 and v2 in the existing package; do not create a disconnected IR.
-3. Implement a pure deterministic `migrateV1ToV2()` adapter. Unknown v1 registry IDs remain errors; no fuzzy substitution is allowed.
+3. Implement a pure deterministic `migrateLabWorkflowV1ToV2()` adapter. Unknown v1 registry IDs remain errors; no fuzzy substitution is allowed.
 4. Translate v1 ordered steps into presentation sections plus strict precedence constraints and action-scoping rules that reproduce current titration behavior. Native v2 definitions may omit irrelevant precedence edges and allow multiple orders.
 5. Preserve original v1 hash and migration version in provenance. Compute a separately domain-tagged v2 canonical hash so equal JSON under different schema semantics cannot collide operationally.
 6. Any edit creates an unvalidated draft and invalidates prior validation/Judge artifacts.
 7. Validation records exact schema, validator, registry snapshot, adapter, model-module, and migration versions. Only a current matching `runnable` result is preview/assignment eligible.
 8. Judge critique remains separately hash-bound and non-authoritative.
 9. Saved v1 fixtures remain readable and replayable. Migration results receive golden snapshot tests before production use.
+
+Implementation status: `LC2-105/106` completed the strict version union, pure migration, source provenance, and frozen version-aware hash. V2 reference resolution, eligibility, persistence, and runtime consumption remain later ticket responsibilities.
 
 ## Persistence and assignment migration
 
@@ -685,13 +688,13 @@ Each row is one reviewable ticket unless split further during planning. A ticket
 - v1 parsing, hashes, fixtures, runtime behavior, events, and saved sessions have explicit compatibility strategies.
 - Later work is split into reviewable tickets and Level 3 is gated on a non-LLM Level 2 proof.
 
-## Known limitations after Phase 0
+## Current known limitations
 
-This ticket deliberately leaves runtime behavior unchanged. Composer remains titration-specific, ordered-step-driven, headless, and separate from the production student scene. The author prototype remains family-oriented. There is no v2 parser, generic runtime, structured diagnosis evaluator, visual teacher composer, second shared-runtime lab, Workflow Judge route, or immutable Composer assignment persistence yet.
+Phase 1 through `LC2-106` now includes the strict v2 parser, thirteen condition kinds, pure v1 migration, and version-aware hashing. Runtime behavior remains unchanged: Composer is titration-specific, ordered-step-driven, headless, and separate from the production student scene. The unversioned aliases, hard validator, runtime, and author prototype remain v1-only. There is no v2 hard validator, generic runtime/evaluator, visual teacher composer, second shared-runtime lab, Workflow Judge route, or immutable Composer assignment persistence yet.
 
 ## Registry, schema, migration, and documentation follow-ups
 
-- Schema: Phase 1 must define the exact v2 union and v1 migration fixtures before any runtime consumes v2.
+- Schema: the strict v2 union and golden v1 migration fixture are implemented; `LC2-107` must resolve and validate them before any v2 runtime consumer is eligible.
 - Registries: capability, material, action, schema, adapter, and chemistry-module IDs must be added only with code-backed support and exact-resolution tests.
 - Migration: production use requires immutable definition versions, legacy checkpoint/demo adapters, and historical runtime retention.
 - Documentation: update the detailed schema, component/action/material registry, state/runtime, author-agent, Judge, evaluator, persistence, demo, and extension guides in the ticket that changes each contract.

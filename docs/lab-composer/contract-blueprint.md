@@ -10,10 +10,10 @@ Evolve `src/lab-workflows`; do not create a second top-level Lab IR package.
 src/lab-workflows/
   schema.ts                         # v1 exports stay stable; version union facade
   schema/
-    v2.ts                           # added only in LC2-105
-    conditions.ts                   # LC2-104
-    migration.ts                    # LC2-106
-  hash.ts                           # retain v1 behavior; version-aware facade
+    v2.ts                           # implemented by LC2-105
+    conditions.ts                   # LC2-104/104A plus migration compatibility correction
+    migration.ts                    # implemented by LC2-106
+  hash.ts                           # version-aware since LC2-106; v1 preimages frozen
   capabilities/
     ids.ts                          # bounded canonical ID unions/constants
     types.ts                        # equipment + chemistry capability contracts
@@ -268,7 +268,7 @@ Key rules:
 
 ## Structured conditions and rules
 
-Use a closed discriminated union. Initial condition kinds:
+The implemented closed discriminated union has thirteen condition kinds:
 
 ```ts
 type WorkflowCondition =
@@ -279,6 +279,7 @@ type WorkflowCondition =
   | ActionCountWithinRangeCondition
   | SemanticEventObservedCondition
   | ObservationRecordedCondition
+  | RegisteredCompletionPolicySatisfiedCondition
   | ObservableWithinToleranceCondition
   | EventFlagCondition
   | RuleSatisfiedBeforeCondition
@@ -317,7 +318,7 @@ interface WorkflowRule {
 }
 ```
 
-V2 rubric evidence is also typed rather than stored as an undifferentiated string list. Each criterion maps objectives and rules to one or more strict evidence entries of kind `rule_diagnosis`, `semantic_event`, `observable`, or `student_response`, retaining the exact assessment-mode and passing-policy IDs needed for lossless v1 migration. Instruction sections contain only an ID, title, guidance, and related rule IDs; their array order is presentation and never runtime control flow.
+V2 rubric evidence is also typed rather than stored as an undifferentiated string list. Each criterion maps objectives and rules to one or more strict evidence entries of kind `rule_diagnosis`, `semantic_event`, `semantic_event_observation`, `observable`, or `student_response`, retaining the exact assessment-mode and passing-policy IDs needed for lossless v1 migration. Instruction sections contain only an ID, title, guidance, and related rule IDs; their array order is presentation and never runtime control flow. `RegisteredCompletionPolicySatisfiedCondition` is a migration compatibility primitive: its exact policy ID must resolve to deterministic code and its evidence-rule references must validate. It is not an authored expression language.
 
 Validator checks unique IDs, exact references, legal condition/rule combinations, tolerance bounds, contradictions, cycles in ordering edges, and statically unreachable success where detectable.
 

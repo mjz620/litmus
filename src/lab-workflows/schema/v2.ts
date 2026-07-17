@@ -22,6 +22,9 @@ import {
 } from "./conditions";
 
 export const LAB_WORKFLOW_SCHEMA_VERSION_V2 = "2.0.0" as const;
+export const LEGACY_RUNTIME_ADAPTER_IDS = Object.freeze([
+  "runtime-adapter.titration.v1"
+] as const);
 
 export const LAB_WORKFLOW_V2_SCHEMA_LIMITS = Object.freeze({
   equipmentCount: LAB_WORKFLOW_SCHEMA_LIMITS.componentCount,
@@ -202,7 +205,7 @@ export const legacyMaterialRoleBindingSchema = z.strictObject({
 
 export const legacyCompatibilityDescriptorV2Schema = z.strictObject({
   kind: z.literal("legacy_v1"),
-  runtimeAdapterId: registryIdSchema,
+  runtimeAdapterId: z.enum(LEGACY_RUNTIME_ADAPTER_IDS),
   runtimeAdapterVersion: semanticVersionSchema,
   engineId: registryIdSchema,
   engineConfigurationPresetId: registryIdSchema,

@@ -18,9 +18,10 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | `LC2-104` | Complete | Strict bounded condition, rule, instruction, rubric/evidence, and diagnosis contracts |
 | `LC2-104A` | Complete | Narrow event-observation condition/evidence correction required for lossless v1 migration |
 | `LC2-105` | Complete | Strict v2 draft/validated schemas plus an explicit schema-version facade |
-| `LC2-106` onward | Not started | Verify current source before claiming otherwise |
+| `LC2-106` | Complete | Pure v1-to-v2 migration, the narrow completion-policy compatibility correction, and domain-separated v2 hashing with frozen v1 compatibility |
+| `LC2-107` onward | Not started | Verify current source before claiming otherwise |
 
-The next normal implementation ticket is `LC2-106`.
+The next normal implementation ticket is `LC2-107`.
 
 ## Dependency map
 
@@ -30,7 +31,7 @@ LC2-000
   -> LC2-101
   -> LC2-102
   -> LC2-103
-LC2-101/102/102A/103 -> LC2-104 -> LC2-105 -> LC2-106 -> LC2-107
+LC2-101/102/102A/103 -> LC2-104 -> LC2-104A -> LC2-105 -> LC2-106 -> LC2-107
 
 LC2-107 -> LC2-200 -> LC2-201 -> LC2-202
 LC2-200/202 -> LC2-203 -> LC2-204 -> LC2-205

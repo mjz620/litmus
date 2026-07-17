@@ -172,6 +172,8 @@ The LC2-102 audit initially preserved only material profiles already present in 
 
 ## LC2-106 — Pure v1-to-v2 migration and version-aware hashing
 
+**Status:** Complete.
+
 **Objective:** Deterministically migrate existing v1 workflows into behavior-equivalent unvalidated v2 drafts and add frozen v2 hash semantics without changing v1 hashes.
 
 **Dependencies:** `LC2-105`.
@@ -180,7 +182,7 @@ The LC2-102 audit initially preserved only material profiles already present in 
 
 **Do not touch:** runtime, chemistry, validator eligibility, canonical v1 seed content, UI, persistence, agents.
 
-**Required changes:** Follow Stage D/E of [`../migration-playbook.md`](../migration-playbook.md) exactly. Map every v1 field or fail. Translate ordered steps into instruction sections plus strict precedence/action-scope constraints. Preserve source v1 hash/migration provenance. Output unvalidated. Freeze domain-separated v2 bytes/hash with golden tests.
+**Required changes:** Follow Stage D/E of [`../migration-playbook.md`](../migration-playbook.md) exactly. Map every v1 field or fail. Translate ordered steps into instruction sections plus strict precedence/action-scope constraints. Preserve source v1 hash/migration provenance. Output unvalidated. Freeze domain-separated v2 bytes/hash with golden tests. The implemented compatibility correction uses an exact registered completion-policy condition with bounded evidence-rule references; it does not add authored expressions.
 
 **Tests:** current v1 hash goldens unchanged; canonical v1 migration golden; stable IDs/output; missing mapping failure with exact path/code; migrated draft has no trusted artifacts; every v1 semantic represented; v2 hash stability/sensitivity/exclusions; non-JSON rejection.
 
@@ -189,6 +191,8 @@ The LC2-102 audit initially preserved only material profiles already present in 
 **Stop:** If a v1 completion/coach/retry/rubric semantic has no v2 representation, stop and extend the relevant Phase 1 schema in a reviewed prerequisite rather than dropping it.
 
 ## LC2-107 — Capability-driven v2 hard validator
+
+**Status:** Next unblocked ticket; not started.
 
 **Objective:** Add deterministic v2 validation and eligibility passes while preserving exact v1 validator behavior.
 
