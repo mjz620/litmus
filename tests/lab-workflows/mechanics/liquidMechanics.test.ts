@@ -155,7 +155,8 @@ function actionBinding(
       equipmentPreconditionRegistry.get(id)
     ),
     mechanicalAdapterId: definition.mechanicalAdapterId,
-    emittedEventContractId: definition.emittedEventContractId
+    emittedEventContractId: definition.emittedEventContractId,
+    emittedSemanticEventTypes: []
   };
 }
 

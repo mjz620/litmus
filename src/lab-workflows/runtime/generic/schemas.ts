@@ -10,9 +10,18 @@ import {
   resolvedChemistryModelV2Schema
 } from "../../schema/v2";
 import { GENERIC_LAB_RUNTIME_SCHEMA_VERSION } from "./types";
+import {
+  semanticEventEnvelopeV2Schema,
+  semanticEventPayloadSchema
+} from "../../events/schemas";
 
 const LIMIT = 1_000;
 const idSchema = z.string().min(1).max(240);
+const sessionIdSchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 const finiteNumberSchema = z.number().finite();
 const stateValueSchema = z.union([
   z.null(),
@@ -29,7 +38,7 @@ const observationValueSchema = z.union([
 
 export const genericLabConfigSchema = z.strictObject({
   schemaVersion: z.literal(GENERIC_LAB_RUNTIME_SCHEMA_VERSION),
-  sessionId: idSchema,
+  sessionId: sessionIdSchema,
   workflowId: idSchema,
   workflowRevision: z.number().int().min(1),
   workflowHash: idSchema
@@ -99,22 +108,7 @@ export const genericChemistryProjectionSchema = z.strictObject({
   })
 });
 
-export const semanticEventSchema = z.strictObject({
-  type: idSchema,
-  tSim: finiteNumberSchema,
-  observation: z.record(idSchema, observationValueSchema),
-  flags: z.array(idSchema).max(256),
-  evidence: z
-    .array(
-      z.strictObject({
-        skillId: idSchema,
-        delta: finiteNumberSchema,
-        reason: idSchema,
-        detail: z.record(idSchema, observationValueSchema).optional()
-      })
-    )
-    .max(256)
-});
+export const semanticEventSchema = semanticEventPayloadSchema;
 
 const runtimeProvenanceSchema = z.strictObject({
   workflowId: idSchema,
@@ -130,7 +124,7 @@ const runtimeProvenanceSchema = z.strictObject({
 
 export const genericLabStateSchema = z.strictObject({
   schemaVersion: z.literal(GENERIC_LAB_RUNTIME_SCHEMA_VERSION),
-  sessionId: idSchema,
+  sessionId: sessionIdSchema,
   provenance: runtimeProvenanceSchema,
   sequence: z.number().int().min(0),
   equipment: z.array(genericEquipmentStateSchema).max(64),
@@ -146,5 +140,6 @@ export const genericLabStateSchema = z.strictObject({
       })
     )
     .max(256),
-  semanticEvents: z.array(semanticEventSchema).max(LIMIT)
+  eventSequence: z.number().int().nonnegative().max(LIMIT),
+  eventEnvelopes: z.array(semanticEventEnvelopeV2Schema).max(LIMIT)
 });

@@ -144,6 +144,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 
 **Stop:** Do not change persistence schema or route requests here; create transport adapters only.
 
+**Implementation note:** Generic runtime schema `1.3.0` replaces the cumulative raw-event copy with strict `SemanticEventEnvelopeV2` state and an explicit monotonic event sequence. Successful actions create provisional session-scoped envelopes before evaluation, evaluators cite exact envelope IDs, and the stored envelopes receive authored-order inverse rule links afterward. Envelopes carry the exact normalized action, source/targets, material IDs, action sequence, and unchanged compact legacy payload; no state snapshots are stored. Event payload types are checked against the compiled exact action event contract. `ExperimentDefinition.step()` still returns the legacy payload array, while pure adapters preserve StudentModel folding, coach input, and checkpoint event transport. Failed actions remain atomic and consume no event or action sequence. No persistence route or database schema changed.
+
 ## LC2-205 — Versioned normalized action traces and deterministic replay
 
 **Objective:** Define typed action trace storage and execute traces through the real generic `ExperimentDefinition.step()` and workflow evaluator.

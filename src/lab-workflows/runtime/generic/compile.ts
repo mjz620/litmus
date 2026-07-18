@@ -202,6 +202,9 @@ function compileActions(
     const preconditions = action.preconditionIds.map((id) =>
       registries.equipmentPreconditions.get(id)
     );
+    const eventContract = registries.actionEventContracts.get(
+      action.emittedEventContractId
+    );
     const adapter = requireAdapter(
       adapterById,
       action.mechanicalAdapterId,
@@ -236,7 +239,11 @@ function compileActions(
       })),
       preconditions,
       mechanicalAdapterId: action.mechanicalAdapterId,
-      emittedEventContractId: action.emittedEventContractId
+      emittedEventContractId: action.emittedEventContractId,
+      emittedSemanticEventTypes: eventContract.eventTypeIds.map(
+        (eventTypeId) =>
+          registries.eventTypes.get(eventTypeId).semanticEventType
+      )
     };
   });
 }

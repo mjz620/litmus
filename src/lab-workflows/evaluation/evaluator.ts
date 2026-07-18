@@ -75,22 +75,16 @@ function priorFor(
   return context.previousDiagnoses.find((diagnosis) => diagnosis.ruleId === ruleId);
 }
 
-function eventReference(eventIndex: number): string {
-  return `event.${eventIndex + 1}`;
-}
-
-function actionReference(sequence: number): string {
-  return `step.${sequence}.action`;
-}
-
 function firstMatchingEvent(
   context: GenericWorkflowEvaluationContext,
   predicate: (event: SemanticEvent) => boolean
 ): { readonly event: SemanticEvent; readonly id: string } | null {
-  const index = context.events.findIndex(predicate);
-  return index < 0
-    ? null
-    : { event: context.events[index]!, id: eventReference(index) };
+  const envelope = context.eventEnvelopes.find(({ payload }) =>
+    predicate(payload)
+  );
+  return envelope
+    ? { event: envelope.payload, id: envelope.eventId }
+    : null;
 }
 
 function stateField(
@@ -209,7 +203,7 @@ export function createWorkflowEvaluator(
         const prior = previousSatisfied(context, rule);
         if (prior) return prior;
         return context.currentAction && actionMatches(condition, context.currentAction)
-          ? result("satisfied", [actionReference(context.sequence)])
+          ? result("satisfied", context.currentEventIds)
           : result("pending");
       }
       case "action_count_within_range": {
@@ -246,7 +240,7 @@ export function createWorkflowEvaluator(
           [
             ...(prior?.evidenceEventIds ?? []),
             ...(context.currentAction && actionMatches(condition, context.currentAction)
-              ? [actionReference(context.sequence)]
+              ? context.currentEventIds
               : [])
           ],
           expected,
@@ -394,7 +388,9 @@ export function createWorkflowEvaluator(
         const observed = evidence(actual);
         return result(
           evidenceValue(condition.forbiddenValue) === actual ? "violated" : "satisfied",
-          evidenceValue(condition.forbiddenValue) === actual ? [actionReference(context.sequence)] : [],
+          evidenceValue(condition.forbiddenValue) === actual
+            ? context.currentEventIds
+            : [],
           condition.forbiddenValue,
           observed
         );

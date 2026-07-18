@@ -30,9 +30,14 @@ export function assembleGenericLabRuntime(
   let state = definition.createInitialState(config);
 
   function dispatch(action: NormalizedLabAction): GenericLabRuntimeTransition {
+    const previousEventSequence = state.eventSequence;
     const result = definition.step(state, action);
     state = result.state;
-    return Object.freeze({ state, events: result.events });
+    return Object.freeze({
+      state,
+      events: result.events,
+      eventEnvelopes: state.eventEnvelopes.slice(previousEventSequence)
+    });
   }
 
   return Object.freeze({

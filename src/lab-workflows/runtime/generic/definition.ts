@@ -1,11 +1,15 @@
 import type {
   ExperimentDefinition,
-  SemanticEvent,
   StepResult
 } from "../../../experiments/shared";
 import type { ActionParameterDefinition } from "../../registries/actions";
 import { ChemistryModelCoordinatorError } from "../../chemistry-models/coordinator";
 import { WorkflowEvaluatorError } from "../../evaluation";
+import {
+  envelopeSemanticEvents,
+  linkEnvelopeDiagnoses,
+  semanticEventId
+} from "../../events";
 import {
   applyExecutedMaterialAction,
   initializeMaterialLedger,
@@ -316,6 +320,40 @@ function assertStateMatchesProgram(
     }
     observableIds.add(observable.observableId);
   }
+  if (
+    state.eventSequence !== state.eventEnvelopes.length ||
+    state.eventEnvelopes.some((envelope, index) => {
+      const binding = compiled.program.actions.find(
+        ({ permission }) =>
+          permission.id === envelope.normalizedAction.permissionId
+      );
+      return (
+        envelope.sequence !== index ||
+        envelope.eventId !== semanticEventId(state.sessionId, index) ||
+        envelope.actionSequence > state.sequence ||
+        envelope.sourceEquipmentInstanceId !==
+          envelope.normalizedAction.sourceEquipmentInstanceId ||
+        !sameIds(
+          envelope.targetEquipmentInstanceIds,
+          envelope.normalizedAction.targetEquipmentInstanceIds
+        ) ||
+        new Set(envelope.materialInstanceIds).size !==
+          envelope.materialInstanceIds.length ||
+        new Set(envelope.ruleEvidenceIds).size !==
+          envelope.ruleEvidenceIds.length ||
+        envelope.ruleEvidenceIds.some(
+          (ruleId) => !compiled.program.rules.some(({ id }) => id === ruleId)
+        ) ||
+        !binding ||
+        !binding.emittedSemanticEventTypes.includes(envelope.payload.type)
+      );
+    })
+  ) {
+    fail(
+      ERROR.invalidState,
+      "State event envelopes are not a contiguous compiled-runtime trace."
+    );
+  }
   const derivedStatus = deriveWorkflowStatus(
     compiled.program.rules,
     state.diagnoses,
@@ -568,6 +606,21 @@ function parseTransition(
   if (!events.success) {
     fail(ERROR.portContractMismatch, "Mechanical port emitted invalid events.");
   }
+  const actionBinding = compiled.program.actions.find(
+    ({ permission }) => permission.id === action.permissionId
+  );
+  if (
+    !actionBinding ||
+    events.data.some(
+      ({ type }) => !actionBinding.emittedSemanticEventTypes.includes(type)
+    )
+  ) {
+    fail(
+      ERROR.portContractMismatch,
+      "Mechanical port emitted an event outside its registered contract.",
+      { actionId: action.actionId }
+    );
+  }
   const parsedMaterialAction = candidate.materialAction
     ? genericMaterialActionSchema.safeParse(candidate.materialAction)
     : null;
@@ -770,7 +823,8 @@ export function createGenericLabDefinition(
           equipment,
           materialLedger,
           observables: chemistry.observables,
-          events: [] as SemanticEvent[],
+          eventEnvelopes: [],
+          currentEventIds: [],
           previousDiagnoses: [],
           permissionAttempts: program.actions.map(({ permission }) => ({
             permissionId: permission.id,
@@ -808,7 +862,8 @@ export function createGenericLabDefinition(
         permissionId: permission.id,
         count: 0
       })),
-      semanticEvents: []
+      eventSequence: 0,
+      eventEnvelopes: []
     });
     if (!state.success) {
       fail(ERROR.portContractMismatch, "Ports produced invalid initial state.");
@@ -940,7 +995,18 @@ export function createGenericLabDefinition(
     }
 
     const events = deepFreeze([...mechanical.events]);
-    const semanticEvents = [...state.semanticEvents, ...events];
+    const newEnvelopes = envelopeSemanticEvents({
+      sessionId: state.sessionId,
+      nextEventSequence: state.eventSequence,
+      actionSequence: state.sequence + 1,
+      action,
+      materialAction: mechanical.materialAction,
+      events
+    });
+    const unlinkedEnvelopes = [
+      ...state.eventEnvelopes,
+      ...newEnvelopes
+    ];
     const permissionAttempts = incrementAttempts(state, action.permissionId);
     let diagnoses;
     try {
@@ -952,7 +1018,8 @@ export function createGenericLabDefinition(
           equipment: mechanical.equipment,
           materialLedger,
           observables: chemistry.observables,
-          events: semanticEvents,
+          eventEnvelopes: unlinkedEnvelopes,
+          currentEventIds: newEnvelopes.map(({ eventId }) => eventId),
           previousDiagnoses: state.diagnoses,
           permissionAttempts,
           currentAction: action,
@@ -987,7 +1054,8 @@ export function createGenericLabDefinition(
       ),
       diagnoses,
       permissionAttempts,
-      semanticEvents
+      eventSequence: state.eventSequence + newEnvelopes.length,
+      eventEnvelopes: linkEnvelopeDiagnoses(unlinkedEnvelopes, diagnoses)
     });
     if (!next.success) {
       fail(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createWorkflowEvaluator } from "../../../src/lab-workflows/evaluation";
+import { envelopeSemanticEvents } from "../../../src/lab-workflows/events";
 import { hashLabWorkflowSpec } from "../../../src/lab-workflows/hash";
 import type {
   WorkflowDiagnosis,
@@ -47,6 +48,15 @@ function baseContext(
     createTestGenericPorts()
   );
   const state = runtime.getState();
+  const legacyEvents = [
+    {
+      type: "read_meniscus",
+      tSim: 1,
+      observation: { reportedML: 12.35 },
+      flags: [] as string[],
+      evidence: []
+    }
+  ];
   return {
     rules,
     equipmentBindings: runtime.program.equipment,
@@ -74,15 +84,15 @@ function baseContext(
         unitId: "unit.ml.v1"
       }
     ],
-    events: [
-      {
-        type: "read_meniscus",
-        tSim: 1,
-        observation: { reportedML: 12.35 },
-        flags: [],
-        evidence: []
-      }
-    ],
+    eventEnvelopes: envelopeSemanticEvents({
+      sessionId: "evaluator-test",
+      nextEventSequence: 0,
+      actionSequence: 1,
+      action: READ_VOLUME_ACTION,
+      materialAction: null,
+      events: legacyEvents
+    }),
+    currentEventIds: ["evaluator-test:event:0"],
     previousDiagnoses: [],
     permissionAttempts: [
       { permissionId: "permission.read_measurement_burette", count: 1 }
@@ -227,7 +237,7 @@ describe("constraint workflow evaluator", () => {
       rules.map(({ id }) => ({ ruleId: id, status: "satisfied" }))
     );
     expect(first.find(({ ruleId }) => ruleId === "rule.event")?.evidenceEventIds).toEqual([
-      "event.1"
+      "evaluator-test:event:0"
     ]);
   });
 
@@ -343,20 +353,32 @@ describe("constraint workflow evaluator", () => {
       "best_practice"
     );
     const evaluator = createWorkflowEvaluator({ rules: [clean] });
-    expect(evaluator.evaluate(baseContext([clean], { events: [] }))[0]?.status).toBe("pending");
+    expect(
+      evaluator.evaluate(
+        baseContext([clean], { eventEnvelopes: [], currentEventIds: [] })
+      )[0]?.status
+    ).toBe("pending");
     expect(evaluator.evaluate(baseContext([clean]))[0]?.status).toBe("satisfied");
     expect(
       evaluator.evaluate(
         baseContext([clean], {
-          events: [
-            {
-              type: "read_meniscus",
-              tSim: 1,
-              observation: { reportedML: 12 },
-              flags: ["meniscus_misread"],
-              evidence: []
-            }
-          ]
+          eventEnvelopes: envelopeSemanticEvents({
+            sessionId: "evaluator-test",
+            nextEventSequence: 0,
+            actionSequence: 1,
+            action: READ_VOLUME_ACTION,
+            materialAction: null,
+            events: [
+              {
+                type: "read_meniscus",
+                tSim: 1,
+                observation: { reportedML: 12 },
+                flags: ["meniscus_misread"],
+                evidence: []
+              }
+            ]
+          }),
+          currentEventIds: ["evaluator-test:event:0"]
         })
       )[0]?.status
     ).toBe("violated");
@@ -379,6 +401,14 @@ describe("constraint workflow evaluator", () => {
       "satisfied",
       "satisfied",
       "satisfied"
+    ]);
+    expect(transition.state.diagnoses[0]?.evidenceEventIds).toEqual([
+      "generic-runtime-test-session:event:0"
+    ]);
+    expect(transition.eventEnvelopes[0]?.ruleEvidenceIds).toEqual([
+      "rule.meniscus_observed",
+      "rule.workflow_complete",
+      "rule.score_reading_event"
     ]);
     expect(() => runtime.dispatch(READ_VOLUME_ACTION)).toThrowError(
       expect.objectContaining({ code: GENERIC_LAB_RUNTIME_ERROR_CODES.workflowTerminal })

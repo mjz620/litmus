@@ -183,11 +183,11 @@ export function createTestGenericPorts(
       transition: vi.fn(({ previous }) => previous)
     },
     evaluator: {
-      evaluate: vi.fn(({ rules, events }: GenericWorkflowEvaluationContext) =>
+      evaluate: vi.fn(({ rules, eventEnvelopes }: GenericWorkflowEvaluationContext) =>
         rules.map((rule) => ({
           ruleId: rule.id,
           status:
-            events.length > 0 && rule.id === "rule.meniscus_observed"
+            eventEnvelopes.length > 0 && rule.id === "rule.meniscus_observed"
               ? ("satisfied" as const)
               : ("pending" as const),
           severity: rule.severity,

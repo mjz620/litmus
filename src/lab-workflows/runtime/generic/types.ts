@@ -23,8 +23,9 @@ import type {
   ValidationResultV2
 } from "../../schema/v2";
 import type { WorkflowDiagnosis, WorkflowRule } from "../../schema/conditions";
+import type { SemanticEventEnvelopeV2 } from "../../events";
 
-export const GENERIC_LAB_RUNTIME_SCHEMA_VERSION = "1.2.0" as const;
+export const GENERIC_LAB_RUNTIME_SCHEMA_VERSION = "1.3.0" as const;
 
 export type GenericStateValue =
   | boolean
@@ -100,7 +101,8 @@ export interface GenericLabState {
   readonly workflowStatus: "in_progress" | "completed" | "failed";
   readonly diagnoses: readonly WorkflowDiagnosis[];
   readonly permissionAttempts: readonly GenericPermissionAttempt[];
-  readonly semanticEvents: readonly SemanticEvent[];
+  readonly eventSequence: number;
+  readonly eventEnvelopes: readonly SemanticEventEnvelopeV2[];
 }
 
 export type NormalizedActionParameter =
@@ -164,6 +166,7 @@ export interface CompiledActionBinding {
   readonly preconditions: readonly EquipmentPreconditionEntry[];
   readonly mechanicalAdapterId: string;
   readonly emittedEventContractId: string;
+  readonly emittedSemanticEventTypes: readonly string[];
 }
 
 export interface CompiledChemistryModelBinding {
@@ -292,7 +295,8 @@ export interface GenericWorkflowEvaluationContext {
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
   readonly materialLedger: Readonly<MaterialLedger>;
   readonly observables: readonly GenericObservable[];
-  readonly events: readonly SemanticEvent[];
+  readonly eventEnvelopes: readonly SemanticEventEnvelopeV2[];
+  readonly currentEventIds: readonly string[];
   readonly previousDiagnoses: readonly WorkflowDiagnosis[];
   readonly permissionAttempts: readonly GenericPermissionAttempt[];
   readonly currentAction: Readonly<NormalizedLabAction> | null;
@@ -328,6 +332,7 @@ export interface GenericLabDefinitionMetadata {
 export interface GenericLabRuntimeTransition {
   readonly state: Readonly<GenericLabState>;
   readonly events: readonly SemanticEvent[];
+  readonly eventEnvelopes: readonly SemanticEventEnvelopeV2[];
 }
 
 export interface GenericLabRuntime {
