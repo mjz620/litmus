@@ -1,5 +1,6 @@
 export { assembleTitrationWorkflow } from "./titrationRuntime";
 export * from "./generic";
+export * from "./legacy";
 export {
   LAB_WORKFLOW_RUNTIME_ERROR_CODES,
   LabWorkflowRuntimeError,

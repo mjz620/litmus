@@ -4,6 +4,8 @@ Phase 3 proves compatibility by moving the shipped titration through the generic
 
 ## LC2-300 — Explicit titration compatibility mechanics/model adapter
 
+**Status:** Implemented. The generic coordinator uses an atomic, serialized compatibility port selected by exact runtime-adapter ID; production routing is unchanged. Normalized report submission remains deferred because the action registry has no report action contract.
+
 **Objective:** Wrap current titration initialization, actions, truth, observables, events, and ground truth behind explicit generic runtime ports without changing chemistry.
 
 **Dependencies:** `LC2-205`.

@@ -11,13 +11,18 @@ import type {
 } from "./types";
 
 const SNAPSHOT_ID: ChemistryModelRegistrySnapshot["snapshotId"] =
-  "chemistry-models.1.0.0";
+  "chemistry-models.1.1.0";
 
 function freezeEntry(
   entry: ChemistryModelMetadataEntry
 ): ChemistryModelMetadataEntry {
   return Object.freeze({
     ...entry,
+    ...(entry.compatibilityRuntimeAdapterId
+      ? {
+          compatibilityRuntimeAdapterId: entry.compatibilityRuntimeAdapterId
+        }
+      : {}),
     providedCapabilityIds: Object.freeze([...entry.providedCapabilityIds]),
     requiredCapabilityIds: Object.freeze([...entry.requiredCapabilityIds])
   });

@@ -28,7 +28,7 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 - closed equipment and chemistry capability vocabularies with explicit availability;
 - backward-compatible equipment/action contracts with exact schema, adapter, precondition, error, and event references;
 - material-profile, quantity-preset, and configuration-schema metadata over the existing v1 registries, including all three deterministic indicators and distilled-water rinse support;
-- deterministic chemistry-model provider/dependency resolution over injected verified metadata, with no production chemistry modules registered yet.
+- deterministic chemistry-model provider/dependency resolution over injected verified metadata; `LC2-300` now registers one compatibility-scoped provider for the existing titration truth layer without making it available to native labs.
 
 `LC2-104/104A` add the first v2 constraint contract layer, which `LC2-106` narrowly extends for lossless migration: a closed thirteen-kind condition union, bounded workflow rules, presentation-only instruction sections, typed rubric evidence mappings, tagged JSON-safe evidence values, and structured diagnoses. Event/observation variants keep semantic-event observations distinct from chemistry observables; the exact registered-completion-policy variant preserves legacy completion semantics without permitting authored code.
 
@@ -42,7 +42,9 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 
 `LC2-201` adds the first production reusable liquid mechanics and conserved material state without changing the legacy titration engine. Generic runtime schema `1.1.0` adds the required ledger; no `1.0.0` scaffold state was persisted or route-consumed. A serializable material ledger retains exact profile, unit, immutable initial quantity, and sorted per-equipment allocations; typed executed-transfer deltas carry exact before/after quantities into the model boundary. Code-owned burette, flask, reagent-bottle, and indicator-bottle adapter registrations initialize equipment projections, while the burette adapter implements bounded fill, dispense, rinse-state, and read mechanics. Capacity, availability, nonnegative quantities, exact micro-milliliter conservation, target acceptance, ambiguity, and replay determinism fail closed. Distilled water now has one exact 50 mL binding preset, enabling a validated chemistry-free transfer fixture through the generic `ExperimentDefinition.step()` path. Generic rinse deliberately consumes no invented volume and emits no legacy dilution/evidence semantics.
 
-This is not yet a production capability-driven student runtime. Family/engine IDs remain v1 compatibility authority for the legacy assembler, ordered steps remain legacy runtime control flow, and the production student scene is fixed. The Workflow Judge, chemistry-module coordinator, constraint evaluator, semantic event envelopes, generic trace replay, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. V2 Preview/Assign are intentionally disabled, and migrated titration remains partially supported until verified chemistry providers and its explicit compatibility adapter are registered. Existing optional `workflowVersionId` fields remain provenance seams only.
+`LC2-202`–`LC2-205` complete the generic model coordinator, constraint evaluator, semantic event envelopes, and provenance-pinned normalized trace replay. `LC2-300` adds the explicit atomic titration compatibility seam selected by validated runtime-adapter ID. It serializes complete legacy state for replay, delegates every accepted scientific transition exactly once to the existing titration `ExperimentDefinition.step()`, projects equipment/material/observable/ground-truth views, preserves legacy event payloads inside v2 envelopes, and exposes adapter/model/engine/definition versions in provenance. The 22 mL endpoint seed is reconciled as a conserved 22 mL flask plus 28 mL burette split. The legacy chemistry provider is scoped to `runtime-adapter.titration.v1`, so definitions without that exact compatibility descriptor cannot resolve it.
+
+This is not yet a production capability-driven student runtime. The production student route/store/scene still default to the legacy path, and the strict migrated definition is not yet checked in as an owned v2 source. V2 Preview/Assign remain disabled. Human Composer, second shared-runtime lab, agent migration, immutable definition persistence, and assignment gates remain missing. Existing optional `workflowVersionId` fields remain provenance seams only. Normalized report submission is also intentionally deferred because no registered v2 report action contract exists; legacy report truth remains characterized directly.
 
 ## Deterministic/AI boundary
 
@@ -140,10 +142,9 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ## Latest local verification
 
 ```text
-npm run typecheck    pass — 2026-07-17 LC2-201
-npm run lint         pass — 2026-07-17 LC2-201
-npm run format:check pass — 2026-07-17 LC2-201
-npm test             pass — 70 files / 401 tests
+npm run typecheck    pass — 2026-07-17 LC2-300
+npm run lint         pass — 2026-07-17 LC2-300
+npm test             pass — 78 files / 433 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
 ```
 
@@ -158,4 +159,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-Phase 2 is complete through `LC2-205`; the next normal implementation ticket is `LC2-300`, the explicit titration compatibility mechanics/model adapter. Strict normalized traces now pin definition hash/revision, validator and registry/model/adapter provenance, runtime version, session seed, typed actions, and bounded responses, then replay against the real generic runtime without authored expected truth. An explicit adapter preserves the old titration replay action format. LC2-204 event envelopes and LC2-203 partial-order outcomes remain the replay evidence path. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md).
+Phase 3 is implemented through `LC2-300`; the next ticket is `LC2-301`, the checked-in serialized v2 titration definition and strict v1/v2 equivalence proof. Production remains on the legacy route. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md).

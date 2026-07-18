@@ -40,7 +40,9 @@ export function validatedMechanicalWorkflow(
 }
 
 export function validatedPartialWorkflow(): ValidatedLabWorkflowSpecV2 {
-  const outcome = validateLabWorkflowSpecV2(createMigratedEndpointV2Draft(), {
+  const draft = createMigratedEndpointV2Draft();
+  delete draft.compatibility;
+  const outcome = validateLabWorkflowSpecV2(draft, {
     checkedAt: GENERIC_TEST_CHECKED_AT
   });
   expect(outcome.schemaValid).toBe(true);
@@ -183,18 +185,19 @@ export function createTestGenericPorts(
       transition: vi.fn(({ previous }) => previous)
     },
     evaluator: {
-      evaluate: vi.fn(({ rules, eventEnvelopes }: GenericWorkflowEvaluationContext) =>
-        rules.map((rule) => ({
-          ruleId: rule.id,
-          status:
-            eventEnvelopes.length > 0 && rule.id === "rule.meniscus_observed"
-              ? ("satisfied" as const)
-              : ("pending" as const),
-          severity: rule.severity,
-          recoverable: rule.recoverable,
-          objectiveIds: [...rule.objectiveIds],
-          evidenceEventIds: []
-        }))
+      evaluate: vi.fn(
+        ({ rules, eventEnvelopes }: GenericWorkflowEvaluationContext) =>
+          rules.map((rule) => ({
+            ruleId: rule.id,
+            status:
+              eventEnvelopes.length > 0 && rule.id === "rule.meniscus_observed"
+                ? ("satisfied" as const)
+                : ("pending" as const),
+            severity: rule.severity,
+            recoverable: rule.recoverable,
+            objectiveIds: [...rule.objectiveIds],
+            evidenceEventIds: []
+          }))
       )
     }
   };

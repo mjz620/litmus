@@ -19,6 +19,8 @@ export interface ChemistryModelMetadataEntry {
   readonly providedCapabilityIds: readonly ChemistryCapabilityId[];
   readonly requiredCapabilityIds: readonly ChemistryCapabilityId[];
   readonly availability: ChemistryModelAvailability;
+  /** Restricts a legacy provider to one exact compatibility runtime seam. */
+  readonly compatibilityRuntimeAdapterId?: string;
 }
 
 export interface ModelTransition<TState> {
@@ -68,7 +70,7 @@ export interface ChemistryModelImplementationRegistration<
 }
 
 export interface ChemistryModelRegistrySnapshot {
-  readonly snapshotId: "chemistry-models.1.0.0";
+  readonly snapshotId: "chemistry-models.1.1.0";
   readonly entries: readonly ChemistryModelMetadataEntry[];
 }
 
@@ -82,6 +84,7 @@ export interface ChemistryModelRegistry {
 export interface ChemistryModelResolutionOptions {
   readonly capabilityRegistry?: CapabilityRegistry;
   readonly modelRegistry?: ChemistryModelRegistry;
+  readonly compatibilityRuntimeAdapterId?: string;
 }
 
 export interface ResolvedChemistryCapabilityProvider {

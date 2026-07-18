@@ -40,11 +40,14 @@ function fail(
   throw new WorkflowEvaluatorError(code, message, details);
 }
 
-function evidence(value: GenericStateValue | boolean | number | string): StructuredEvidenceValue {
+function evidence(
+  value: GenericStateValue | boolean | number | string
+): StructuredEvidenceValue {
   if (value === null) return { valueType: "null", value: null };
   if (typeof value === "boolean") return { valueType: "boolean", value };
   if (typeof value === "number") return { valueType: "number", value };
-  if (Array.isArray(value)) return { valueType: "text_list", value: [...value] };
+  if (Array.isArray(value))
+    return { valueType: "text_list", value: [...value] };
   return { valueType: "text", value: String(value) };
 }
 
@@ -52,19 +55,29 @@ function evidenceValue(value: StructuredEvidenceValue): unknown {
   return value.value;
 }
 
-function sameTargets(left: readonly string[], right: readonly string[]): boolean {
+function sameTargets(
+  left: readonly string[],
+  right: readonly string[]
+): boolean {
   return right.every((id) => left.includes(id));
 }
 
 function actionMatches(
-  condition: Extract<WorkflowCondition, { kind: "action_observed" | "action_count_within_range" }>,
+  condition: Extract<
+    WorkflowCondition,
+    { kind: "action_observed" | "action_count_within_range" }
+  >,
   action: Readonly<NormalizedLabAction>
 ): boolean {
   return (
     action.actionId === condition.actionId &&
     (condition.sourceEquipmentInstanceId === undefined ||
-      action.sourceEquipmentInstanceId === condition.sourceEquipmentInstanceId) &&
-    sameTargets(action.targetEquipmentInstanceIds, condition.targetEquipmentInstanceIds)
+      action.sourceEquipmentInstanceId ===
+        condition.sourceEquipmentInstanceId) &&
+    sameTargets(
+      action.targetEquipmentInstanceIds,
+      condition.targetEquipmentInstanceIds
+    )
   );
 }
 
@@ -72,7 +85,9 @@ function priorFor(
   context: GenericWorkflowEvaluationContext,
   ruleId: string
 ): WorkflowDiagnosis | undefined {
-  return context.previousDiagnoses.find((diagnosis) => diagnosis.ruleId === ruleId);
+  return context.previousDiagnoses.find(
+    (diagnosis) => diagnosis.ruleId === ruleId
+  );
 }
 
 function firstMatchingEvent(
@@ -82,9 +97,7 @@ function firstMatchingEvent(
   const envelope = context.eventEnvelopes.find(({ payload }) =>
     predicate(payload)
   );
-  return envelope
-    ? { event: envelope.payload, id: envelope.eventId }
-    : null;
+  return envelope ? { event: envelope.payload, id: envelope.eventId } : null;
 }
 
 function stateField(
@@ -117,24 +130,34 @@ function previousSatisfied(
 ): ConditionResult | null {
   const prior = priorFor(context, rule.id);
   return prior?.status === "satisfied"
-    ? result("satisfied", prior.evidenceEventIds, prior.expected, prior.observed)
+    ? result(
+        "satisfied",
+        prior.evidenceEventIds,
+        prior.expected,
+        prior.observed
+      )
     : null;
 }
 
 export function createWorkflowEvaluator(
   options: CreateWorkflowEvaluatorOptions
 ): GenericWorkflowEvaluatorPort {
-  const registries = options.registries ?? PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES;
+  const registries =
+    options.registries ?? PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES;
   const rules = deepFreeze(options.rules.map((rule) => structuredClone(rule)));
   const byId = new Map<string, WorkflowRule>();
   for (const rule of rules) {
     if (byId.has(rule.id))
-      fail(ERROR.ruleDuplicate, `Duplicate workflow rule ${rule.id}.`, { ruleId: rule.id });
+      fail(ERROR.ruleDuplicate, `Duplicate workflow rule ${rule.id}.`, {
+        ruleId: rule.id
+      });
     byId.set(rule.id, rule);
     if (
       rule.condition.kind === "registered_completion_policy_satisfied" &&
       rule.condition.completionPolicyId !==
-        "completion.all_required_observations.v1"
+        "completion.all_required_observations.v1" &&
+      rule.condition.completionPolicyId !==
+        "completion.engine_endpoint_observed.v1"
     ) {
       fail(
         ERROR.registryContractMissing,
@@ -145,13 +168,17 @@ export function createWorkflowEvaluator(
   }
 
   const eventSemanticType = new Map(
-    registries.eventTypes.list().map((entry) => [entry.id, entry.semanticEventType])
+    registries.eventTypes
+      .list()
+      .map((entry) => [entry.id, entry.semanticEventType])
   );
   const flagSemanticValue = new Map<string, string>(
     registries.eventFlags.list().map((entry) => [entry.id, entry.semanticFlag])
   );
   const configurationAdapter = new Map(
-    registries.configurations.list().map((entry) => [entry.id, entry.adapterKey])
+    registries.configurations
+      .list()
+      .map((entry) => [entry.id, entry.adapterKey])
   );
 
   function evaluateCondition(
@@ -174,11 +201,18 @@ export function createWorkflowEvaluator(
     const condition = rule.condition;
     switch (condition.kind) {
       case "equipment_state_equals": {
-        const actual = stateField(context, condition.equipmentInstanceId, condition.stateFieldKey);
-        if (actual === undefined) return result("pending", [], condition.expectedValue);
+        const actual = stateField(
+          context,
+          condition.equipmentInstanceId,
+          condition.stateFieldKey
+        );
+        if (actual === undefined)
+          return result("pending", [], condition.expectedValue);
         const observed = evidence(actual);
         return result(
-          evidenceValue(condition.expectedValue) === actual ? "satisfied" : "pending",
+          evidenceValue(condition.expectedValue) === actual
+            ? "satisfied"
+            : "pending",
           [],
           condition.expectedValue,
           observed
@@ -188,21 +222,30 @@ export function createWorkflowEvaluator(
         const binding = context.equipmentBindings.find(
           ({ instanceId }) => instanceId === condition.equipmentInstanceId
         );
-        return result(binding?.capabilityIds.includes(condition.capabilityId) ? "satisfied" : "violated");
+        return result(
+          binding?.capabilityIds.includes(condition.capabilityId)
+            ? "satisfied"
+            : "violated"
+        );
       }
       case "material_bound_to_container": {
         const material = context.materialLedger.materials.find(
-          ({ materialInstanceId }) => materialInstanceId === condition.materialInstanceId
+          ({ materialInstanceId }) =>
+            materialInstanceId === condition.materialInstanceId
         );
         const amount = material?.locations.find(
-          ({ equipmentInstanceId }) => equipmentInstanceId === condition.containerEquipmentInstanceId
+          ({ equipmentInstanceId }) =>
+            equipmentInstanceId === condition.containerEquipmentInstanceId
         )?.amount;
-        return result(amount !== undefined && amount > 0 ? "satisfied" : "pending");
+        return result(
+          amount !== undefined && amount > 0 ? "satisfied" : "pending"
+        );
       }
       case "action_observed": {
         const prior = previousSatisfied(context, rule);
         if (prior) return prior;
-        return context.currentAction && actionMatches(condition, context.currentAction)
+        return context.currentAction &&
+          actionMatches(condition, context.currentAction)
           ? result("satisfied", context.currentEventIds)
           : result("pending");
       }
@@ -216,15 +259,22 @@ export function createWorkflowEvaluator(
             permissionId: binding.permission.id,
             actionId: binding.permission.actionId,
             ...(binding.permission.sourceEquipmentInstanceId
-              ? { sourceEquipmentInstanceId: binding.permission.sourceEquipmentInstanceId }
+              ? {
+                  sourceEquipmentInstanceId:
+                    binding.permission.sourceEquipmentInstanceId
+                }
               : {}),
-            targetEquipmentInstanceIds: binding.permission.targetEquipmentInstanceIds,
+            targetEquipmentInstanceIds:
+              binding.permission.targetEquipmentInstanceIds,
             parameters: []
           } as NormalizedLabAction;
           if (!actionMatches(condition, action)) return sum;
-          return sum + (context.permissionAttempts.find(
-            ({ permissionId }) => permissionId === binding.permission.id
-          )?.count ?? 0);
+          return (
+            sum +
+            (context.permissionAttempts.find(
+              ({ permissionId }) => permissionId === binding.permission.id
+            )?.count ?? 0)
+          );
         }, 0);
         const observed = evidence(count);
         const expected: StructuredEvidenceValue = {
@@ -239,7 +289,8 @@ export function createWorkflowEvaluator(
               : "satisfied",
           [
             ...(prior?.evidenceEventIds ?? []),
-            ...(context.currentAction && actionMatches(condition, context.currentAction)
+            ...(context.currentAction &&
+            actionMatches(condition, context.currentAction)
               ? context.currentEventIds
               : [])
           ],
@@ -252,21 +303,35 @@ export function createWorkflowEvaluator(
         if (prior) return prior;
         const semanticType = eventSemanticType.get(condition.eventTypeId);
         if (!semanticType)
-          fail(ERROR.registryContractMissing, `Unknown event contract ${condition.eventTypeId}.`);
-        const match = firstMatchingEvent(context, (event) => event.type === semanticType);
+          fail(
+            ERROR.registryContractMissing,
+            `Unknown event contract ${condition.eventTypeId}.`
+          );
+        const match = firstMatchingEvent(
+          context,
+          (event) => event.type === semanticType
+        );
         return match ? result("satisfied", [match.id]) : result("pending");
       }
       case "observation_recorded": {
         const prior = previousSatisfied(context, rule);
         if (prior) return prior;
-        const observationKey = configurationAdapter.get(condition.observationKeyId);
+        const observationKey = configurationAdapter.get(
+          condition.observationKeyId
+        );
         const semanticType = condition.eventTypeId
           ? eventSemanticType.get(condition.eventTypeId)
           : undefined;
         if (condition.eventTypeId && !semanticType)
-          fail(ERROR.registryContractMissing, `Unknown event contract ${condition.eventTypeId}.`);
+          fail(
+            ERROR.registryContractMissing,
+            `Unknown event contract ${condition.eventTypeId}.`
+          );
         if (!observationKey)
-          fail(ERROR.registryContractMissing, `Unknown observation ${condition.observationKeyId}.`);
+          fail(
+            ERROR.registryContractMissing,
+            `Unknown observation ${condition.observationKeyId}.`
+          );
         const match = firstMatchingEvent(
           context,
           (event) =>
@@ -276,19 +341,40 @@ export function createWorkflowEvaluator(
         if (!match) return result("pending");
         const actual = match.event.observation[observationKey]!;
         const expectedObservable = condition.expectedValueSourceId
-          ? context.observables.find(({ observableId }) => observableId === condition.expectedValueSourceId)
+          ? context.observables.find(
+              ({ observableId }) =>
+                observableId === condition.expectedValueSourceId
+            )
           : undefined;
-        const expected = expectedObservable ? evidence(expectedObservable.value) : undefined;
+        const expected = expectedObservable
+          ? evidence(expectedObservable.value)
+          : undefined;
         const observed = evidence(actual);
-        return result(
-          "satisfied",
-          [match.id],
-          expected,
-          observed
-        );
+        return result("satisfied", [match.id], expected, observed);
       }
       case "registered_completion_policy_satisfied": {
         const dependencies = condition.evidenceRuleIds.map(evaluateRule);
+        if (
+          condition.completionPolicyId ===
+          "completion.engine_endpoint_observed.v1"
+        ) {
+          const endpoint = context.observables.find(
+            ({ observableId }) =>
+              observableId === "observable.endpoint_observed.v1"
+          );
+          if (!endpoint || endpoint.value !== true) {
+            return result(
+              dependencies.some(({ status }) => status === "violated")
+                ? "violated"
+                : "pending",
+              dependencies.flatMap(({ evidenceEventIds }) => evidenceEventIds),
+              { valueType: "boolean", value: true },
+              endpoint
+                ? { valueType: "boolean", value: endpoint.value === true }
+                : undefined
+            );
+          }
+        }
         return result(
           dependencies.some(({ status }) => status === "violated")
             ? "violated"
@@ -299,8 +385,11 @@ export function createWorkflowEvaluator(
         );
       }
       case "observable_within_tolerance": {
-        const observable = context.observables.find(({ observableId }) => observableId === condition.observableId);
-        if (!observable || typeof observable.value !== "number") return result("pending");
+        const observable = context.observables.find(
+          ({ observableId }) => observableId === condition.observableId
+        );
+        if (!observable || typeof observable.value !== "number")
+          return result("pending");
         if (observable.unitId !== condition.unitId)
           fail(
             ERROR.contextMismatch,
@@ -317,7 +406,11 @@ export function createWorkflowEvaluator(
           minimumOk && maximumOk ? "satisfied" : "violated",
           [],
           undefined,
-          { valueType: "number", value: observable.value, unitId: condition.unitId }
+          {
+            valueType: "number",
+            value: observable.value,
+            unitId: condition.unitId
+          }
         );
       }
       case "event_flag": {
@@ -326,8 +419,15 @@ export function createWorkflowEvaluator(
           ? eventSemanticType.get(condition.eventTypeId)
           : undefined;
         if (condition.eventTypeId && !semanticType)
-          fail(ERROR.registryContractMissing, `Unknown event contract ${condition.eventTypeId}.`);
-        if (!semanticFlag) fail(ERROR.registryContractMissing, `Unknown event flag ${condition.flagId}.`);
+          fail(
+            ERROR.registryContractMissing,
+            `Unknown event contract ${condition.eventTypeId}.`
+          );
+        if (!semanticFlag)
+          fail(
+            ERROR.registryContractMissing,
+            `Unknown event flag ${condition.flagId}.`
+          );
         const relevant = firstMatchingEvent(
           context,
           (event) => !semanticType || event.type === semanticType
@@ -349,10 +449,12 @@ export function createWorkflowEvaluator(
           return flagged ? result("violated", [flagged.id]) : result("pending");
         }
         const prior = previousSatisfied(context, rule);
-        return prior ??
+        return (
+          prior ??
           (flagged
             ? result("satisfied", [flagged.id])
-            : result("pending", relevant ? [relevant.id] : []));
+            : result("pending", relevant ? [relevant.id] : []))
+        );
       }
       case "rule_satisfied_before": {
         const priorOrdering = priorFor(context, rule.id);
@@ -370,10 +472,7 @@ export function createWorkflowEvaluator(
         const predecessor = evaluateRule(condition.predecessorRuleId);
         const successor = evaluateRule(condition.successorRuleId);
         if (successor.status !== "satisfied") return result("pending");
-        const priorPredecessor = priorFor(
-          context,
-          condition.predecessorRuleId
-        );
+        const priorPredecessor = priorFor(context, condition.predecessorRuleId);
         return result(
           priorPredecessor?.status === "satisfied" ? "satisfied" : "violated",
           [...predecessor.evidenceEventIds, ...successor.evidenceEventIds]
@@ -382,12 +481,23 @@ export function createWorkflowEvaluator(
       case "forbidden_state_never_reached": {
         const prior = priorFor(context, rule.id);
         if (prior?.status === "violated")
-          return result("violated", prior.evidenceEventIds, prior.expected, prior.observed);
-        const actual = stateField(context, condition.equipmentInstanceId, condition.stateFieldKey);
+          return result(
+            "violated",
+            prior.evidenceEventIds,
+            prior.expected,
+            prior.observed
+          );
+        const actual = stateField(
+          context,
+          condition.equipmentInstanceId,
+          condition.stateFieldKey
+        );
         if (actual === undefined) return result("satisfied");
         const observed = evidence(actual);
         return result(
-          evidenceValue(condition.forbiddenValue) === actual ? "violated" : "satisfied",
+          evidenceValue(condition.forbiddenValue) === actual
+            ? "violated"
+            : "satisfied",
           evidenceValue(condition.forbiddenValue) === actual
             ? context.currentEventIds
             : [],
@@ -397,7 +507,8 @@ export function createWorkflowEvaluator(
       }
       case "student_response_submitted": {
         const response = context.studentResponses.find(
-          ({ submissionFieldId }) => submissionFieldId === condition.submissionFieldId
+          ({ submissionFieldId }) =>
+            submissionFieldId === condition.submissionFieldId
         );
         return response
           ? result("satisfied", [], undefined, evidence(response.value))
@@ -411,17 +522,28 @@ export function createWorkflowEvaluator(
   }
 
   return Object.freeze({
-    evaluate(context: Readonly<GenericWorkflowEvaluationContext>): readonly WorkflowDiagnosis[] {
+    evaluate(
+      context: Readonly<GenericWorkflowEvaluationContext>
+    ): readonly WorkflowDiagnosis[] {
       if (JSON.stringify(context.rules) !== JSON.stringify(rules))
-        fail(ERROR.contextMismatch, "Evaluator rules do not match compiled rules.");
+        fail(
+          ERROR.contextMismatch,
+          "Evaluator rules do not match compiled rules."
+        );
       const memo = new Map<string, WorkflowDiagnosis>();
       const visiting = new Set<string>();
       const evaluateRule = (ruleId: string): WorkflowDiagnosis => {
         const existing = memo.get(ruleId);
         if (existing) return existing;
         const rule = byId.get(ruleId);
-        if (!rule) fail(ERROR.ruleUnknown, `Unknown workflow rule ${ruleId}.`, { ruleId });
-        if (visiting.has(ruleId)) fail(ERROR.contextMismatch, `Workflow rule cycle at ${ruleId}.`, { ruleId });
+        if (!rule)
+          fail(ERROR.ruleUnknown, `Unknown workflow rule ${ruleId}.`, {
+            ruleId
+          });
+        if (visiting.has(ruleId))
+          fail(ERROR.contextMismatch, `Workflow rule cycle at ${ruleId}.`, {
+            ruleId
+          });
         visiting.add(ruleId);
         const condition = evaluateCondition(rule, context, evaluateRule);
         visiting.delete(ruleId);

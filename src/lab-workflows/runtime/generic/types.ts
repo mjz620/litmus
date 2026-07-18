@@ -75,6 +75,15 @@ export interface GenericRuntimeProvenance {
   }[];
   readonly resolvedAdapters: ValidationResultV2["resolvedAdapters"];
   readonly resolvedChemistryModels: ValidationResultV2["resolvedChemistryModels"];
+  readonly compatibility: {
+    readonly kind: "legacy_v1";
+    readonly runtimeAdapterId: string;
+    readonly runtimeAdapterVersion: string;
+    readonly engineId: string;
+    readonly engineVersion: string;
+    readonly experimentDefinitionId: string;
+    readonly experimentDefinitionVersion: string;
+  } | null;
 }
 
 export interface GenericPermissionAttempt {
@@ -88,6 +97,15 @@ export interface GenericLabConfig {
   readonly workflowId: string;
   readonly workflowRevision: number;
   readonly workflowHash: string;
+  /** Required only by compatibility adapters whose registered preset is seeded. */
+  readonly sessionSeed?: string;
+}
+
+export interface GenericLegacyCompatibilityState {
+  readonly runtimeAdapterId: string;
+  readonly runtimeAdapterVersion: string;
+  readonly stateSchemaId: string;
+  readonly serializedState: string;
 }
 
 export interface GenericLabState {
@@ -103,6 +121,7 @@ export interface GenericLabState {
   readonly permissionAttempts: readonly GenericPermissionAttempt[];
   readonly eventSequence: number;
   readonly eventEnvelopes: readonly SemanticEventEnvelopeV2[];
+  readonly compatibilityState: GenericLegacyCompatibilityState | null;
 }
 
 export type NormalizedActionParameter =
@@ -288,6 +307,55 @@ export interface GenericModelCoordinatorPort {
   ): GenericChemistryProjection;
 }
 
+export interface GenericLegacyInitializationContext {
+  readonly config: Readonly<GenericLabConfig>;
+  readonly program: Readonly<CompiledGenericLabProgram>;
+  readonly authoredMaterialLedger: Readonly<MaterialLedger>;
+}
+
+export interface GenericLegacyTransitionContext {
+  readonly program: Readonly<CompiledGenericLabProgram>;
+  readonly mechanical: Readonly<GenericMechanicalContext>;
+  readonly compatibilityState: Readonly<GenericLegacyCompatibilityState>;
+  readonly chemistry: Readonly<GenericChemistryProjection>;
+  readonly materialLedger: Readonly<MaterialLedger>;
+}
+
+export interface GenericLegacyRuntimeProjection {
+  readonly compatibilityState: GenericLegacyCompatibilityState;
+  readonly equipment: readonly GenericEquipmentState[];
+  readonly materialLedger: MaterialLedger;
+  readonly chemistry: GenericChemistryProjection;
+  readonly events: readonly SemanticEvent[];
+  readonly materialInstanceIds: readonly string[];
+}
+
+/**
+ * Explicit strangler seam for an atomic legacy ExperimentDefinition. Selection
+ * is by the validated runtime-adapter ID, never catalog or family metadata.
+ */
+export interface GenericLegacyRuntimeAdapterPort {
+  readonly runtimeAdapterId: string;
+  readonly runtimeAdapterVersion: string;
+  readonly engineId: string;
+  readonly engineVersion: string;
+  readonly experimentDefinitionId: string;
+  readonly experimentDefinitionVersion: string;
+  readonly supportedModels: readonly {
+    readonly modelId: string;
+    readonly modelVersion: string;
+  }[];
+  initialize(
+    context: Readonly<GenericLegacyInitializationContext>
+  ): GenericLegacyRuntimeProjection;
+  checkPreconditions(
+    context: Readonly<GenericLegacyTransitionContext>
+  ): GenericPortCheck;
+  apply(
+    context: Readonly<GenericLegacyTransitionContext>
+  ): GenericLegacyRuntimeProjection;
+}
+
 export interface GenericWorkflowEvaluationContext {
   readonly rules: readonly WorkflowRule[];
   readonly equipmentBindings: readonly CompiledEquipmentBinding[];
@@ -320,6 +388,7 @@ export interface GenericRuntimePorts {
   readonly safetyPolicy: GenericSafetyPolicyPort;
   readonly models: GenericModelCoordinatorPort;
   readonly evaluator: GenericWorkflowEvaluatorPort;
+  readonly legacyRuntimeAdapters?: readonly GenericLegacyRuntimeAdapterPort[];
 }
 
 export interface GenericLabDefinitionMetadata {

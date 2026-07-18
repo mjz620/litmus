@@ -25,7 +25,8 @@ function equipment(
 function chemistry(
   id: ChemistryCapabilityId,
   displayName: string,
-  description: string
+  description: string,
+  availability: CapabilityAvailability = "declared"
 ): ChemistryCapabilityDefinition {
   return {
     kind: "chemistry",
@@ -33,7 +34,7 @@ function chemistry(
     version: "1.0.0",
     displayName,
     description,
-    availability: "declared",
+    availability,
     providerCardinality: "exclusive"
   };
 }
@@ -102,17 +103,20 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
   chemistry(
     "chemistry.material_ledger.v1",
     "Material ledger",
-    "Tracks registered material quantities through deterministic transitions."
+    "Tracks registered material quantities through deterministic transitions.",
+    "verified"
   ),
   chemistry(
     "chemistry.volume_conservation.v1",
     "Volume conservation",
-    "Applies verified volume-conservation behavior."
+    "Applies verified volume-conservation behavior.",
+    "verified"
   ),
   chemistry(
     "chemistry.solution_mixing.v1",
     "Solution mixing",
-    "Derives deterministic mixed-solution state from registered materials."
+    "Derives deterministic mixed-solution state from registered materials.",
+    "verified"
   ),
   chemistry(
     "chemistry.concentration_dilution.v1",
@@ -122,16 +126,19 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
   chemistry(
     "chemistry.acid_base_equilibrium.v1",
     "Acid-base equilibrium",
-    "Provides verified acid-base equilibrium observables."
+    "Provides verified acid-base equilibrium observables.",
+    "verified"
   ),
   chemistry(
     "chemistry.indicator_response.v1",
     "Indicator response",
-    "Derives registered indicator observables from deterministic solution state."
+    "Derives registered indicator observables from deterministic solution state.",
+    "verified"
   ),
   chemistry(
     "chemistry.instrument_observables.v1",
     "Instrument observables",
-    "Projects deterministic model state into registered instrument readings."
+    "Projects deterministic model state into registered instrument readings.",
+    "verified"
   )
 ] as const satisfies readonly CapabilityDefinition[];

@@ -219,6 +219,12 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     { adapterKey: "currentReadingML" }
   ),
   entry(
+    "observable.endpoint_observed.v1",
+    "observable",
+    "Engine-owned indication that the configured indicator endpoint has been observed.",
+    { adapterKey: "endpointObserved" }
+  ),
+  entry(
     "observation.reported_volume_ml.v1",
     "observation_key",
     "Student-reported burette volume observation.",

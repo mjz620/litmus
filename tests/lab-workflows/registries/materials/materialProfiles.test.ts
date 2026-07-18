@@ -283,7 +283,7 @@ describe("LC2-102 material profiles", () => {
       expect(material.safetyPolicyIds).toEqual(material.safetyConstraintIds);
       for (const capabilityId of material.providedChemistryCapabilityIds) {
         expect(capabilityRegistry.getChemistry(capabilityId).availability).toBe(
-          "declared"
+          "verified"
         );
       }
       for (const capabilityId of material.compatibleContainerCapabilityIds) {

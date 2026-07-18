@@ -22,6 +22,7 @@ const sessionIdSchema = z
   .min(1)
   .max(120)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
+const deterministicSeedSchema = z.string().trim().min(1).max(256);
 const finiteNumberSchema = z.number().finite();
 const stateValueSchema = z.union([
   z.null(),
@@ -41,7 +42,8 @@ export const genericLabConfigSchema = z.strictObject({
   sessionId: sessionIdSchema,
   workflowId: idSchema,
   workflowRevision: z.number().int().min(1),
-  workflowHash: idSchema
+  workflowHash: idSchema,
+  sessionSeed: deterministicSeedSchema.optional()
 });
 
 export const normalizedLabActionSchema = z.strictObject({
@@ -119,7 +121,25 @@ const runtimeProvenanceSchema = z.strictObject({
     .array(z.strictObject({ registryId: idSchema, snapshotId: idSchema }))
     .max(64),
   resolvedAdapters: z.array(resolvedAdapterV2Schema).max(256),
-  resolvedChemistryModels: z.array(resolvedChemistryModelV2Schema).max(64)
+  resolvedChemistryModels: z.array(resolvedChemistryModelV2Schema).max(64),
+  compatibility: z
+    .strictObject({
+      kind: z.literal("legacy_v1"),
+      runtimeAdapterId: idSchema,
+      runtimeAdapterVersion: idSchema,
+      engineId: idSchema,
+      engineVersion: idSchema,
+      experimentDefinitionId: idSchema,
+      experimentDefinitionVersion: idSchema
+    })
+    .nullable()
+});
+
+export const genericLegacyCompatibilityStateSchema = z.strictObject({
+  runtimeAdapterId: idSchema,
+  runtimeAdapterVersion: idSchema,
+  stateSchemaId: idSchema,
+  serializedState: z.string().min(2).max(2_000_000)
 });
 
 export const genericLabStateSchema = z.strictObject({
@@ -141,5 +161,6 @@ export const genericLabStateSchema = z.strictObject({
     )
     .max(256),
   eventSequence: z.number().int().nonnegative().max(LIMIT),
-  eventEnvelopes: z.array(semanticEventEnvelopeV2Schema).max(LIMIT)
+  eventEnvelopes: z.array(semanticEventEnvelopeV2Schema).max(LIMIT),
+  compatibilityState: genericLegacyCompatibilityStateSchema.nullable()
 });

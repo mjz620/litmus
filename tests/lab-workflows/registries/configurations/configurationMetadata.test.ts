@@ -19,11 +19,12 @@ import {
 
 describe("LC2-102 configuration metadata", () => {
   it("bumps the semantic snapshot and retains its legacy provenance ID", () => {
-    expect(configurationRegistry.snapshotId).toBe("configurations.2.2.0");
+    expect(configurationRegistry.snapshotId).toBe("configurations.2.3.0");
     expect(LEGACY_CONFIGURATION_REGISTRY_SNAPSHOT_IDS).toEqual([
       "configurations.1.0.0",
       "configurations.2.0.0",
-      "configurations.2.1.0"
+      "configurations.2.1.0",
+      "configurations.2.2.0"
     ]);
   });
 

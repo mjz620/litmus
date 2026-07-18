@@ -1,4 +1,5 @@
 import type { ValidatedLabWorkflowSpecV2 } from "../schema/v2";
+import { engineRegistry } from "../registries/engines";
 import {
   GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
   assembleGenericLabRuntime,
@@ -26,24 +27,37 @@ function compare(left: string, right: string): number {
 export function traceProvenanceForWorkflow(
   workflow: Readonly<ValidatedLabWorkflowSpecV2>
 ): GenericRuntimeProvenance {
+  const engine = workflow.compatibility
+    ? engineRegistry.get(workflow.compatibility.engineId)
+    : null;
   return {
     workflowId: workflow.id,
     workflowRevision: workflow.revision,
     workflowHash: workflow.validation.canonicalSpecHash,
     validatorVersion: workflow.validation.validatorVersion,
-    registrySnapshots: Object.entries(
-      workflow.validation.registrySnapshotIds
-    )
+    registrySnapshots: Object.entries(workflow.validation.registrySnapshotIds)
       .sort(([left], [right]) => compare(left, right))
       .map(([registryId, snapshotId]) => ({ registryId, snapshotId })),
     resolvedAdapters: workflow.validation.resolvedAdapters.map((entry) => ({
       ...entry
     })),
-    resolvedChemistryModels:
-      workflow.validation.resolvedChemistryModels.map((entry) => ({
+    resolvedChemistryModels: workflow.validation.resolvedChemistryModels.map(
+      (entry) => ({
         ...entry,
         providedCapabilityIds: [...entry.providedCapabilityIds]
-      }))
+      })
+    ),
+    compatibility: workflow.compatibility
+      ? {
+          kind: workflow.compatibility.kind,
+          runtimeAdapterId: workflow.compatibility.runtimeAdapterId,
+          runtimeAdapterVersion: workflow.compatibility.runtimeAdapterVersion,
+          engineId: workflow.compatibility.engineId,
+          engineVersion: engine!.version,
+          experimentDefinitionId: engine!.experimentDefinitionId,
+          experimentDefinitionVersion: engine!.experimentDefinitionVersion
+        }
+      : null
   };
 }
 
@@ -105,7 +119,8 @@ export function replayGenericLabActionTrace(
       sessionId: trace.sessionId,
       workflowId: trace.provenance.workflowId,
       workflowRevision: trace.provenance.workflowRevision,
-      workflowHash: trace.provenance.workflowHash
+      workflowHash: trace.provenance.workflowHash,
+      sessionSeed: trace.sessionSeed
     },
     options.ports,
     options.registries ? { registries: options.registries } : {}
@@ -120,9 +135,13 @@ export function replayGenericLabActionTrace(
     }
   } catch (error) {
     if (error instanceof LabTraceError) throw error;
-    throw new LabTraceError(ERROR.replayRejected, "Trace action replay was rejected.", {
-      cause: error instanceof Error ? error.name : "unknown"
-    });
+    throw new LabTraceError(
+      ERROR.replayRejected,
+      "Trace action replay was rejected.",
+      {
+        cause: error instanceof Error ? error.name : "unknown"
+      }
+    );
   }
   return deepFreeze({
     trace,
@@ -150,7 +169,8 @@ export function runGenericTraceSuite(
       testCase.kind === "terminal_mistake"
         ? replay.finalState.workflowStatus === "failed"
         : testCase.kind === "recoverable_mistake"
-          ? recoverableViolation && replay.finalState.workflowStatus === "completed"
+          ? recoverableViolation &&
+            replay.finalState.workflowStatus === "completed"
           : replay.finalState.workflowStatus === "completed";
     if (!valid) {
       throw new LabTraceError(

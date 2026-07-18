@@ -109,9 +109,16 @@ export function resolveChemistryModelProviders(
     }
   }
 
-  const modelEntries = [...models.list()].sort((left, right) =>
-    compareIds(left.id, right.id)
-  );
+  const modelEntries = models
+    .list()
+    .filter((model) =>
+      options.compatibilityRuntimeAdapterId
+        ? model.compatibilityRuntimeAdapterId === undefined ||
+          model.compatibilityRuntimeAdapterId ===
+            options.compatibilityRuntimeAdapterId
+        : model.compatibilityRuntimeAdapterId === undefined
+    )
+    .sort((left, right) => compareIds(left.id, right.id));
   for (const model of modelEntries) {
     for (const capabilityId of sortedUnique([
       ...model.providedCapabilityIds,
@@ -170,9 +177,17 @@ export function resolveChemistryModelProviders(
     if (bindings.has(request.capabilityId)) continue;
 
     const capability = capabilities.getChemistry(request.capabilityId);
-    const candidates = [
+    let candidates = [
       ...(providersByCapability.get(request.capabilityId) ?? [])
     ].sort((left, right) => compareIds(left.id, right.id));
+    if (options.compatibilityRuntimeAdapterId) {
+      const scoped = candidates.filter(
+        ({ compatibilityRuntimeAdapterId }) =>
+          compatibilityRuntimeAdapterId ===
+          options.compatibilityRuntimeAdapterId
+      );
+      if (scoped.length > 0) candidates = scoped;
+    }
     if (candidates.length === 0) {
       throw new ChemistryModelResolutionError(
         roots.has(request.capabilityId)

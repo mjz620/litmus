@@ -88,6 +88,55 @@ function buildAdapterMap(
   return byId;
 }
 
+function assertLegacyCompatibilityPort(
+  workflow: ValidatedLabWorkflowSpecV2,
+  ports: GenericRuntimePorts,
+  registries: LabWorkflowV2RegistryContext
+): void {
+  const compatibility = workflow.compatibility;
+  if (!compatibility) return;
+  const matches = (ports.legacyRuntimeAdapters ?? []).filter(
+    ({ runtimeAdapterId }) =>
+      runtimeAdapterId === compatibility.runtimeAdapterId
+  );
+  if (matches.length !== 1) {
+    runtimeError(
+      ERROR.portUnavailable,
+      `Expected one executable legacy port for ${compatibility.runtimeAdapterId}.`,
+      { adapterId: compatibility.runtimeAdapterId }
+    );
+  }
+  const port = matches[0]!;
+  const engine = registries.engines.get(compatibility.engineId);
+  if (
+    port.runtimeAdapterVersion !== compatibility.runtimeAdapterVersion ||
+    port.engineId !== compatibility.engineId ||
+    port.engineVersion !== engine.version ||
+    port.experimentDefinitionId !== engine.experimentDefinitionId ||
+    port.experimentDefinitionVersion !== engine.experimentDefinitionVersion
+  ) {
+    runtimeError(
+      ERROR.portContractMismatch,
+      `Legacy port ${compatibility.runtimeAdapterId} does not match validated provenance.`,
+      { adapterId: compatibility.runtimeAdapterId }
+    );
+  }
+  const unsupportedModels = workflow.validation.resolvedChemistryModels.filter(
+    ({ modelId, version }) =>
+      !port.supportedModels.some(
+        (supported) =>
+          supported.modelId === modelId && supported.modelVersion === version
+      )
+  );
+  if (unsupportedModels.length > 0) {
+    runtimeError(
+      ERROR.portUnavailable,
+      `Legacy port ${compatibility.runtimeAdapterId} does not project ${unsupportedModels[0]!.modelId}.`,
+      { modelIds: unsupportedModels.map(({ modelId }) => modelId) }
+    );
+  }
+}
+
 function requireAdapter(
   adapterById: ReadonlyMap<string, GenericMechanicalAdapterPort>,
   adapterId: string,
@@ -249,8 +298,12 @@ function compileActions(
 }
 
 function compileProvenance(
-  workflow: ValidatedLabWorkflowSpecV2
+  workflow: ValidatedLabWorkflowSpecV2,
+  registries: LabWorkflowV2RegistryContext
 ): GenericRuntimeProvenance {
+  const legacyEngine = workflow.compatibility
+    ? registries.engines.get(workflow.compatibility.engineId)
+    : null;
   return {
     workflowId: workflow.id,
     workflowRevision: workflow.revision,
@@ -267,7 +320,18 @@ function compileProvenance(
         ...entry,
         providedCapabilityIds: [...entry.providedCapabilityIds]
       })
-    )
+    ),
+    compatibility: workflow.compatibility
+      ? {
+          kind: workflow.compatibility.kind,
+          runtimeAdapterId: workflow.compatibility.runtimeAdapterId,
+          runtimeAdapterVersion: workflow.compatibility.runtimeAdapterVersion,
+          engineId: workflow.compatibility.engineId,
+          engineVersion: legacyEngine!.version,
+          experimentDefinitionId: legacyEngine!.experimentDefinitionId,
+          experimentDefinitionVersion: legacyEngine!.experimentDefinitionVersion
+        }
+      : null
   };
 }
 
@@ -319,22 +383,25 @@ export function compileGenericLabProgram(
   const registries =
     options.registries ?? PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES;
   const workflow = assertContractRuntimeAdmission(input, registries);
+  assertLegacyCompatibilityPort(workflow, ports, registries);
   const adapterById = buildAdapterMap(ports);
   const equipment = compileEquipment(workflow, registries, adapterById);
   const actions = compileActions(workflow, registries, adapterById);
 
   const chemistryModels = compileChemistryModels(workflow, registries);
 
-  const unsupportedModels = ports.models.assertCompatible
+  const unsupportedModels = workflow.compatibility
     ? []
-    : workflow.validation.resolvedChemistryModels.filter(
-        ({ modelId, version }) =>
-          !ports.models.supportedModels.some(
-            (supported) =>
-              supported.modelId === modelId &&
-              supported.modelVersion === version
-          )
-      );
+    : ports.models.assertCompatible
+      ? []
+      : workflow.validation.resolvedChemistryModels.filter(
+          ({ modelId, version }) =>
+            !ports.models.supportedModels.some(
+              (supported) =>
+                supported.modelId === modelId &&
+                supported.modelVersion === version
+            )
+        );
   if (unsupportedModels.length > 0) {
     runtimeError(
       ERROR.portUnavailable,
@@ -355,7 +422,7 @@ export function compileGenericLabProgram(
 
   const program: CompiledGenericLabProgram = {
     schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
-    provenance: compileProvenance(workflow),
+    provenance: compileProvenance(workflow, registries),
     definitionMetadata: {
       id: workflow.id,
       title: workflow.metadata.title,
@@ -396,7 +463,8 @@ export function compileGenericLabProgram(
     registeredUnitIds: registries.configurations
       .list()
       .filter(
-        (entry) => entry.category === "unit" && entry.availability === "verified"
+        (entry) =>
+          entry.category === "unit" && entry.availability === "verified"
       )
       .map(({ id }) => id)
       .sort(compareStrings),
@@ -406,7 +474,8 @@ export function compileGenericLabProgram(
     })),
     safetyPolicyIds: [...workflow.safetyPolicyIds]
   };
-  ports.models.assertCompatible?.(deepFreeze(program));
+  if (!workflow.compatibility)
+    ports.models.assertCompatible?.(deepFreeze(program));
 
   return Object.freeze({ program: deepFreeze(program), ports });
 }

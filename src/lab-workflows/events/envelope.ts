@@ -15,6 +15,7 @@ export interface EnvelopeSemanticEventsInput {
   readonly actionSequence: number;
   readonly action: Readonly<NormalizedLabAction>;
   readonly materialAction: Readonly<ExecutedMaterialAction> | null;
+  readonly materialInstanceIds?: readonly string[];
   readonly events: readonly Readonly<SemanticEvent>[];
 }
 
@@ -39,11 +40,16 @@ export function envelopeSemanticEvents(
         actionSequence: input.actionSequence,
         normalizedAction: input.action,
         ...(input.action.sourceEquipmentInstanceId
-          ? { sourceEquipmentInstanceId: input.action.sourceEquipmentInstanceId }
+          ? {
+              sourceEquipmentInstanceId: input.action.sourceEquipmentInstanceId
+            }
           : {}),
         targetEquipmentInstanceIds: input.action.targetEquipmentInstanceIds,
         materialInstanceIds: unique(
-          [...(input.materialAction?.materialInstanceIds ?? [])].sort()
+          [
+            ...(input.materialAction?.materialInstanceIds ?? []),
+            ...(input.materialInstanceIds ?? [])
+          ].sort()
         ),
         ruleEvidenceIds: [],
         payload

@@ -35,7 +35,7 @@ describe("capability registry", () => {
       "chemistry.indicator_response.v1",
       "chemistry.instrument_observables.v1"
     ]);
-    expect(capabilityRegistry.snapshotId).toBe("capabilities.1.0.0");
+    expect(capabilityRegistry.snapshotId).toBe("capabilities.1.1.0");
     expect(capabilityRegistrySnapshot.entries).toBe(capabilityRegistry.list());
     expectTypeOf<EquipmentCapabilityId>().not.toEqualTypeOf<ChemistryCapabilityId>();
   });
@@ -87,8 +87,11 @@ describe("capability registry", () => {
       capabilityRegistry.get("capability.transfer_liquid.v1").availability
     ).toBe("declared");
     expect(
-      capabilityRegistry.get("chemistry.acid_base_equilibrium.v1").availability
+      capabilityRegistry.get("chemistry.concentration_dilution.v1").availability
     ).toBe("declared");
+    expect(
+      capabilityRegistry.get("chemistry.acid_base_equilibrium.v1").availability
+    ).toBe("verified");
   });
 
   it("returns immutable entries and category collections", () => {

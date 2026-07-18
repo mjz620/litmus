@@ -22,16 +22,22 @@ const VERIFIED_MODEL = {
 } as const satisfies ChemistryModelMetadataEntry;
 
 describe("chemistry model metadata registry", () => {
-  it("keeps production provider metadata empty until an implementation ticket", () => {
-    expect(CHEMISTRY_MODEL_REGISTRY_ENTRIES).toEqual([]);
-    expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.1.0.0");
-    expect(chemistryModelRegistry.list()).toEqual([]);
+  it("publishes the exact compatibility-scoped legacy titration provider", () => {
+    expect(CHEMISTRY_MODEL_REGISTRY_ENTRIES).toEqual([
+      expect.objectContaining({
+        id: "chemistry-model.legacy_titration.v1",
+        availability: "verified",
+        compatibilityRuntimeAdapterId: "runtime-adapter.titration.v1"
+      })
+    ]);
+    expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.1.1.0");
+    expect(chemistryModelRegistry.list()).toHaveLength(1);
     expect(chemistryModelRegistrySnapshot.entries).toBe(
       chemistryModelRegistry.list()
     );
     expect(
       chemistryModelRegistry.has("chemistry-model.legacy_titration.v1")
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("resolves exact synthetic IDs and fails closed for unknown IDs", () => {

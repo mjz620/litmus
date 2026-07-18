@@ -16,6 +16,7 @@ import {
   quantityToIntegerUnits,
   validateMaterialLedger
 } from "../../chemistry-models/material-ledger";
+import type { MaterialLedger } from "../../chemistry-models/material-ledger";
 import {
   GENERIC_LAB_RUNTIME_ERROR_CODES as ERROR,
   GenericLabRuntimeError
@@ -24,6 +25,7 @@ import {
   genericChemistryProjectionSchema,
   genericEquipmentStateSchema,
   genericLabConfigSchema,
+  genericLegacyCompatibilityStateSchema,
   genericLabStateSchema,
   genericMaterialActionSchema,
   normalizedLabActionSchema,
@@ -35,8 +37,11 @@ import {
   type CompiledActionBinding,
   type CompiledEquipmentBinding,
   type GenericEquipmentState,
+  type GenericChemistryProjection,
   type GenericLabConfig,
   type GenericLabState,
+  type GenericLegacyRuntimeAdapterPort,
+  type GenericLegacyRuntimeProjection,
   type GenericMechanicalAdapterPort,
   type GenericMechanicalTransition,
   type GenericPortCheck,
@@ -175,6 +180,83 @@ function adapterFor(
   return adapter;
 }
 
+function legacyAdapterFor(
+  compiled: CompiledGenericRuntime
+): GenericLegacyRuntimeAdapterPort | null {
+  const compatibility = compiled.program.provenance.compatibility;
+  if (!compatibility) return null;
+  const matches = (compiled.ports.legacyRuntimeAdapters ?? []).filter(
+    ({ runtimeAdapterId }) =>
+      runtimeAdapterId === compatibility.runtimeAdapterId
+  );
+  if (matches.length !== 1) {
+    fail(
+      ERROR.portUnavailable,
+      `Legacy runtime adapter ${compatibility.runtimeAdapterId} is unavailable.`,
+      { adapterId: compatibility.runtimeAdapterId }
+    );
+  }
+  return matches[0]!;
+}
+
+function parseLegacyProjection(
+  candidate: GenericLegacyRuntimeProjection,
+  compiled: CompiledGenericRuntime,
+  allowEvents: boolean
+): GenericLegacyRuntimeProjection {
+  const compatibilityState = genericLegacyCompatibilityStateSchema.safeParse(
+    candidate.compatibilityState
+  );
+  const compatibility = compiled.program.provenance.compatibility;
+  if (
+    !compatibilityState.success ||
+    !compatibility ||
+    compatibilityState.data.runtimeAdapterId !==
+      compatibility.runtimeAdapterId ||
+    compatibilityState.data.runtimeAdapterVersion !==
+      compatibility.runtimeAdapterVersion
+  ) {
+    fail(
+      ERROR.portContractMismatch,
+      "Legacy port returned incompatible serialized state."
+    );
+  }
+  const equipment = validateEquipment(candidate.equipment, compiled.program);
+  let materialLedger;
+  try {
+    materialLedger = validateMaterialLedger(candidate.materialLedger);
+  } catch {
+    fail(
+      ERROR.portContractMismatch,
+      "Legacy port returned an invalid material projection."
+    );
+  }
+  const chemistry = genericChemistryProjectionSchema.safeParse(
+    candidate.chemistry
+  );
+  const events = semanticEventSchema.array().safeParse(candidate.events);
+  if (
+    !chemistry.success ||
+    !events.success ||
+    (!allowEvents && events.data.length > 0) ||
+    new Set(candidate.materialInstanceIds).size !==
+      candidate.materialInstanceIds.length
+  ) {
+    fail(
+      ERROR.portContractMismatch,
+      "Legacy port returned an invalid deterministic projection."
+    );
+  }
+  return deepFreeze({
+    compatibilityState: compatibilityState.data,
+    equipment,
+    materialLedger,
+    chemistry: chemistry.data,
+    events: events.data,
+    materialInstanceIds: [...candidate.materialInstanceIds].sort()
+  });
+}
+
 function assertCheck(
   check: GenericPortCheck,
   code: typeof ERROR.preconditionFailed | typeof ERROR.safetyRejected,
@@ -223,6 +305,20 @@ function assertStateMatchesProgram(
   state: GenericLabState,
   compiled: CompiledGenericRuntime
 ): void {
+  const compatibility = compiled.program.provenance.compatibility;
+  if (
+    (compatibility === null) !== (state.compatibilityState === null) ||
+    (compatibility !== null &&
+      (state.compatibilityState?.runtimeAdapterId !==
+        compatibility.runtimeAdapterId ||
+        state.compatibilityState.runtimeAdapterVersion !==
+          compatibility.runtimeAdapterVersion))
+  ) {
+    fail(
+      ERROR.invalidState,
+      "State compatibility provenance does not match the compiled definition."
+    );
+  }
   validateEquipment(state.equipment, compiled.program);
   const ledger = validateMaterialLedger(state.materialLedger);
   const materialById = new Map(
@@ -755,7 +851,7 @@ export function createGenericLabDefinition(
         "Generic runtime resume seeds are not supported by LC2-200."
       );
     }
-    const materialLedger = initializeMaterialLedger(
+    const authoredMaterialLedger = initializeMaterialLedger(
       program.materials.map((material) => ({
         materialInstanceId: material.instanceId,
         materialProfileId: material.materialProfileId,
@@ -765,53 +861,86 @@ export function createGenericLabDefinition(
         unitId: material.quantityUnitId
       }))
     );
-    const initialized = program.equipment.map((binding) => {
-      const adapter = compiled.ports.mechanicalAdapters.find(
-        ({ adapterId }) => adapterId === binding.mechanicalAdapterId
-      );
-      if (!adapter) {
-        fail(
-          ERROR.portUnavailable,
-          `Mechanical adapter ${binding.mechanicalAdapterId} is unavailable.`
-        );
-      }
+    const legacyAdapter = legacyAdapterFor(compiled);
+    let materialLedger: MaterialLedger;
+    let equipment: readonly GenericEquipmentState[];
+    let chemistry: GenericChemistryProjection;
+    let compatibilityState: GenericLabState["compatibilityState"];
+    if (legacyAdapter) {
       try {
-        return adapter.initializeEquipment(
-          deepFreeze({ binding, materialLedger })
+        const projection = parseLegacyProjection(
+          legacyAdapter.initialize(
+            deepFreeze({
+              config: config.data,
+              program,
+              authoredMaterialLedger
+            })
+          ),
+          compiled,
+          false
         );
-      } catch {
+        materialLedger = projection.materialLedger;
+        equipment = projection.equipment;
+        chemistry = projection.chemistry;
+        compatibilityState = projection.compatibilityState;
+      } catch (error) {
+        if (error instanceof GenericLabRuntimeError) throw error;
         fail(
           ERROR.transitionRejected,
-          `Mechanical adapter ${adapter.adapterId} rejected initialization.`,
-          { adapterId: adapter.adapterId }
+          `Legacy adapter ${legacyAdapter.runtimeAdapterId} rejected initialization.`,
+          { adapterId: legacyAdapter.runtimeAdapterId }
         );
       }
-    });
-    const equipment = validateEquipment(initialized, program);
-    let chemistry;
-    try {
-      chemistry = genericChemistryProjectionSchema.parse(
-        compiled.ports.models.initialize(
-          deepFreeze({
-            program,
-            equipment: deepFreeze(equipment),
-            materialLedger
-          })
-        )
-      );
-    } catch (error) {
-      if (error instanceof GenericLabRuntimeError) throw error;
-      if (error instanceof ChemistryModelCoordinatorError) {
+    } else {
+      materialLedger = authoredMaterialLedger;
+      const initialized = program.equipment.map((binding) => {
+        const adapter = compiled.ports.mechanicalAdapters.find(
+          ({ adapterId }) => adapterId === binding.mechanicalAdapterId
+        );
+        if (!adapter) {
+          fail(
+            ERROR.portUnavailable,
+            `Mechanical adapter ${binding.mechanicalAdapterId} is unavailable.`
+          );
+        }
+        try {
+          return adapter.initializeEquipment(
+            deepFreeze({ binding, materialLedger })
+          );
+        } catch {
+          fail(
+            ERROR.transitionRejected,
+            `Mechanical adapter ${adapter.adapterId} rejected initialization.`,
+            { adapterId: adapter.adapterId }
+          );
+        }
+      });
+      equipment = validateEquipment(initialized, program);
+      try {
+        chemistry = genericChemistryProjectionSchema.parse(
+          compiled.ports.models.initialize(
+            deepFreeze({
+              program,
+              equipment: deepFreeze(equipment),
+              materialLedger
+            })
+          )
+        );
+      } catch (error) {
+        if (error instanceof GenericLabRuntimeError) throw error;
+        if (error instanceof ChemistryModelCoordinatorError) {
+          fail(
+            ERROR.transitionRejected,
+            "Model coordinator rejected initialization.",
+            { reasonCode: error.code, ...error.details }
+          );
+        }
         fail(
           ERROR.transitionRejected,
-          "Model coordinator rejected initialization.",
-          { reasonCode: error.code, ...error.details }
+          "Model coordinator rejected initialization."
         );
       }
-      fail(
-        ERROR.transitionRejected,
-        "Model coordinator rejected initialization."
-      );
+      compatibilityState = null;
     }
     let diagnoses;
     try {
@@ -863,7 +992,8 @@ export function createGenericLabDefinition(
         count: 0
       })),
       eventSequence: 0,
-      eventEnvelopes: []
+      eventEnvelopes: [],
+      compatibilityState
     });
     if (!state.success) {
       fail(ERROR.portContractMismatch, "Ports produced invalid initial state.");
@@ -915,7 +1045,6 @@ export function createGenericLabDefinition(
       "A deterministic safety policy rejected the action."
     );
 
-    const adapter = adapterFor(compiled, resolved.binding);
     const mechanicalContext = deepFreeze({
       binding: resolved.binding,
       action,
@@ -925,88 +1054,143 @@ export function createGenericLabDefinition(
       materialLedger: state.materialLedger,
       preconditions: resolved.binding.preconditions
     });
-    runCheck(
-      () => adapter.checkPreconditions(mechanicalContext),
-      ERROR.preconditionFailed,
-      "An equipment precondition rejected the action."
-    );
-
-    let mechanical;
-    try {
-      mechanical = parseTransition(
-        adapter.apply(mechanicalContext),
-        compiled,
-        action
-      );
-    } catch (error) {
-      if (error instanceof GenericLabRuntimeError) throw error;
-      fail(
-        ERROR.transitionRejected,
-        `Mechanical adapter ${adapter.adapterId} rejected the transition.`,
-        { adapterId: adapter.adapterId }
-      );
-    }
-
+    const legacyAdapter = legacyAdapterFor(compiled);
+    let equipment;
     let materialLedger = state.materialLedger;
-    if (mechanical.materialAction) {
-      try {
-        materialLedger = applyExecutedMaterialAction(
-          state.materialLedger,
-          mechanical.materialAction,
-          program.equipment.map(({ instanceId, measurement }) => ({
-            equipmentInstanceId: instanceId,
-            capacityML: measurement?.capacityML ?? null
-          }))
-        );
-      } catch {
-        fail(
-          ERROR.transitionRejected,
-          "Material ledger rejected the mechanical transition."
-        );
-      }
-    }
-
     let chemistry;
-    try {
-      chemistry = genericChemistryProjectionSchema.parse(
-        compiled.ports.models.transition(
-          deepFreeze({
-            program,
-            previous: state.chemistry,
-            equipment: mechanical.equipment,
-            materialLedger,
-            materialAction: mechanical.materialAction
-          })
-        )
-      );
-    } catch (error) {
-      if (error instanceof GenericLabRuntimeError) throw error;
-      if (error instanceof ChemistryModelCoordinatorError) {
+    let events;
+    let materialAction = null;
+    let materialInstanceIds: readonly string[] = [];
+    let compatibilityState = state.compatibilityState;
+    if (legacyAdapter) {
+      if (!state.compatibilityState) {
         fail(
-          ERROR.transitionRejected,
-          "Model coordinator rejected the transition.",
-          { reasonCode: error.code, ...error.details }
+          ERROR.invalidState,
+          "Legacy session state is missing its serialized compatibility state."
         );
       }
-      fail(
-        ERROR.transitionRejected,
-        "Model coordinator rejected the transition."
+      const legacyContext = deepFreeze({
+        program,
+        mechanical: mechanicalContext,
+        compatibilityState: state.compatibilityState,
+        chemistry: state.chemistry,
+        materialLedger: state.materialLedger
+      });
+      runCheck(
+        () => legacyAdapter.checkPreconditions(legacyContext),
+        ERROR.preconditionFailed,
+        "The legacy equipment precondition rejected the action."
       );
+      try {
+        const projection = parseLegacyProjection(
+          legacyAdapter.apply(legacyContext),
+          compiled,
+          true
+        );
+        if (
+          projection.events.some(
+            ({ type }) =>
+              !resolved.binding.emittedSemanticEventTypes.includes(type)
+          )
+        ) {
+          fail(
+            ERROR.portContractMismatch,
+            "Legacy port emitted an event outside its registered contract."
+          );
+        }
+        equipment = projection.equipment;
+        materialLedger = projection.materialLedger;
+        chemistry = projection.chemistry;
+        events = deepFreeze([...projection.events]);
+        materialInstanceIds = projection.materialInstanceIds;
+        compatibilityState = projection.compatibilityState;
+      } catch (error) {
+        if (error instanceof GenericLabRuntimeError) throw error;
+        fail(
+          ERROR.transitionRejected,
+          `Legacy adapter ${legacyAdapter.runtimeAdapterId} rejected the transition.`,
+          { adapterId: legacyAdapter.runtimeAdapterId }
+        );
+      }
+    } else {
+      const adapter = adapterFor(compiled, resolved.binding);
+      runCheck(
+        () => adapter.checkPreconditions(mechanicalContext),
+        ERROR.preconditionFailed,
+        "An equipment precondition rejected the action."
+      );
+      let mechanical;
+      try {
+        mechanical = parseTransition(
+          adapter.apply(mechanicalContext),
+          compiled,
+          action
+        );
+      } catch (error) {
+        if (error instanceof GenericLabRuntimeError) throw error;
+        fail(
+          ERROR.transitionRejected,
+          `Mechanical adapter ${adapter.adapterId} rejected the transition.`,
+          { adapterId: adapter.adapterId }
+        );
+      }
+      materialAction = mechanical.materialAction;
+      if (materialAction) {
+        try {
+          materialLedger = applyExecutedMaterialAction(
+            state.materialLedger,
+            materialAction,
+            program.equipment.map(({ instanceId, measurement }) => ({
+              equipmentInstanceId: instanceId,
+              capacityML: measurement?.capacityML ?? null
+            }))
+          );
+        } catch {
+          fail(
+            ERROR.transitionRejected,
+            "Material ledger rejected the mechanical transition."
+          );
+        }
+      }
+      equipment = mechanical.equipment;
+      try {
+        chemistry = genericChemistryProjectionSchema.parse(
+          compiled.ports.models.transition(
+            deepFreeze({
+              program,
+              previous: state.chemistry,
+              equipment,
+              materialLedger,
+              materialAction
+            })
+          )
+        );
+      } catch (error) {
+        if (error instanceof GenericLabRuntimeError) throw error;
+        if (error instanceof ChemistryModelCoordinatorError) {
+          fail(
+            ERROR.transitionRejected,
+            "Model coordinator rejected the transition.",
+            { reasonCode: error.code, ...error.details }
+          );
+        }
+        fail(
+          ERROR.transitionRejected,
+          "Model coordinator rejected the transition."
+        );
+      }
+      events = deepFreeze([...mechanical.events]);
     }
-
-    const events = deepFreeze([...mechanical.events]);
     const newEnvelopes = envelopeSemanticEvents({
       sessionId: state.sessionId,
       nextEventSequence: state.eventSequence,
       actionSequence: state.sequence + 1,
       action,
-      materialAction: mechanical.materialAction,
+      materialAction,
+      materialInstanceIds,
       events
     });
-    const unlinkedEnvelopes = [
-      ...state.eventEnvelopes,
-      ...newEnvelopes
-    ];
+    const unlinkedEnvelopes = [...state.eventEnvelopes, ...newEnvelopes];
     const permissionAttempts = incrementAttempts(state, action.permissionId);
     let diagnoses;
     try {
@@ -1015,7 +1199,7 @@ export function createGenericLabDefinition(
           rules: program.rules,
           equipmentBindings: program.equipment,
           actionBindings: program.actions,
-          equipment: mechanical.equipment,
+          equipment,
           materialLedger,
           observables: chemistry.observables,
           eventEnvelopes: unlinkedEnvelopes,
@@ -1044,7 +1228,7 @@ export function createGenericLabDefinition(
     const next = genericLabStateSchema.safeParse({
       ...state,
       sequence: state.sequence + 1,
-      equipment: mechanical.equipment,
+      equipment,
       materialLedger,
       chemistry,
       workflowStatus: deriveWorkflowStatus(
@@ -1055,7 +1239,8 @@ export function createGenericLabDefinition(
       diagnoses,
       permissionAttempts,
       eventSequence: state.eventSequence + newEnvelopes.length,
-      eventEnvelopes: linkEnvelopeDiagnoses(unlinkedEnvelopes, diagnoses)
+      eventEnvelopes: linkEnvelopeDiagnoses(unlinkedEnvelopes, diagnoses),
+      compatibilityState
     });
     if (!next.success) {
       fail(

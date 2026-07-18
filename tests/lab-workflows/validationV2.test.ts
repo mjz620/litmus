@@ -91,7 +91,7 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     });
   });
 
-  it("reports migrated titration dependencies explicitly as partially supported", () => {
+  it("admits migrated titration only through its exact executable compatibility seam", () => {
     const outcome = validateLabWorkflowSpecV2(createMigratedEndpointV2Draft(), {
       checkedAt: CHECKED_AT
     });
@@ -100,17 +100,34 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     if (!outcome.schemaValid) throw new Error("Expected migrated v2 schema");
 
     expect(outcome.validation).toMatchObject({
-      status: "partially_supported",
-      runnable: false,
+      status: "runnable",
+      runnable: true,
       previewEligible: false,
       assignmentEligible: false
     });
-    expect(outcome.issues.map(({ code }) => code)).toEqual(
+    expect(outcome.validation.resolvedChemistryModels).toEqual([
+      expect.objectContaining({
+        modelId: "chemistry-model.legacy_titration.v1",
+        version: "1.0.0"
+      })
+    ]);
+    expect(outcome.issues.map(({ code }) => code)).toEqual([
+      WORKFLOW_VALIDATION_ISSUE_CODES_V2.runtimeUnavailable
+    ]);
+
+    const unscoped = createMigratedEndpointV2Draft();
+    delete unscoped.compatibility;
+    const rejected = validateLabWorkflowSpecV2(unscoped, {
+      checkedAt: CHECKED_AT
+    });
+    expect(rejected.schemaValid).toBe(true);
+    if (!rejected.schemaValid) throw new Error("Expected unscoped v2 schema");
+    expect(rejected.validation.runnable).toBe(false);
+    expect(rejected.issues).toEqual(
       expect.arrayContaining([
-        WORKFLOW_VALIDATION_ISSUE_CODES_V2.chemistryCapabilityUnavailable,
-        WORKFLOW_VALIDATION_ISSUE_CODES_V2.chemistryModelResolutionFailed,
-        WORKFLOW_VALIDATION_ISSUE_CODES_V2.legacyAdapterUnavailable,
-        WORKFLOW_VALIDATION_ISSUE_CODES_V2.runtimeUnavailable
+        expect.objectContaining({
+          code: WORKFLOW_VALIDATION_ISSUE_CODES_V2.chemistryModelResolutionFailed
+        })
       ])
     );
   });
@@ -234,7 +251,9 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       {
         checkId: WORKFLOW_VALIDATION_CHECK_IDS_V2.chemistryModels,
         migrated: true,
-        mutate() {}
+        mutate(draft: LabWorkflowDraftV2) {
+          delete draft.compatibility;
+        }
       },
       {
         checkId: WORKFLOW_VALIDATION_CHECK_IDS_V2.rules,
@@ -435,7 +454,11 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     expect(staleOutcome.validation.status).toBe("runnable");
 
     for (const draft of [
-      createMigratedEndpointV2Draft(),
+      (() => {
+        const unsupported = createMigratedEndpointV2Draft();
+        delete unsupported.compatibility;
+        return unsupported;
+      })(),
       (() => {
         const unsafe = createRunnableMechanicalV2Draft();
         unsafe.safetyPolicyIds.push("safety.no_open_flame_mvp.v1");

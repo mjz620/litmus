@@ -1,5 +1,6 @@
 import type { ZodIssue } from "zod";
 
+import { LEGACY_TITRATION_RUNTIME_ADAPTER } from "../adapters/titration/metadata";
 import { capabilityRegistry, type CapabilityRegistry } from "../capabilities";
 import { hashLabWorkflowSpec, labWorkflowHashMatches } from "../hash";
 import {
@@ -1293,7 +1294,13 @@ function validateChemistry(context: ValidationContext): void {
       context.spec.requiredChemistryCapabilityIds,
       {
         capabilityRegistry: context.registries.capabilities,
-        modelRegistry: context.registries.chemistryModels
+        modelRegistry: context.registries.chemistryModels,
+        ...(context.spec.compatibility
+          ? {
+              compatibilityRuntimeAdapterId:
+                context.spec.compatibility.runtimeAdapterId
+            }
+          : {})
       }
     );
     context.resolvedChemistryModels = resolution.orderedModels.map((model) => ({
@@ -1378,15 +1385,22 @@ function validateChemistry(context: ValidationContext): void {
         CHECK.chemistryModels
       )
     );
-    addIssue(
-      context,
-      6,
-      CHECK.chemistryModels,
-      ISSUE.legacyAdapterUnavailable,
-      "compatibility.runtimeAdapterId",
-      `Legacy runtime adapter ${compatibility.runtimeAdapterId} is recognized but not executable in v2.`,
-      { registryId: compatibility.runtimeAdapterId }
-    );
+    if (
+      compatibility.runtimeAdapterId !== LEGACY_TITRATION_RUNTIME_ADAPTER.id ||
+      compatibility.runtimeAdapterVersion !==
+        LEGACY_TITRATION_RUNTIME_ADAPTER.version ||
+      compatibility.engineId !== LEGACY_TITRATION_RUNTIME_ADAPTER.engineId
+    ) {
+      addIssue(
+        context,
+        6,
+        CHECK.chemistryModels,
+        ISSUE.legacyAdapterUnavailable,
+        "compatibility.runtimeAdapterId",
+        `No exact executable legacy adapter matches ${compatibility.runtimeAdapterId}@${compatibility.runtimeAdapterVersion}.`,
+        { registryId: compatibility.runtimeAdapterId }
+      );
+    }
   }
 }
 
