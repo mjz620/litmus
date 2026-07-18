@@ -37,6 +37,8 @@ Phase 4 must deliver useful non-LLM authoring. The teacher UI does not write raw
 
 **Dependencies:** `LC2-400`.
 
+**Status:** Implemented. The teacher Composer route projects only verified executable equipment and binding-capable materials from the existing registries. Equipment add/remove/configure, exact material/quantity binding, bounded compatible slot placement, and capability-derived action permissions all execute through `LC2-400`; the React layer does not mutate workflow JSON or infer compatibility. The inspector exposes exact capabilities, actions, configurations, safety constraints, adapter IDs, and performance tier. Stable command dependency errors are visible, every successful edit remains explicitly unvalidated, and Preview/Assign remain disabled. Catalog tests and Playwright coverage verify filtering, exact derived choices, setup editing, rejected referenced removal, keyboard activation, and Chromebook-width containment.
+
 **Allowed areas:** `src/app/teacher/lab-composer/**`, `src/components/teacher/lab-composer/**`, teacher UI state/styles/tests, narrow command client adapter.
 
 **Do not touch:** command semantics, chemistry/runtime internals, agent prompts, persistence schema, student scene.
@@ -62,6 +64,8 @@ Phase 4 must deliver useful non-LLM authoring. The teacher UI does not write raw
 **Objective:** Let teachers author typed conditions, partial-order dependencies, success/failure/best-practice rules, presentation guidance, objectives, and rubric mappings through shared commands.
 
 **Dependencies:** `LC2-400`; coordinate UI shell with `LC2-401`.
+
+**Status:** Implemented. The same Composer surface authors objective membership, typed action-evidence and numerical-tolerance rules, severity/recoverability/terminal semantics, partial-order dependencies, presentation-only instructions, and evidence-mapped rubric criteria through the shared command service. Registry/setup-derived selects replace raw registry ID entry, ordering remains a list of explicit edges rather than a total click sequence, and the authored point total is informational until deterministic validation. Reducer errors remain authoritative and edits keep Preview/Assign invalidated. Browser coverage exercises rule, tolerance, instruction, and criterion authoring plus the unvalidated gate.
 
 **Allowed areas:** teacher Composer constraint/inspector components, command client usage, UI tests/styles/docs.
 

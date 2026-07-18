@@ -34,6 +34,16 @@ export default async function TeacherClassesPage() {
           </button>
         </form>
       </section>
+      <section className={styles.contentCard}>
+        <h2 className={styles.sectionTitle}>Lab Composer</h2>
+        <p>
+          Assemble a supported physical setup and flexible workflow from
+          verified laboratory primitives—no AI generation required.
+        </p>
+        <Link className="ui-button-secondary" href="/teacher/lab-composer">
+          Open Lab Composer
+        </Link>
+      </section>
       {!hasPublicSupabaseEnvironment() && (
         <p className="ui-notice" data-tone="warning">
           Connect Supabase to create live classes. Demo dashboards remain
