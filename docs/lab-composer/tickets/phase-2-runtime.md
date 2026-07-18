@@ -116,6 +116,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 
 **Stop:** If a condition needs arbitrary property access or a formula, add an exact registered observable/condition type in a prerequisite review; never add an expression evaluator.
 
+**Implementation note:** A code-owned pure evaluator now compiles the authored rule set and exact registry adapter mappings once, exhaustively evaluates all thirteen closed condition variants, and returns diagnoses in authored rule order. Runtime evaluation receives post-transition equipment/material/observable state, post-increment action attempts, the exact current normalized action, prior diagnoses, and bounded student responses. Independent requirements accept either order; explicit ordering rules use prior satisfaction and latch their result. Terminal violations dominate success, required/success/ordering rules gate completion, and completed or failed sessions reject further dispatch. Generic runtime schema `1.2.0` adds deterministic `workflowStatus`; no persisted or route-consumed generic `1.1.0` states exist. Temporary evidence references use stable cumulative event indexes until LC2-204 introduces the canonical envelope. The engine-endpoint completion policy remains unavailable to the generic evaluator until the explicit Phase 3 adapter.
+
 ## LC2-204 — Semantic event envelope and diagnosis integration
 
 **Objective:** Add stable event identity/sequence/action/equipment/material/rule references while preserving current `SemanticEvent` payload consumers.

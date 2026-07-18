@@ -24,7 +24,7 @@ import type {
 } from "../../schema/v2";
 import type { WorkflowDiagnosis, WorkflowRule } from "../../schema/conditions";
 
-export const GENERIC_LAB_RUNTIME_SCHEMA_VERSION = "1.1.0" as const;
+export const GENERIC_LAB_RUNTIME_SCHEMA_VERSION = "1.2.0" as const;
 
 export type GenericStateValue =
   | boolean
@@ -97,6 +97,7 @@ export interface GenericLabState {
   readonly equipment: readonly GenericEquipmentState[];
   readonly materialLedger: MaterialLedger;
   readonly chemistry: GenericChemistryProjection;
+  readonly workflowStatus: "in_progress" | "completed" | "failed";
   readonly diagnoses: readonly WorkflowDiagnosis[];
   readonly permissionAttempts: readonly GenericPermissionAttempt[];
   readonly semanticEvents: readonly SemanticEvent[];
@@ -286,10 +287,22 @@ export interface GenericModelCoordinatorPort {
 
 export interface GenericWorkflowEvaluationContext {
   readonly rules: readonly WorkflowRule[];
+  readonly equipmentBindings: readonly CompiledEquipmentBinding[];
+  readonly actionBindings: readonly CompiledActionBinding[];
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
+  readonly materialLedger: Readonly<MaterialLedger>;
   readonly observables: readonly GenericObservable[];
   readonly events: readonly SemanticEvent[];
   readonly previousDiagnoses: readonly WorkflowDiagnosis[];
+  readonly permissionAttempts: readonly GenericPermissionAttempt[];
+  readonly currentAction: Readonly<NormalizedLabAction> | null;
+  readonly sequence: number;
+  readonly studentResponses: readonly GenericStudentResponse[];
+}
+
+export interface GenericStudentResponse {
+  readonly submissionFieldId: string;
+  readonly value: boolean | number | string;
 }
 
 export interface GenericWorkflowEvaluatorPort {

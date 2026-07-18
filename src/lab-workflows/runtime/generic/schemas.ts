@@ -136,6 +136,7 @@ export const genericLabStateSchema = z.strictObject({
   equipment: z.array(genericEquipmentStateSchema).max(64),
   materialLedger: materialLedgerSchema,
   chemistry: genericChemistryProjectionSchema,
+  workflowStatus: z.enum(["in_progress", "completed", "failed"]),
   diagnoses: z.array(workflowDiagnosisSchema).max(256),
   permissionAttempts: z
     .array(

@@ -8,6 +8,7 @@ export const GENERIC_LAB_RUNTIME_ERROR_CODES = Object.freeze({
   capabilityMismatch: "generic-runtime.capability_mismatch.v1",
   parameterInvalid: "generic-runtime.parameter_invalid.v1",
   attemptLimitExceeded: "generic-runtime.attempt_limit_exceeded.v1",
+  workflowTerminal: "generic-runtime.workflow_terminal.v1",
   preconditionFailed: "generic-runtime.precondition_failed.v1",
   safetyRejected: "generic-runtime.safety_rejected.v1",
   portUnavailable: "generic-runtime.port_unavailable.v1",

@@ -5,6 +5,7 @@ import type {
 } from "../../../experiments/shared";
 import type { ActionParameterDefinition } from "../../registries/actions";
 import { ChemistryModelCoordinatorError } from "../../chemistry-models/coordinator";
+import { WorkflowEvaluatorError } from "../../evaluation";
 import {
   applyExecutedMaterialAction,
   initializeMaterialLedger,
@@ -266,10 +267,17 @@ function assertStateMatchesProgram(
     );
   }
   if (
-    !sameIdSet(
-      state.diagnoses.map(({ ruleId }) => ruleId),
-      compiled.program.rules.map(({ id }) => id)
-    )
+    state.diagnoses.length !== compiled.program.rules.length ||
+    state.diagnoses.some((diagnosis, index) => {
+      const rule = compiled.program.rules[index];
+      return (
+        !rule ||
+        diagnosis.ruleId !== rule.id ||
+        diagnosis.severity !== rule.severity ||
+        diagnosis.recoverable !== rule.recoverable ||
+        !sameIds(diagnosis.objectiveIds, rule.objectiveIds)
+      );
+    })
   ) {
     fail(
       ERROR.invalidState,
@@ -307,6 +315,17 @@ function assertStateMatchesProgram(
       );
     }
     observableIds.add(observable.observableId);
+  }
+  const derivedStatus = deriveWorkflowStatus(
+    compiled.program.rules,
+    state.diagnoses,
+    state.workflowStatus === "failed" ? "failed" : "in_progress"
+  );
+  if (derivedStatus !== state.workflowStatus) {
+    fail(
+      ERROR.invalidState,
+      "State workflow status does not match its deterministic diagnoses."
+    );
   }
 }
 
@@ -619,6 +638,41 @@ function incrementAttempts(
   );
 }
 
+function deriveWorkflowStatus(
+  rules: CompiledGenericRuntime["program"]["rules"],
+  diagnoses: GenericLabState["diagnoses"],
+  previous: GenericLabState["workflowStatus"] = "in_progress"
+): GenericLabState["workflowStatus"] {
+  if (previous === "failed") return "failed";
+  const diagnosisById = new Map(
+    diagnoses.map((diagnosis) => [diagnosis.ruleId, diagnosis])
+  );
+  if (
+    rules.some(
+      (rule) =>
+        rule.terminal && diagnosisById.get(rule.id)?.status === "violated"
+    )
+  ) {
+    return "failed";
+  }
+  const gatingRules = rules.filter(
+    ({ kind }) =>
+      kind === "required" || kind === "success" || kind === "ordering"
+  );
+  const blockingViolation = rules.some(
+    (rule) =>
+      (rule.kind === "failure" || rule.kind === "forbidden") &&
+      diagnosisById.get(rule.id)?.status === "violated"
+  );
+  return gatingRules.some(({ kind }) => kind === "success") &&
+    gatingRules.every(
+      ({ id }) => diagnosisById.get(id)?.status === "satisfied"
+    ) &&
+    !blockingViolation
+    ? "completed"
+    : "in_progress";
+}
+
 export function createGenericLabDefinition(
   compiled: CompiledGenericRuntime
 ): GenericLabDefinition {
@@ -711,13 +765,30 @@ export function createGenericLabDefinition(
       diagnoses = compiled.ports.evaluator.evaluate(
         deepFreeze({
           rules: program.rules,
+          equipmentBindings: program.equipment,
+          actionBindings: program.actions,
           equipment,
+          materialLedger,
           observables: chemistry.observables,
           events: [] as SemanticEvent[],
-          previousDiagnoses: []
+          previousDiagnoses: [],
+          permissionAttempts: program.actions.map(({ permission }) => ({
+            permissionId: permission.id,
+            count: 0
+          })),
+          currentAction: null,
+          sequence: 0,
+          studentResponses: []
         })
       );
-    } catch {
+    } catch (error) {
+      if (error instanceof WorkflowEvaluatorError) {
+        fail(
+          ERROR.transitionRejected,
+          "Workflow evaluator rejected initialization.",
+          { reasonCode: error.code, ...error.details }
+        );
+      }
       fail(
         ERROR.transitionRejected,
         "Workflow evaluator rejected initialization."
@@ -731,6 +802,7 @@ export function createGenericLabDefinition(
       equipment,
       materialLedger,
       chemistry,
+      workflowStatus: deriveWorkflowStatus(program.rules, diagnoses),
       diagnoses,
       permissionAttempts: program.actions.map(({ permission }) => ({
         permissionId: permission.id,
@@ -761,6 +833,13 @@ export function createGenericLabDefinition(
     const action = deepFreeze(actionResult.data) as NormalizedLabAction;
     assertProvenance(state.provenance, program.provenance);
     assertStateMatchesProgram(state, compiled);
+    if (state.workflowStatus !== "in_progress") {
+      fail(
+        ERROR.workflowTerminal,
+        `Workflow is already ${state.workflowStatus}.`,
+        { workflowStatus: state.workflowStatus }
+      );
+    }
     const resolved = resolveAction(compiled, state, action);
 
     runCheck(
@@ -862,18 +941,33 @@ export function createGenericLabDefinition(
 
     const events = deepFreeze([...mechanical.events]);
     const semanticEvents = [...state.semanticEvents, ...events];
+    const permissionAttempts = incrementAttempts(state, action.permissionId);
     let diagnoses;
     try {
       diagnoses = compiled.ports.evaluator.evaluate(
         deepFreeze({
           rules: program.rules,
+          equipmentBindings: program.equipment,
+          actionBindings: program.actions,
           equipment: mechanical.equipment,
+          materialLedger,
           observables: chemistry.observables,
           events: semanticEvents,
-          previousDiagnoses: state.diagnoses
+          previousDiagnoses: state.diagnoses,
+          permissionAttempts,
+          currentAction: action,
+          sequence: state.sequence + 1,
+          studentResponses: []
         })
       );
-    } catch {
+    } catch (error) {
+      if (error instanceof WorkflowEvaluatorError) {
+        fail(
+          ERROR.transitionRejected,
+          "Workflow evaluator rejected the transition.",
+          { reasonCode: error.code, ...error.details }
+        );
+      }
       fail(
         ERROR.transitionRejected,
         "Workflow evaluator rejected the transition."
@@ -886,8 +980,13 @@ export function createGenericLabDefinition(
       equipment: mechanical.equipment,
       materialLedger,
       chemistry,
+      workflowStatus: deriveWorkflowStatus(
+        program.rules,
+        diagnoses,
+        state.workflowStatus
+      ),
       diagnoses,
-      permissionAttempts: incrementAttempts(state, action.permissionId),
+      permissionAttempts,
       semanticEvents
     });
     if (!next.success) {

@@ -44,6 +44,7 @@ export {
   type GenericSafetyContext,
   type GenericStateField,
   type GenericStateValue,
+  type GenericStudentResponse,
   type GenericWorkflowEvaluatorPort,
   type GenericWorkflowEvaluationContext,
   type NormalizedActionParameter,
