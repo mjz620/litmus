@@ -19,6 +19,7 @@ import {
   STRICT_TITRATION_SETUP_SELECTION,
   resolveLabSessionRuntimeMode
 } from "../../src/stores/setupDrivenLabSession";
+import { validateNativeTitrationV2 } from "../../src/lab-workflows/definitions/titration/native-endpoint-control";
 
 describe("lab store", () => {
   it("loads a seeded experiment, StudentModel, and empty event queue", async () => {
@@ -441,6 +442,52 @@ describe("lab store", () => {
     step.mockRestore();
   });
 
+  it("previews an exact teacher-validated definition through the same generic coordinator", async () => {
+    const workflow = validateNativeTitrationV2("2026-07-18T08:15:00.000Z");
+    const selection = {
+      workflowId: workflow.id,
+      workflowHash: workflow.validation.canonicalSpecHash
+    };
+    const store = createLabStore();
+    const step = vi.spyOn(titration, "step");
+
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "composer-preview-store",
+      config: EXAMPLE_STRONG,
+      seed: { sessionSeed: "composer-preview-seed" },
+      mode: "preview",
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: selection,
+      setupDrivenWorkflow: workflow,
+      workflowVersionId: workflow.validation.canonicalSpecHash
+    });
+
+    expect(store.getState()).toMatchObject({
+      status: "ready",
+      mode: "preview",
+      runtimeInspection: {
+        workflowId: workflow.id,
+        workflowHash: workflow.validation.canonicalSpecHash,
+        runtimeAdapterId: "runtime-adapter.titration.v1"
+      },
+      runtimeProjection: {
+        availablePermissionIds: [
+          "migration.permission.s1.a1",
+          "migration.permission.s2.a1"
+        ]
+      }
+    });
+
+    store.getState().dispatch({ type: "read_meniscus", reportedML: 22 });
+    expect(store.getState().runtimeActionTrace?.actions).toHaveLength(1);
+    expect(
+      store.getState().runtimeConsumerContext?.eventEnvelopes
+    ).toHaveLength(1);
+    expect(step).toHaveBeenCalledTimes(1);
+    step.mockRestore();
+  });
+
   it("clears the setup runtime when the same store reloads in legacy mode", async () => {
     const store = createLabStore();
     await store.getState().loadExperiment({
@@ -601,7 +648,7 @@ describe("lab store", () => {
             "sha256:0000000000000000000000000000000000000000000000000000000000000000"
         } as unknown as typeof STRICT_TITRATION_SETUP_SELECTION
       })
-    ).rejects.toThrow("definition ID or hash is not eligible");
+    ).rejects.toThrow("definition is stale, ineligible");
     expect(store.getState().status).toBe("error");
   });
 

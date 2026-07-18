@@ -10,6 +10,7 @@ import {
   type TitrationRetrySkillId
 } from "../../experiments/titration/retry";
 import { useLabStore } from "../../stores/labStore";
+import type { ValidatedLabWorkflowSpecV2 } from "../../lab-workflows/schema/v2";
 import type {
   LabSessionRuntimeMode,
   SetupDrivenLabSelection
@@ -23,6 +24,7 @@ export interface LabSessionOptions {
   mode?: "practice" | "assignment" | "demo" | "preview";
   runtimeMode?: LabSessionRuntimeMode;
   setupDrivenSelection?: SetupDrivenLabSelection;
+  setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
 }
 
 /**
@@ -38,7 +40,8 @@ export function useLabSession({
   parentSessionId,
   mode,
   runtimeMode = "legacy",
-  setupDrivenSelection
+  setupDrivenSelection,
+  setupDrivenWorkflow
 }: LabSessionOptions) {
   const startedKey = useRef<string | null>(null);
   const status = useLabStore((store) => store.status);
@@ -88,6 +91,7 @@ export function useLabSession({
         parentSessionId,
         runtimeMode,
         setupDrivenSelection,
+        setupDrivenWorkflow,
         workflowVersionId: setupDrivenSelection?.workflowHash
       }).catch(() => undefined);
     } else {
@@ -109,7 +113,8 @@ export function useLabSession({
     replaySeed,
     retrySkillId,
     runtimeMode,
-    setupDrivenSelection
+    setupDrivenSelection,
+    setupDrivenWorkflow
   ]);
 
   const isCurrentExperiment = loadedExperimentId === experimentId;

@@ -93,6 +93,8 @@ Phase 4 must deliver useful non-LLM authoring. The teacher UI does not write raw
 
 **Dependencies:** `LC2-401`, `LC2-402`.
 
+**Status:** Implemented. The Composer invokes the real v2 validator locally and presents deterministic status, eligibility, issue code/path/severity/safety, passed checks, canonical hash, validator version, registry snapshots, resolved chemistry models/adapters, and explicit legacy-adapter provenance. Deterministic authority and the future advisory Workflow Judge are visually and semantically separate. Strict versioned local draft and preview repositories re-parse every load; invalid envelopes and mismatched preview hashes fail closed. Only an exact current hash with `runnable` and `previewEligible` artifacts enables Preview. The preview route re-evaluates eligibility, supplies the exact saved validated definition to the generic coordinator, labels the session as isolated teacher preview, and runs actions through the existing `ExperimentDefinition.step()` compatibility port. Any command edit or draft load clears validation and closes Preview; Assign remains disabled for Phase 8. Unit/store tests and Playwright cover save/load equality, invalid payloads, exact custom-definition runtime loading, stale/missing hashes, real scene startup, and a real normalized meniscus action/evidence path.
+
 **Allowed areas:** teacher Composer UI, narrow validation API/client if needed, preview routing/session isolation, local repository abstraction, tests/e2e/docs.
 
 **Do not touch:** permanent Supabase schema, agent/Judge implementation, assignment, chemistry, alternate preview engine.

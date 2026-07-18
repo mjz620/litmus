@@ -41,6 +41,7 @@ import type { CoachRequest, CoachResponse } from "../lib/agent/schemas";
 import { decideCoachTrigger } from "../lib/agent/triggerPolicy";
 import type { LabWorkflowConsumerContext } from "../lab-workflows/consumers";
 import type { GenericLabActionTrace } from "../lab-workflows/replay";
+import type { ValidatedLabWorkflowSpecV2 } from "../lab-workflows/schema/v2";
 import {
   createSetupDrivenTitrationSession,
   normalizeSetupDrivenTitrationAction,
@@ -79,6 +80,7 @@ export type LoadExperimentRequest =
       config: TitrationConfig;
       seed?: Partial<TitrationState>;
       setupDrivenSelection?: SetupDrivenLabSelection;
+      setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
     })
   | (LoadExperimentRequestBase & {
       experimentId: "precipitation_solubility";
@@ -448,7 +450,8 @@ async function initializeRegisteredExperiment(
         experimentId: request.experimentId,
         sessionId: request.sessionId,
         sessionSeed: request.seed?.sessionSeed ?? request.sessionId,
-        selection: request.setupDrivenSelection
+        selection: request.setupDrivenSelection,
+        workflow: request.setupDrivenWorkflow
       });
       return {
         definition,

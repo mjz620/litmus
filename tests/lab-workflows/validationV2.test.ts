@@ -102,7 +102,7 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     expect(outcome.validation).toMatchObject({
       status: "runnable",
       runnable: true,
-      previewEligible: false,
+      previewEligible: true,
       assignmentEligible: false
     });
     expect(outcome.validation.resolvedChemistryModels).toEqual([
@@ -111,9 +111,12 @@ describe("LabWorkflowSpec v2 hard validation", () => {
         version: "1.0.0"
       })
     ]);
-    expect(outcome.issues.map(({ code }) => code)).toEqual([
-      WORKFLOW_VALIDATION_ISSUE_CODES_V2.runtimeUnavailable
-    ]);
+    expect(outcome.issues).toEqual([]);
+    expect(evaluateLabWorkflowEligibility(outcome.spec, "preview")).toEqual({
+      eligible: true,
+      purpose: "preview",
+      failureCodes: []
+    });
 
     const unscoped = createMigratedEndpointV2Draft();
     delete unscoped.compatibility;

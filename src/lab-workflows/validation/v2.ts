@@ -2449,6 +2449,16 @@ function createDraft(parsed: LabWorkflowSpecV2): LabWorkflowDraftV2 {
   });
 }
 
+function hasExactPreviewRuntime(spec: LabWorkflowDraftV2): boolean {
+  const compatibility = spec.compatibility;
+  return (
+    compatibility?.runtimeAdapterId === LEGACY_TITRATION_RUNTIME_ADAPTER.id &&
+    compatibility.runtimeAdapterVersion ===
+      LEGACY_TITRATION_RUNTIME_ADAPTER.version &&
+    compatibility.engineId === LEGACY_TITRATION_RUNTIME_ADAPTER.engineId
+  );
+}
+
 export function validateLabWorkflowSpecV2(
   input: unknown,
   options: LabWorkflowV2ValidationOptions
@@ -2526,15 +2536,18 @@ export function validateLabWorkflowSpecV2(
   validateRubric(context);
   validatePresentationAndCoach(context);
   validateSafety(context);
-  addIssue(
-    context,
-    11,
-    CHECK.eligibility,
-    ISSUE.runtimeUnavailable,
-    "$",
-    "The setup-driven v2 runtime is not registered yet; preview and assignment remain disabled.",
-    { severity: "warning" }
-  );
+  const previewRuntimeAvailable = hasExactPreviewRuntime(spec);
+  if (!previewRuntimeAvailable) {
+    addIssue(
+      context,
+      11,
+      CHECK.eligibility,
+      ISSUE.runtimeUnavailable,
+      "$",
+      "No exact setup-driven preview runtime is registered for this definition; preview and assignment remain disabled.",
+      { severity: "warning" }
+    );
+  }
 
   const issues = stableIssues(context.issues);
   const status = determineStatus(issues);
@@ -2563,7 +2576,7 @@ export function validateLabWorkflowSpecV2(
     resolvedChemistryModels: models,
     status,
     runnable,
-    previewEligible: false,
+    previewEligible: runnable && previewRuntimeAvailable,
     assignmentEligible: false,
     issues,
     passedCheckIds: ALL_CHECK_IDS.filter((id) => !context.failedChecks.has(id))

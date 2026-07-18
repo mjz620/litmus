@@ -1,14 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   applyLabDraftCommand,
   type LabDraftCommand
 } from "../../../lab-workflows/authoring";
 import { NATIVE_TITRATION_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-control";
+import { hashLabWorkflowSpec } from "../../../lab-workflows/hash";
 import type { LabWorkflowDraftV2 } from "../../../lab-workflows/schema/v2";
 import { componentRegistry } from "../../../lab-workflows/registries/components";
+import {
+  evaluateLabWorkflowEligibilityV2,
+  validateLabWorkflowSpecV2,
+  type LabWorkflowV2ValidationOutcome
+} from "../../../lab-workflows/validation";
 import {
   compatibleContainers,
   composerActionCatalog,
@@ -21,6 +27,10 @@ import {
   placementSupportsEquipment,
   quantityPresetsFor
 } from "./catalog";
+import {
+  LocalLabDraftRepository,
+  LocalLabPreviewRepository
+} from "./localRepository";
 
 import styles from "./LabComposer.module.css";
 
@@ -28,6 +38,22 @@ type EditorSection = "setup" | "workflow";
 
 function localId(prefix: string, revision: number): string {
   return `teacher.${prefix}.${revision}`;
+}
+
+function draftRepository(): LocalLabDraftRepository {
+  if (typeof window === "undefined")
+    throw new TypeError(
+      "Local draft storage is available in the browser only."
+    );
+  return new LocalLabDraftRepository(window.localStorage);
+}
+
+function previewRepository(): LocalLabPreviewRepository {
+  if (typeof window === "undefined")
+    throw new TypeError(
+      "Local preview storage is available in the browser only."
+    );
+  return new LocalLabPreviewRepository(window.localStorage);
 }
 
 export function LabComposer() {
@@ -84,6 +110,21 @@ export function LabComposer() {
     draft.rules[0]?.id ?? ""
   );
   const [criterionPoints, setCriterionPoints] = useState("1");
+  const [validationOutcome, setValidationOutcome] =
+    useState<LabWorkflowV2ValidationOutcome | null>(null);
+  const [draftName, setDraftName] = useState("Endpoint practice");
+  const [savedDraftNames, setSavedDraftNames] = useState<readonly string[]>([]);
+  const [selectedSavedDraft, setSelectedSavedDraft] = useState("");
+  const [repositoryMessage, setRepositoryMessage] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSavedDraftNames(draftRepository().list());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const selectedEquipment = draft.equipment.find(
     ({ instanceId }) => instanceId === selectedEquipmentId
@@ -112,6 +153,15 @@ export function LabComposer() {
         )
       )
     : [];
+  const validated = validationOutcome?.schemaValid ? validationOutcome : null;
+  const currentHash = useMemo(() => hashLabWorkflowSpec(draft), [draft]);
+  const validationIsCurrent =
+    validated?.validation.canonicalSpecHash === currentHash;
+  const previewEligibility =
+    validationIsCurrent && validated
+      ? evaluateLabWorkflowEligibilityV2(validated.spec, "preview")
+      : null;
+  const canPreview = previewEligibility?.eligible === true;
 
   function run(command: LabDraftCommand): boolean {
     const result = applyLabDraftCommand(draft, command);
@@ -123,9 +173,65 @@ export function LabComposer() {
       return false;
     }
     setDraft(result.draft);
+    setValidationOutcome(null);
+    setRepositoryMessage(null);
     setError(null);
     setErrorPath(null);
     return true;
+  }
+
+  function validateDraft() {
+    const outcome = validateLabWorkflowSpecV2(draft, {
+      checkedAt: new Date().toISOString()
+    });
+    setValidationOutcome(outcome);
+    setRepositoryMessage(
+      outcome.schemaValid && outcome.validation.runnable
+        ? "Deterministic validation completed: this revision is runnable."
+        : "Deterministic validation found issues that must be resolved."
+    );
+  }
+
+  function saveDraft() {
+    try {
+      const repository = draftRepository();
+      repository.save(draftName, draft);
+      const names = repository.list();
+      setSavedDraftNames(names);
+      setSelectedSavedDraft(draftName.trim());
+      setRepositoryMessage(`Saved local draft “${draftName.trim()}”.`);
+      setError(null);
+      setErrorPath(null);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Save failed.");
+      setErrorPath("localDraftRepository.save");
+    }
+  }
+
+  function loadDraft() {
+    if (!selectedSavedDraft) return;
+    try {
+      const loaded = draftRepository().load(selectedSavedDraft);
+      if (!loaded) throw new TypeError("The selected local draft is missing.");
+      setDraft(loaded);
+      setValidationOutcome(null);
+      setSelectedEquipmentId(loaded.equipment[0]?.instanceId ?? "");
+      setPlacementEquipmentId(loaded.equipment[0]?.instanceId ?? "");
+      setRuleObjectiveId(loaded.objectiveIds[0] ?? "");
+      setRepositoryMessage(`Loaded local draft “${selectedSavedDraft}”.`);
+      setError(null);
+      setErrorPath(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Load failed.");
+      setErrorPath("localDraftRepository.load");
+    }
+  }
+
+  function launchPreview() {
+    if (!canPreview || !validated) return;
+    previewRepository().save(validated.spec);
+    const hash = encodeURIComponent(validated.validation.canonicalSpecHash);
+    window.location.assign(`/teacher/lab-composer/preview?hash=${hash}`);
   }
 
   function addEquipment(equipmentDefinitionId: string) {
@@ -347,12 +453,27 @@ export function LabComposer() {
     <div className={styles.composer}>
       <section className={styles.statusBar} aria-label="Draft status">
         <div>
-          <span className={styles.statusDot} aria-hidden="true" />
-          <strong>Draft unvalidated</strong>
+          <span
+            className={styles.statusDot}
+            data-state={canPreview ? "runnable" : "draft"}
+            aria-hidden="true"
+          />
+          <strong>
+            {canPreview ? "Validated · runnable" : "Draft unvalidated"}
+          </strong>
           <span>Revision {draft.revision}</span>
         </div>
         <div className={styles.statusActions}>
-          <button type="button" disabled title="Validation is required first">
+          <button
+            type="button"
+            disabled={!canPreview}
+            title={
+              canPreview
+                ? "Open isolated preview"
+                : "Validation is required first"
+            }
+            onClick={launchPreview}
+          >
             Preview
           </button>
           <button type="button" disabled title="Assignment arrives in Phase 8">
@@ -368,6 +489,191 @@ export function LabComposer() {
           {errorPath && <code>{errorPath}</code>}
         </div>
       )}
+
+      {repositoryMessage && (
+        <p className={styles.notice} role="status">
+          {repositoryMessage}
+        </p>
+      )}
+
+      <section
+        className={styles.validationPanel}
+        aria-labelledby="validation-heading"
+      >
+        <header>
+          <p>Deterministic authority</p>
+          <h2 id="validation-heading">Validation & local versions</h2>
+        </header>
+        <div className={styles.validationActions}>
+          <button
+            className={styles.validateButton}
+            type="button"
+            onClick={validateDraft}
+          >
+            Validate current revision
+          </button>
+          <label>
+            Local draft name
+            <input
+              value={draftName}
+              maxLength={80}
+              onChange={(event) => setDraftName(event.currentTarget.value)}
+            />
+          </label>
+          <button type="button" onClick={saveDraft}>
+            Save locally
+          </button>
+          <label>
+            Saved draft
+            <select
+              value={selectedSavedDraft}
+              onChange={(event) =>
+                setSelectedSavedDraft(event.currentTarget.value)
+              }
+            >
+              <option value="">Select a saved draft</option>
+              {savedDraftNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={!selectedSavedDraft}
+            onClick={loadDraft}
+          >
+            Load selected
+          </button>
+        </div>
+
+        {validationOutcome && (
+          <div
+            className={styles.validationResult}
+            data-runnable={canPreview ? "true" : "false"}
+          >
+            {validationOutcome.schemaValid ? (
+              <>
+                <dl className={styles.validationSummary}>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{validationOutcome.validation.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Preview</dt>
+                    <dd>
+                      {validationOutcome.validation.previewEligible
+                        ? "eligible"
+                        : "blocked"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Assignment</dt>
+                    <dd>
+                      {validationOutcome.validation.assignmentEligible
+                        ? "eligible"
+                        : "blocked until Phase 8"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Validator</dt>
+                    <dd>{validationOutcome.validation.validatorVersion}</dd>
+                  </div>
+                  <div>
+                    <dt>Exact hash</dt>
+                    <dd>
+                      <code>
+                        {validationOutcome.validation.canonicalSpecHash}
+                      </code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Legacy adapter</dt>
+                    <dd>
+                      {draft.compatibility
+                        ? `${draft.compatibility.runtimeAdapterId} ${draft.compatibility.runtimeAdapterVersion}`
+                        : "None"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Models</dt>
+                    <dd>
+                      {validationOutcome.validation.resolvedChemistryModels
+                        .map(({ modelId, version }) => `${modelId} ${version}`)
+                        .join(", ") || "None resolved"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Resolved adapters</dt>
+                    <dd>
+                      {validationOutcome.validation.resolvedAdapters
+                        .map(
+                          ({ kind, adapterId, version }) =>
+                            `${kind}: ${adapterId} ${version}`
+                        )
+                        .join(" · ") || "None resolved"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Registry snapshots</dt>
+                    <dd>
+                      {Object.entries(
+                        validationOutcome.validation.registrySnapshotIds
+                      )
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(" · ")}
+                    </dd>
+                  </div>
+                </dl>
+                <details>
+                  <summary>
+                    Passed deterministic checks (
+                    {validationOutcome.validation.passedCheckIds.length})
+                  </summary>
+                  <ul>
+                    {validationOutcome.validation.passedCheckIds.map((id) => (
+                      <li key={id}>
+                        <code>{id}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </>
+            ) : (
+              <strong>The draft does not match the strict v2 schema.</strong>
+            )}
+            {validationOutcome.issues.length > 0 && (
+              <ul className={styles.issueList}>
+                {validationOutcome.issues.map((issue, index) => (
+                  <li
+                    key={`${issue.code}:${issue.path}:${index}`}
+                    data-severity={issue.severity}
+                  >
+                    <strong>{issue.code}</strong>
+                    <code>{issue.path}</code>
+                    <span>{issue.message}</span>
+                    <em>
+                      {issue.severity}
+                      {issue.safetyRelated ? " · safety-related" : ""}
+                    </em>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <aside
+          className={styles.judgeArea}
+          aria-label="Lab Workflow Judge status"
+        >
+          <strong>Workflow Judge · advisory</strong>
+          <span>
+            Not requested. Judge critique cannot override deterministic
+            validation.
+          </span>
+        </aside>
+      </section>
 
       <div
         className={styles.tabs}

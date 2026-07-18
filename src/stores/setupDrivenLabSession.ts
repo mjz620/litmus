@@ -27,6 +27,8 @@ import {
 } from "../lab-workflows/runtime";
 import { componentRegistry } from "../lab-workflows/registries/components";
 import type { WorkflowDiagnosis } from "../lab-workflows/schema/conditions";
+import type { ValidatedLabWorkflowSpecV2 } from "../lab-workflows/schema/v2";
+import { evaluateLabWorkflowEligibilityV2 } from "../lab-workflows/validation";
 
 export const SETUP_DRIVEN_TITRATION_RUNTIME_FLAG = "setup-v2" as const;
 export const SETUP_DRIVEN_TITRATION_WORKFLOW_ID =
@@ -37,8 +39,8 @@ export const SETUP_DRIVEN_TITRATION_VALIDATION_TIME =
 export type LabSessionRuntimeMode = "legacy" | "setup_driven_v2";
 
 export interface SetupDrivenLabSelection {
-  readonly workflowId: typeof SETUP_DRIVEN_TITRATION_WORKFLOW_ID;
-  readonly workflowHash: typeof TITRATION_V2_EXPECTED_HASH;
+  readonly workflowId: string;
+  readonly workflowHash: string;
 }
 
 export const STRICT_TITRATION_SETUP_SELECTION: SetupDrivenLabSelection =
@@ -138,6 +140,8 @@ export interface CreateSetupDrivenTitrationSessionInput {
   readonly sessionId: string;
   readonly sessionSeed: string;
   readonly selection: SetupDrivenLabSelection;
+  /** Exact validated definition supplied only by the isolated Composer preview. */
+  readonly workflow?: Readonly<ValidatedLabWorkflowSpecV2>;
 }
 
 export interface SetupDrivenTitrationTransition {
@@ -214,26 +218,18 @@ export function createSetupDrivenTitrationSession(
       "The setup-driven titration session cannot load another experiment."
     );
   }
+  const workflow =
+    input.workflow ??
+    validateStrictMigratedTitrationV2(SETUP_DRIVEN_TITRATION_VALIDATION_TIME);
+  const eligibility = evaluateLabWorkflowEligibilityV2(workflow, "preview");
   if (
-    input.selection.workflowId !== SETUP_DRIVEN_TITRATION_WORKFLOW_ID ||
-    input.selection.workflowHash !== TITRATION_V2_EXPECTED_HASH
-  ) {
-    throw new SetupDrivenSessionError(
-      SETUP_DRIVEN_SESSION_ERROR_CODES.selectionInvalid,
-      "The requested setup-driven definition ID or hash is not eligible."
-    );
-  }
-
-  const workflow = validateStrictMigratedTitrationV2(
-    SETUP_DRIVEN_TITRATION_VALIDATION_TIME
-  );
-  if (
+    !eligibility.eligible ||
     workflow.id !== input.selection.workflowId ||
     workflow.validation.canonicalSpecHash !== input.selection.workflowHash
   ) {
     throw new SetupDrivenSessionError(
       SETUP_DRIVEN_SESSION_ERROR_CODES.selectionInvalid,
-      "The current validated definition does not match the requested source."
+      "The requested setup-driven definition is stale, ineligible, or does not match its exact ID and hash."
     );
   }
 

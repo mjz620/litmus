@@ -15,6 +15,7 @@ import type {
   LabSessionRuntimeMode,
   SetupDrivenLabSelection
 } from "../../../stores/setupDrivenLabSession";
+import type { ValidatedLabWorkflowSpecV2 } from "../../../lab-workflows/schema/v2";
 
 import styles from "./page.module.css";
 
@@ -27,6 +28,7 @@ interface LabRouteShellProps {
   mode?: "practice" | "assignment" | "demo" | "preview";
   runtimeMode?: LabSessionRuntimeMode;
   setupDrivenSelection?: SetupDrivenLabSelection;
+  setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
 }
 
 /**
@@ -42,7 +44,8 @@ export function LabRouteShell({
   parentSessionId,
   mode,
   runtimeMode,
-  setupDrivenSelection
+  setupDrivenSelection,
+  setupDrivenWorkflow
 }: LabRouteShellProps) {
   const { status, state, error, isCurrentExperiment, isPending, isReady } =
     useLabSession({
@@ -52,7 +55,8 @@ export function LabRouteShell({
       parentSessionId,
       mode,
       runtimeMode,
-      setupDrivenSelection
+      setupDrivenSelection,
+      setupDrivenWorkflow
     });
   const titrationState = isTitrationState(state) ? state : null;
   const chartMaxVolumeML = titrationState
