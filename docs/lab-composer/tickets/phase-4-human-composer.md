@@ -8,6 +8,8 @@ Phase 4 must deliver useful non-LLM authoring. The teacher UI does not write raw
 
 **Dependencies:** `LC2-304`.
 
+**Status:** Implemented. `src/lab-workflows/authoring/**` now owns a strict closed command union and one injected-registry command service for equipment, materials, layout, permitted actions, rules/conditions, partial-order dependencies, instructions, objectives, and rubric criteria. Every successful command returns a new deeply frozen v2 draft, increments revision, sets `draft_unvalidated`, and clears deterministic validation and advisory Judge artifacts. Exact registry resolution, availability, component capabilities, action connections, quantity/configuration compatibility, reference paths, duplicate IDs, ordering cycles, revision bounds, and guarded removals have stable error codes. Instruction presentation guidance is the only documented subordinate cascade; equipment, rule, and objective removals reject with complete dependency paths. Strict versioned JSON helpers are explicitly local/fixture-only. Tests reconstruct and revalidate the native titration draft entirely through commands and cover all command variants, invalidation, non-mutation, deterministic sequences, serialization, and platform-neutral imports.
+
 **Read first:** v2 schema/validator, current Author Agent prototype, [`../contract-blueprint.md`](../contract-blueprint.md) “Human and agent authoring boundary.”
 
 **Allowed areas:** `src/lab-workflows/authoring/**`, focused tests/docs.

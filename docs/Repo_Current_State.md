@@ -164,4 +164,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-Phase 3 is implemented through `LC2-304`; the next ticket is `LC2-400`, the shared human-Composer command layer. The feature-flagged titration path now has setup-driven runtime, scene/control projection, consumer/replay provenance, and a separate native v2 partial-order proof while production still defaults to the legacy path. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md).
+Phase 3 is complete and Phase 4 is implemented through `LC2-400`; the next coordinated tickets are `LC2-401` and `LC2-402`, the teacher setup and constraint editors over the shared command layer. Commands now construct the native titration draft, enforce exact registry/capability references, invalidate prior authority, and serialize strict local drafts without React, LLMs, or network access. Production still defaults to the legacy student path. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md).
