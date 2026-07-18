@@ -88,6 +88,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 
 **Stop:** Do not create one module that switches on lab identity or attempt a universal aqueous solver.
 
+**Implementation note:** The generic runtime now compiles the validator's exact dependency-ordered model metadata and exact verified observable/unit allow-lists. A code-owned coordinator validates executable ID, version, provided capabilities, and required capabilities before initialization; runs only selected modules; isolates strict serializable field state; skips material transitions for non-material actions; and rejects missing implementations, contract drift, malformed state, and duplicate or unregistered observables with stable reason codes. Numeric registered observables populate deterministic ground truth. Production chemistry-model metadata remains empty and the evidence modules are test-only, so this ticket does not claim acid-base or other production chemistry support.
+
 ## LC2-203 — Partial-order workflow evaluator and diagnoses
 
 **Objective:** Implement pure deterministic evaluation of v2 conditions/rules against projected state, registered observables, and semantic evidence.

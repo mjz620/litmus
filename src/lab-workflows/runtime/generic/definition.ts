@@ -4,6 +4,7 @@ import type {
   StepResult
 } from "../../../experiments/shared";
 import type { ActionParameterDefinition } from "../../registries/actions";
+import { ChemistryModelCoordinatorError } from "../../chemistry-models/coordinator";
 import {
   applyExecutedMaterialAction,
   initializeMaterialLedger,
@@ -279,18 +280,33 @@ function assertStateMatchesProgram(
   if (
     state.chemistry.modelStates.length !== expectedModels.length ||
     state.chemistry.modelStates.some(
-      (model) =>
-        !expectedModels.some(
-          (expected) =>
-            expected.modelId === model.modelId &&
-            expected.version === model.modelVersion
-        )
+      (model, index) =>
+        expectedModels[index]?.modelId !== model.modelId ||
+        expectedModels[index]?.version !== model.modelVersion ||
+        new Set(model.fields.map(({ key }) => key)).size !== model.fields.length
     )
   ) {
     fail(
       ERROR.invalidState,
       "State model projections do not match validated model provenance."
     );
+  }
+  const observableIds = new Set<string>();
+  for (const observable of state.chemistry.observables) {
+    if (
+      observableIds.has(observable.observableId) ||
+      !compiled.program.registeredObservableIds.includes(
+        observable.observableId
+      ) ||
+      (observable.unitId !== undefined &&
+        !compiled.program.registeredUnitIds.includes(observable.unitId))
+    ) {
+      fail(
+        ERROR.invalidState,
+        "State observable projections do not match registered observables."
+      );
+    }
+    observableIds.add(observable.observableId);
   }
 }
 
@@ -678,6 +694,13 @@ export function createGenericLabDefinition(
       );
     } catch (error) {
       if (error instanceof GenericLabRuntimeError) throw error;
+      if (error instanceof ChemistryModelCoordinatorError) {
+        fail(
+          ERROR.transitionRejected,
+          "Model coordinator rejected initialization.",
+          { reasonCode: error.code, ...error.details }
+        );
+      }
       fail(
         ERROR.transitionRejected,
         "Model coordinator rejected initialization."
@@ -822,7 +845,15 @@ export function createGenericLabDefinition(
           })
         )
       );
-    } catch {
+    } catch (error) {
+      if (error instanceof GenericLabRuntimeError) throw error;
+      if (error instanceof ChemistryModelCoordinatorError) {
+        fail(
+          ERROR.transitionRejected,
+          "Model coordinator rejected the transition.",
+          { reasonCode: error.code, ...error.details }
+        );
+      }
       fail(
         ERROR.transitionRejected,
         "Model coordinator rejected the transition."

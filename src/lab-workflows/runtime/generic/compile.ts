@@ -13,6 +13,7 @@ import {
 import {
   GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
   type CompiledActionBinding,
+  type CompiledChemistryModelBinding,
   type CompiledEquipmentBinding,
   type CompiledGenericLabProgram,
   type CompiledMaterialBinding,
@@ -263,6 +264,46 @@ function compileProvenance(
   };
 }
 
+function compileChemistryModels(
+  workflow: ValidatedLabWorkflowSpecV2,
+  registries: LabWorkflowV2RegistryContext
+): readonly CompiledChemistryModelBinding[] {
+  return workflow.validation.resolvedChemistryModels.map((resolved) => {
+    const metadata = registries.chemistryModels.get(resolved.modelId);
+    if (
+      metadata.version !== resolved.version ||
+      !sameStringSet(
+        metadata.providedCapabilityIds,
+        resolved.providedCapabilityIds
+      )
+    ) {
+      runtimeError(
+        ERROR.portContractMismatch,
+        `Validated chemistry metadata for ${resolved.modelId} has drifted.`,
+        { modelId: resolved.modelId }
+      );
+    }
+    return {
+      modelId: metadata.id,
+      modelVersion: metadata.version,
+      providedCapabilityIds: [...metadata.providedCapabilityIds],
+      requiredCapabilityIds: [...metadata.requiredCapabilityIds]
+    };
+  });
+}
+
+function sameStringSet(
+  left: readonly string[],
+  right: readonly string[]
+): boolean {
+  const canonicalLeft = [...new Set(left)].sort(compareStrings);
+  const canonicalRight = [...new Set(right)].sort(compareStrings);
+  return (
+    canonicalLeft.length === canonicalRight.length &&
+    canonicalLeft.every((value, index) => value === canonicalRight[index])
+  );
+}
+
 export function compileGenericLabProgram(
   input: unknown,
   ports: GenericRuntimePorts,
@@ -275,13 +316,18 @@ export function compileGenericLabProgram(
   const equipment = compileEquipment(workflow, registries, adapterById);
   const actions = compileActions(workflow, registries, adapterById);
 
-  const unsupportedModels = workflow.validation.resolvedChemistryModels.filter(
-    ({ modelId, version }) =>
-      !ports.models.supportedModels.some(
-        (supported) =>
-          supported.modelId === modelId && supported.modelVersion === version
-      )
-  );
+  const chemistryModels = compileChemistryModels(workflow, registries);
+
+  const unsupportedModels = ports.models.assertCompatible
+    ? []
+    : workflow.validation.resolvedChemistryModels.filter(
+        ({ modelId, version }) =>
+          !ports.models.supportedModels.some(
+            (supported) =>
+              supported.modelId === modelId &&
+              supported.modelVersion === version
+          )
+      );
   if (unsupportedModels.length > 0) {
     runtimeError(
       ERROR.portUnavailable,
@@ -331,12 +377,29 @@ export function compileGenericLabProgram(
     equipment,
     materials: compileMaterials(workflow, registries),
     actions,
+    chemistryModels,
+    registeredObservableIds: registries.configurations
+      .list()
+      .filter(
+        (entry) =>
+          entry.category === "observable" && entry.availability === "verified"
+      )
+      .map(({ id }) => id)
+      .sort(compareStrings),
+    registeredUnitIds: registries.configurations
+      .list()
+      .filter(
+        (entry) => entry.category === "unit" && entry.availability === "verified"
+      )
+      .map(({ id }) => id)
+      .sort(compareStrings),
     rules: workflow.rules.map((rule) => ({
       ...rule,
       objectiveIds: [...rule.objectiveIds]
     })),
     safetyPolicyIds: [...workflow.safetyPolicyIds]
   };
+  ports.models.assertCompatible?.(deepFreeze(program));
 
   return Object.freeze({ program: deepFreeze(program), ports });
 }

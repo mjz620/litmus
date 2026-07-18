@@ -55,7 +55,7 @@ The repository currently has the transitional Composer foundation through `LC2-2
 
 It does not yet have chemistry-module execution, a constraint evaluator implementation, semantic event envelopes, generic trace replay, setup-driven student scene, human visual composer, second adaptable lab, shared agent command loop, Workflow Judge route, or immutable definition assignment storage. The reusable mechanics are production code, but no production route consumes them and Preview/Assign remain closed. Migrated v2 titration output remains non-runnable because its chemistry capabilities are declared without registered providers and its explicit legacy runtime adapter is not executable yet. The current production runtime still uses the v1 titration compatibility path.
 
-The next unblocked implementation ticket is `LC2-202`, deterministic chemistry-module coordination and registered observables. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work before the generic runtime and evaluator prerequisites.
+The next unblocked implementation ticket is `LC2-203`, the pure partial-order workflow evaluator and structured diagnoses. `LC2-202` now provides dependency-ordered deterministic module coordination, exact implementation-contract checks, isolated serializable model state, and registered observable projection using test-only modules; production acid-base compatibility remains reserved for `LC2-300`. `LC2-001` remains optional only if review identifies a concrete legacy behavior not already covered by existing tests. Do not start UI or agent work before the generic runtime and evaluator prerequisites.
 
 ## Non-negotiable implementation sequence
 

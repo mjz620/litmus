@@ -18,6 +18,7 @@ export type { AssembleGenericLabRuntimeOptions } from "./runtime";
 export {
   GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
   type CompiledActionBinding,
+  type CompiledChemistryModelBinding,
   type CompiledEquipmentBinding,
   type CompiledGenericLabProgram,
   type CompiledMaterialBinding,

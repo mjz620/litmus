@@ -165,6 +165,13 @@ export interface CompiledActionBinding {
   readonly emittedEventContractId: string;
 }
 
+export interface CompiledChemistryModelBinding {
+  readonly modelId: string;
+  readonly modelVersion: string;
+  readonly providedCapabilityIds: readonly string[];
+  readonly requiredCapabilityIds: readonly string[];
+}
+
 export interface CompiledGenericLabProgram {
   readonly schemaVersion: typeof GENERIC_LAB_RUNTIME_SCHEMA_VERSION;
   readonly provenance: GenericRuntimeProvenance;
@@ -173,6 +180,10 @@ export interface CompiledGenericLabProgram {
   readonly equipment: readonly CompiledEquipmentBinding[];
   readonly materials: readonly CompiledMaterialBinding[];
   readonly actions: readonly CompiledActionBinding[];
+  /** Dependency-ordered, exact verified metadata selected by validation. */
+  readonly chemistryModels: readonly CompiledChemistryModelBinding[];
+  readonly registeredObservableIds: readonly string[];
+  readonly registeredUnitIds: readonly string[];
   readonly rules: readonly WorkflowRule[];
   readonly safetyPolicyIds: readonly string[];
 }
@@ -263,6 +274,8 @@ export interface GenericModelCoordinatorPort {
     readonly modelId: string;
     readonly modelVersion: string;
   }[];
+  /** Optional exact contract check used by the code-owned coordinator. */
+  assertCompatible?(program: Readonly<CompiledGenericLabProgram>): void;
   initialize(
     context: Readonly<GenericModelInitializationContext>
   ): GenericChemistryProjection;

@@ -18,12 +18,28 @@ const SOURCE_FILES = [
   "types.ts",
   "utils.ts"
 ];
+const COORDINATOR_DIRECTORY = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../src/lab-workflows/chemistry-models/coordinator"
+);
+const COORDINATOR_FILES = [
+  "coordinator.ts",
+  "errors.ts",
+  "index.ts",
+  "types.ts"
+];
 
 describe("generic runtime import and dispatch boundaries", () => {
   it("contains no legacy dispatch metadata, dynamic imports, framework, network, or browser dependencies", () => {
     const source = SOURCE_FILES.map((file) =>
       readFileSync(join(SOURCE_DIRECTORY, file), "utf8")
-    ).join("\n");
+    )
+      .concat(
+        COORDINATOR_FILES.map((file) =>
+          readFileSync(join(COORDINATOR_DIRECTORY, file), "utf8")
+        )
+      )
+      .join("\n");
     const forbidden = [
       "family" + "Id",
       "compatible" + "FamilyIds",

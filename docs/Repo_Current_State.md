@@ -158,4 +158,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-The next normal implementation ticket is `LC2-202`, chemistry-module coordination and registered observables. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.
+The next normal implementation ticket is `LC2-203`, the partial-order workflow evaluator and structured diagnoses. `LC2-202` completed the dependency-ordered generic chemistry-module coordinator with exact executable-contract checks and registered observable projection using test-only modules; production acid-base support still belongs to `LC2-300`. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.
