@@ -1,11 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { type KeyboardEvent, useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 
+import { useLabStore } from "../../../stores/labStore";
 import { useLabUiStore } from "../../../stores/labUiStore";
 import { TitrationControls } from "./TitrationControls";
 import { EQUIPMENT, getVisibleControlGroups } from "./equipment";
+import {
+  resolveTitrationSceneConfiguration,
+  visibleControlGroupsForConfiguration
+} from "./setupDrivenScene";
 
 import styles from "./TitrationWorkspace.module.css";
 
@@ -30,7 +35,24 @@ const TitrationScene = dynamic(
  */
 export function TitrationWorkspace() {
   const focused = useLabUiStore((state) => state.focused);
+  const runtimeProjection = useLabStore((state) => state.runtimeProjection);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const sceneResolution = useMemo(() => {
+    try {
+      return {
+        configuration: resolveTitrationSceneConfiguration(runtimeProjection),
+        error: null
+      } as const;
+    } catch (error) {
+      return {
+        configuration: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : "The setup-driven scene could not be resolved."
+      } as const;
+    }
+  }, [runtimeProjection]);
 
   useEffect(
     () => () => {
@@ -43,6 +65,17 @@ export function TitrationWorkspace() {
     },
     []
   );
+
+  useEffect(() => {
+    const configuration = sceneResolution.configuration;
+    if (
+      configuration &&
+      focused &&
+      !configuration.selectableEquipmentIds.includes(focused)
+    ) {
+      useLabUiStore.getState().clearFocus();
+    }
+  }, [focused, sceneResolution.configuration]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Escape") return;
@@ -74,13 +107,33 @@ export function TitrationWorkspace() {
     clearFocus();
   }
 
+  if (!sceneResolution.configuration) {
+    return (
+      <div className={styles.workspace}>
+        <div role="alert" className={styles.setupError}>
+          <strong>Lab setup unavailable</strong>
+          <span>{sceneResolution.error}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const configuration = sceneResolution.configuration;
+  const visibleGroups =
+    configuration.mode === "legacy"
+      ? getVisibleControlGroups(focused)
+      : visibleControlGroupsForConfiguration(configuration, focused);
+
   return (
     <div
       className={styles.workspace}
       data-precision-controls-open={controlsOpen ? "true" : "false"}
+      data-runtime-mode={configuration.mode}
+      data-workflow-id={configuration.workflowId ?? undefined}
       onKeyDown={handleKeyDown}
     >
       <TitrationScene
+        configuration={configuration}
         precisionControlsOpen={controlsOpen}
         onPrecisionControlsChange={setControlsOpen}
       />
@@ -90,6 +143,9 @@ export function TitrationWorkspace() {
             <div>
               <p>Accessibility surface</p>
               <h2>Precision controls</h2>
+              {configuration.mode === "setup_driven_v2" && (
+                <span className={styles.setupBadge}>Setup-driven workflow</span>
+              )}
             </div>
             <button
               type="button"
@@ -101,8 +157,10 @@ export function TitrationWorkspace() {
           </div>
           <aside className={styles.controlPanel} aria-label="Lab controls">
             <TitrationControls
-              visibleGroups={getVisibleControlGroups(focused)}
+              visibleGroups={visibleGroups}
               contextLabel={focused ? EQUIPMENT[focused].name : undefined}
+              setupDriven={configuration.mode === "setup_driven_v2"}
+              maxDispenseVolumeML={configuration.maxDispenseVolumeML}
             />
           </aside>
         </div>

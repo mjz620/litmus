@@ -43,6 +43,7 @@ import {
   createSetupDrivenTitrationSession,
   normalizeSetupDrivenTitrationAction,
   type LabSessionRuntimeMode,
+  type SetupDrivenLabProjection,
   type SetupDrivenLabSelection,
   type SetupDrivenRuntimeInspection,
   type SetupDrivenTitrationSession
@@ -92,6 +93,7 @@ export interface LabStore {
   workflowVersionId: string | null;
   runtimeMode: LabSessionRuntimeMode;
   runtimeInspection: SetupDrivenRuntimeInspection | null;
+  runtimeProjection: SetupDrivenLabProjection | null;
   definition: RegisteredExperimentDefinition | null;
   state: LabExperimentState | null;
   studentModel: StudentModel | null;
@@ -144,6 +146,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
     workflowVersionId: options.workflowVersionId ?? null,
     runtimeMode: "legacy",
     runtimeInspection: null,
+    runtimeProjection: null,
     definition: null,
     state: null,
     studentModel: null,
@@ -169,6 +172,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           request.workflowVersionId ?? options.workflowVersionId ?? null,
         runtimeMode: request.runtimeMode ?? "legacy",
         runtimeInspection: null,
+        runtimeProjection: null,
         definition: null,
         state: null,
         studentModel: null,
@@ -197,7 +201,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           state,
           studentModel,
           runtimeMode: setupDrivenSession?.mode ?? "legacy",
-          runtimeInspection: setupDrivenSession?.getInspection() ?? null
+          runtimeInspection: setupDrivenSession?.getInspection() ?? null,
+          runtimeProjection: setupDrivenSession?.getProjection() ?? null
         });
         queueCheckpoint([], state, studentModel);
       } catch (error) {
@@ -207,6 +212,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           state: null,
           studentModel: null,
           runtimeInspection: null,
+          runtimeProjection: null,
           error: getErrorMessage(error)
         });
         throw error;
@@ -252,7 +258,9 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         studentModel,
         eventQueue: [...current.eventQueue, ...resultEvents],
         runtimeInspection:
-          setupTransition?.inspection ?? current.runtimeInspection
+          setupTransition?.inspection ?? current.runtimeInspection,
+        runtimeProjection:
+          setupTransition?.projection ?? current.runtimeProjection
       });
 
       queueCheckpoint(resultEvents, result.state, studentModel);

@@ -45,11 +45,17 @@ interface TitrationControlsProps {
   visibleGroups?: readonly ControlGroupId[];
   /** Selected equipment name shown as the contextual heading. */
   contextLabel?: string;
+  /** Runtime-authored maximum for one normalized dispense action. */
+  maxDispenseVolumeML?: number | null;
+  /** Shows an action-aware empty state for a setup-driven selection. */
+  setupDriven?: boolean;
 }
 
 export function TitrationControls({
   visibleGroups = getVisibleControlGroups(null),
-  contextLabel
+  contextLabel,
+  maxDispenseVolumeML = null,
+  setupDriven = false
 }: TitrationControlsProps = {}) {
   const state = useLabStore((store) =>
     isTitrationState(store.state) ? store.state : null
@@ -73,7 +79,12 @@ export function TitrationControls({
   >(null);
   const [funnelSelected, setFunnelSelected] = useState(false);
   const dispense = useDispenseGesture({
-    availableML: state?.buretteAvailableML ?? 0,
+    availableML: state
+      ? Math.min(
+          state.buretteAvailableML,
+          maxDispenseVolumeML ?? state.buretteAvailableML
+        )
+      : 0,
     onCommit: () =>
       playDeliverySounds(useLabStore.getState().eventQueue.slice(-1)),
     onDetentChange: () => getLabSounds().playFromGesture("valve"),
@@ -95,6 +106,10 @@ export function TitrationControls({
   const remainingFillCapacityML =
     state.config.buretteCapacityML - state.buretteAvailableML;
   const availableVolumeML = state.buretteAvailableML;
+  const availableDispenseVolumeML = Math.min(
+    availableVolumeML,
+    maxDispenseVolumeML ?? availableVolumeML
+  );
   const hasAvailableTitrant = availableVolumeML > 0;
   const indicatorAdded = state.indicatorAdded;
   const isDispensing = dispense.state.isHolding;
@@ -154,6 +169,12 @@ export function TitrationControls({
     if (volumeML > availableVolumeML) {
       setInputError(
         `Only ${formatBuretteVolume(availableVolumeML)} mL remains in the burette.`
+      );
+      return;
+    }
+    if (maxDispenseVolumeML !== null && volumeML > maxDispenseVolumeML) {
+      setInputError(
+        `This workflow permits at most ${formatBuretteVolume(maxDispenseVolumeML)} mL per addition.`
       );
       return;
     }
@@ -262,6 +283,14 @@ export function TitrationControls({
       </div>
 
       <div className={styles.controlGrid}>
+        {setupDriven && visibleGroups.length === 0 && (
+          <div className={styles.noAction} role="status">
+            <strong>No action is available for this selection yet.</strong>
+            <span>
+              Choose equipment associated with the current workflow step.
+            </span>
+          </div>
+        )}
         {visibleGroups.includes("prepare") && (
           <fieldset className={styles.controlGroup}>
             <legend>1. Prepare burette</legend>
@@ -447,7 +476,7 @@ export function TitrationControls({
                 <input
                   type="number"
                   min="0.01"
-                  max={availableVolumeML}
+                  max={availableDispenseVolumeML}
                   step="0.01"
                   value={additionVolume}
                   onChange={(event) =>
@@ -475,7 +504,11 @@ export function TitrationControls({
             <div className={styles.presetRow} aria-label="Volume presets">
               <button
                 type="button"
-                disabled={!hasAvailableTitrant || isDispensing}
+                disabled={
+                  !hasAvailableTitrant ||
+                  isDispensing ||
+                  (maxDispenseVolumeML !== null && maxDispenseVolumeML < 1)
+                }
                 onClick={() => setAdditionVolume("1.00")}
               >
                 Coarse 1.00 mL

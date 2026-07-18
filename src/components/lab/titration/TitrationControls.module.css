@@ -49,6 +49,20 @@
   gap: 0.85rem;
 }
 
+.noAction {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px dashed var(--lab-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--lab-surface-muted);
+  color: var(--lab-ink-muted);
+}
+
+.noAction strong {
+  color: var(--lab-ink);
+}
+
 .controlGroup {
   display: grid;
   align-content: start;

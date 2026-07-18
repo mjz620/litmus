@@ -27,6 +27,7 @@ import type { GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
 
 interface LabSceneProps {
+  enabledEquipmentIds: readonly EquipmentId[];
   buretteAvailableML: number;
   buretteCapacityML: number;
   flaskLiquidColor: string;
@@ -95,6 +96,7 @@ function LabLighting({ quality }: { quality: GlassQuality }) {
  * facts upward. It never computes chemistry or dispatches actions.
  */
 export function LabScene({
+  enabledEquipmentIds,
   buretteAvailableML,
   buretteCapacityML,
   flaskLiquidColor,
@@ -149,6 +151,7 @@ export function LabScene({
       <group position={[BURETTE.x, buretteCenterY, BURETTE.z]}>
         <Interactable
           id="burette"
+          enabled={enabledEquipmentIds.includes("burette")}
           label={EQUIPMENT.burette.name}
           highlightShape={{
             geometry: (
@@ -175,6 +178,7 @@ export function LabScene({
       <group position={[FLASK.x, flaskCenterY, FLASK.z]}>
         <Interactable
           id="flask"
+          enabled={enabledEquipmentIds.includes("flask")}
           label={EQUIPMENT.flask.name}
           highlightShape={{
             geometry: (
@@ -205,6 +209,7 @@ export function LabScene({
       <group position={[BURETTE.x, meniscusY, BURETTE.z]}>
         <Interactable
           id="meniscus"
+          enabled={enabledEquipmentIds.includes("meniscus")}
           label={EQUIPMENT.meniscus.name}
           highlightShape={{
             geometry: <torusGeometry args={[0.026, 0.0022, 8, 24]} />,
@@ -238,6 +243,7 @@ export function LabScene({
       <group position={[SHELF.x, SHELF.baseY, SHELF.z]}>
         <Interactable
           id="indicatorShelf"
+          enabled={enabledEquipmentIds.includes("indicatorShelf")}
           label={EQUIPMENT.indicatorShelf.name}
           highlightShape={{
             geometry: (
@@ -271,6 +277,7 @@ export function LabScene({
       <group position={[WASH.x, WASH.baseY, WASH.z]}>
         <Interactable
           id="washStation"
+          enabled={enabledEquipmentIds.includes("washStation")}
           label={EQUIPMENT.washStation.name}
           highlightShape={{
             geometry: (

@@ -49,6 +49,31 @@
   margin: 0;
 }
 
+.setupBadge {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid color-mix(in srgb, var(--lab-primary) 35%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
+  font-size: 0.68rem;
+  font-weight: var(--type-ui-semibold);
+}
+
+.setupError {
+  display: grid;
+  min-height: 18rem;
+  padding: 2rem;
+  place-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--lab-danger);
+  border-radius: var(--radius-lg);
+  background: var(--lab-danger-soft);
+  color: var(--lab-ink);
+  text-align: center;
+}
+
 .drawerHeader p {
   color: var(--lab-primary);
   font-size: 0.68rem;

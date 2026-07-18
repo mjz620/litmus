@@ -88,6 +88,8 @@ Phase 3 proves compatibility by moving the shipped titration through the generic
 
 **Dependencies:** `LC2-302`.
 
+**Status:** Implemented. The flagged setup-driven session now projects exact registered visual adapters, bounded placement, material/equipment state, current action availability, and authored dispense limits into the existing titration scene. Unknown adapters, placements, action mappings, and malformed projected state fail closed with an accessible setup error. The declared setup controls selection and interaction without changing legacy rendering or chemistry dispatch, and both paths retain the existing immersive room, precision drawer, physical stopcock, indicator, wash-station, coach, and reset UX.
+
 **Allowed areas:** `src/components/lab/**`, `src/app/lab/**`, UI-owned visual adapter registry/map, UI tests/e2e/styles/docs.
 
 **Do not touch:** chemistry formulas/events, core schema/validator, agent/persistence code, legacy scene deletion.

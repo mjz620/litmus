@@ -362,6 +362,30 @@ describe("lab store", () => {
         }
       ]
     });
+    expect(initial.runtimeProjection).toMatchObject({
+      workflowId: STRICT_TITRATION_SETUP_SELECTION.workflowId,
+      equipment: [
+        {
+          instanceId: "titrant_burette",
+          visualAdapterDefinitionId: "visual-adapter.burette.v1",
+          placementSlotId: "placement.bench_center_stand.v1"
+        },
+        { instanceId: "analyte_flask" },
+        { instanceId: "indicator_source" }
+      ],
+      actions: [
+        {
+          permissionId: "migration.permission.s1.a1",
+          available: true
+        },
+        {
+          permissionId: "migration.permission.s2.a1",
+          available: false,
+          authoredLimits: { maxVolumeMLPerAction: 0.5 }
+        }
+      ],
+      availablePermissionIds: ["migration.permission.s1.a1"]
+    });
     expect(requireTitrationState(initial.state)).toMatchObject({
       sessionSeed: "setup-driven-seed",
       titrantAddedML: 22,
@@ -387,6 +411,9 @@ describe("lab store", () => {
       eventSequence: 2
     });
     expect(updated.runtimeInspection?.eventIds).toHaveLength(2);
+    expect(updated.runtimeProjection?.availablePermissionIds).toEqual([
+      "migration.permission.s2.a1"
+    ]);
     expect(step).toHaveBeenCalledTimes(2);
     step.mockRestore();
   });

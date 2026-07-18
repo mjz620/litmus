@@ -30,7 +30,7 @@ import {
   getBuretteFillFraction,
   getFlaskLiquidColor
 } from "../three/sceneProjection";
-import { EQUIPMENT, EQUIPMENT_IDS, type EquipmentId } from "./equipment";
+import { EQUIPMENT, type EquipmentId } from "./equipment";
 import {
   getIndicatorLabel,
   IndicatorSelectionDialog
@@ -41,6 +41,7 @@ import {
 } from "./procedureStage";
 import { useDispenseGesture } from "./useDispenseGesture";
 import { useTitrationIntents } from "./useTitrationIntents";
+import type { TitrationSceneConfiguration } from "./setupDrivenScene";
 
 import styles from "./TitrationScene.module.css";
 
@@ -119,11 +120,13 @@ function getContextualPrompt(
  * simulation remains the student's primary workspace.
  */
 interface TitrationSceneProps {
+  configuration: Readonly<TitrationSceneConfiguration>;
   precisionControlsOpen: boolean;
   onPrecisionControlsChange: (open: boolean) => void;
 }
 
 export function TitrationScene({
+  configuration,
   precisionControlsOpen,
   onPrecisionControlsChange
 }: TitrationSceneProps) {
@@ -161,7 +164,15 @@ export function TitrationScene({
   const clearFocus = useLabUiStore((store) => store.clearFocus);
   const titrationIntents = useTitrationIntents();
   const physicalDispense = useDispenseGesture({
-    availableML: state?.buretteAvailableML ?? 0,
+    availableML: state
+      ? Math.min(
+          configuration.projectedState?.burette.availableML ??
+            state.buretteAvailableML,
+          configuration.maxDispenseVolumeML ??
+            configuration.projectedState?.burette.availableML ??
+            state.buretteAvailableML
+        )
+      : 0,
     onCommit: () => {
       const sounds = getLabSounds();
       sounds.playFromGesture("drop");
@@ -264,10 +275,23 @@ export function TitrationScene({
   if (!state) return null;
 
   const quality: GlassQuality = reducedGraphics ? "low" : autoQuality;
-  const indicatorAdded = state.indicatorAdded;
+  const prepareAvailable =
+    configuration.availableControlGroups.includes("prepare");
+  const indicatorAvailable =
+    configuration.availableControlGroups.includes("indicator");
+  const deliveryAvailable =
+    configuration.availableControlGroups.includes("deliver");
+  const projectedBurette = configuration.projectedState?.burette;
+  const projectedFlask = configuration.projectedState?.flask;
+  const visualBuretteAvailableML =
+    projectedBurette?.availableML ?? state.buretteAvailableML;
+  const visualBuretteCapacityML =
+    projectedBurette?.capacityML ?? state.config.buretteCapacityML;
+  const indicatorAdded = projectedFlask?.indicatorAdded ?? state.indicatorAdded;
   const canPrepareBurette =
-    state.fillCount === 0 ||
-    state.buretteAvailableML < state.config.buretteCapacityML;
+    prepareAvailable &&
+    (state.fillCount === 0 ||
+      state.buretteAvailableML < state.config.buretteCapacityML);
   const hasRinsedBurette =
     state.buretteConditioned || state.titrantDilutionFactor < 1;
   const needsRinse =
@@ -279,12 +303,14 @@ export function TitrationScene({
     washSetupComplete &&
     (needsRinse || selectedWashLiquid === "titrant") &&
     canPrepareBurette;
-  const latestObservedColor = eventQueue.findLast(
-    ({ observation }) => typeof observation.observedColor === "string"
-  )?.observation.observedColor;
+  const latestObservedColor =
+    projectedFlask?.observableColor ??
+    eventQueue.findLast(
+      ({ observation }) => typeof observation.observedColor === "string"
+    )?.observation.observedColor;
   const fillFraction = getBuretteFillFraction(
-    state.buretteAvailableML,
-    state.config.buretteCapacityML
+    visualBuretteAvailableML,
+    visualBuretteCapacityML
   );
   const flaskLiquidColor = getFlaskLiquidColor(
     typeof latestObservedColor === "string" ? latestObservedColor : undefined
@@ -292,16 +318,23 @@ export function TitrationScene({
   const procedureStage = getProcedureStage(state, eventQueue);
   const nearEndpoint = isNearEndpointProjection(state, eventQueue);
   const endpointOvershot = hasRecentEndpointOvershoot(eventQueue);
-  const contextualPrompt = getContextualPrompt(
-    procedureStage,
-    state,
-    nearEndpoint,
-    endpointOvershot
-  );
+  const contextualPrompt =
+    configuration.mode === "setup_driven_v2" &&
+    configuration.availableControlGroups.includes("reading")
+      ? "Next: focus the meniscus and record the displayed burette reading before dispensing."
+      : configuration.mode === "setup_driven_v2" && deliveryAvailable
+        ? "Reading recorded. Focus the burette and add titrant within the workflow limit."
+        : getContextualPrompt(
+            procedureStage,
+            state,
+            nearEndpoint,
+            endpointOvershot
+          );
   const infoEquipment = hovered ?? focused;
-  const visualSummary = `3D chemistry lab. Burette contains ${formatBuretteVolume(state.buretteAvailableML)} mL of ${formatBuretteVolume(state.config.buretteCapacityML)} mL capacity. Flask liquid appears ${latestObservedColor ?? "colorless"}.`;
+  const visualSummary = `3D chemistry lab. Burette contains ${formatBuretteVolume(visualBuretteAvailableML)} mL of ${formatBuretteVolume(visualBuretteCapacityML)} mL capacity. Flask liquid appears ${latestObservedColor ?? "colorless"}.`;
 
   function handleSelect(equipment: EquipmentId) {
+    if (!configuration.selectableEquipmentIds.includes(equipment)) return;
     setLookActive(false);
     setFocused(equipment);
   }
@@ -475,7 +508,7 @@ export function TitrationScene({
             role="group"
             aria-label="Selectable equipment"
           >
-            {EQUIPMENT_IDS.map((equipmentId) => (
+            {configuration.selectableEquipmentIds.map((equipmentId) => (
               <button
                 key={equipmentId}
                 type="button"
@@ -547,16 +580,17 @@ export function TitrationScene({
         >
           <BuretteDispenseProvider
             controller={physicalDispense}
-            enabled={focused === "burette" && state.indicatorAdded}
+            enabled={
+              focused === "burette" && indicatorAdded && deliveryAvailable
+            }
           >
             <LabScene
-              buretteAvailableML={state.buretteAvailableML}
-              buretteCapacityML={state.config.buretteCapacityML}
+              enabledEquipmentIds={configuration.selectableEquipmentIds}
+              buretteAvailableML={visualBuretteAvailableML}
+              buretteCapacityML={visualBuretteCapacityML}
               flaskLiquidColor={flaskLiquidColor}
-              selectedIndicator={
-                state.indicatorAdded ? state.config.indicator : null
-              }
-              indicatorSelectionEnabled={!state.indicatorAdded}
+              selectedIndicator={indicatorAdded ? state.config.indicator : null}
+              indicatorSelectionEnabled={indicatorAvailable && !indicatorAdded}
               indicatorAddition={indicatorAddition}
               canPrepareBurette={canPrepareBurette}
               selectedWashLiquid={selectedWashLiquid}

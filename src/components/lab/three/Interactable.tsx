@@ -20,6 +20,7 @@ interface InteractableProps {
   label: string;
   highlightShape: InteractableHighlightShape;
   children: ReactNode;
+  enabled?: boolean;
   hovered: boolean;
   onHover: (equipment: EquipmentId | null) => void;
   onSelect: (equipment: EquipmentId) => void;
@@ -55,6 +56,7 @@ export function Interactable({
   label,
   highlightShape,
   children,
+  enabled = true,
   hovered,
   onHover,
   onSelect
@@ -70,13 +72,19 @@ export function Interactable({
     [onHover]
   );
 
-  useEffect(() => invalidate(), [hovered, invalidate]);
+  useEffect(() => {
+    if (!enabled && pointerInsideRef.current) {
+      pointerInsideRef.current = false;
+      onHover(null);
+    }
+    invalidate();
+  }, [enabled, hovered, invalidate, onHover]);
 
   useFrame((_, deltaS) => {
     const pulseGroup = pulseGroupRef.current;
     if (!pulseGroup) return;
 
-    const targetScale = hovered ? HOVER_SCALE : 1;
+    const targetScale = enabled && hovered ? HOVER_SCALE : 1;
     const currentScale = pulseGroup.scale.x;
     const blend = 1 - Math.exp(-SCALE_RESPONSE * deltaS);
     const nextScale =
@@ -89,6 +97,7 @@ export function Interactable({
   });
 
   function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+    if (!enabled) return;
     event.stopPropagation();
     if (pointerInsideRef.current) return;
 
@@ -105,19 +114,20 @@ export function Interactable({
   }
 
   function handleClick(event: ThreeEvent<MouseEvent>) {
+    if (!enabled) return;
     event.stopPropagation();
     onSelect(id);
   }
 
   return (
     <group
-      onPointerOver={handlePointerOver}
-      onPointerOut={handlePointerOut}
-      onClick={handleClick}
+      onPointerOver={enabled ? handlePointerOver : undefined}
+      onPointerOut={enabled ? handlePointerOut : undefined}
+      onClick={enabled ? handleClick : undefined}
     >
       <group ref={pulseGroupRef}>
         {children}
-        {hovered && (
+        {enabled && hovered && (
           <>
             <mesh
               position={highlightShape.position}

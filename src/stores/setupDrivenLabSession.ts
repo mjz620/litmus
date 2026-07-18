@@ -17,6 +17,7 @@ import {
   type GenericLabState,
   type NormalizedLabAction
 } from "../lab-workflows/runtime";
+import { componentRegistry } from "../lab-workflows/registries/components";
 import type { WorkflowDiagnosis } from "../lab-workflows/schema/conditions";
 
 export const SETUP_DRIVEN_TITRATION_RUNTIME_FLAG = "setup-v2" as const;
@@ -61,6 +62,49 @@ export interface SetupDrivenRuntimeInspection {
   readonly diagnoses: readonly WorkflowDiagnosis[];
 }
 
+export interface SetupDrivenEquipmentProjection {
+  readonly instanceId: string;
+  readonly equipmentDefinitionId: string;
+  readonly visualAdapterDefinitionId: string;
+  readonly placementSlotId: string;
+  readonly label: string;
+  readonly capabilityIds: readonly string[];
+  readonly stateFields: Readonly<
+    Record<string, boolean | null | number | string | readonly string[]>
+  >;
+}
+
+export interface SetupDrivenMaterialProjection {
+  readonly instanceId: string;
+  readonly materialProfileId: string;
+  readonly containerInstanceId: string;
+  readonly locations: readonly {
+    readonly equipmentInstanceId: string;
+    readonly amount: number;
+  }[];
+}
+
+export interface SetupDrivenActionProjection {
+  readonly permissionId: string;
+  readonly actionId: string;
+  readonly sourceEquipmentInstanceId: string | null;
+  readonly targetEquipmentInstanceIds: readonly string[];
+  readonly available: boolean;
+  readonly attemptsUsed: number;
+  readonly maxAttempts: number | null;
+  readonly authoredLimits: Readonly<Record<string, number>>;
+}
+
+export interface SetupDrivenLabProjection {
+  readonly workflowId: string;
+  readonly workflowHash: string;
+  readonly equipment: readonly SetupDrivenEquipmentProjection[];
+  readonly materials: readonly SetupDrivenMaterialProjection[];
+  readonly actions: readonly SetupDrivenActionProjection[];
+  readonly availablePermissionIds: readonly string[];
+  readonly diagnoses: readonly WorkflowDiagnosis[];
+}
+
 export const SETUP_DRIVEN_SESSION_ERROR_CODES = Object.freeze({
   selectionInvalid: "setup-session.selection_invalid.v1",
   experimentUnsupported: "setup-session.experiment_unsupported.v1",
@@ -92,6 +136,7 @@ export interface SetupDrivenTitrationTransition {
   readonly state: Readonly<TitrationState>;
   readonly events: GenericLabRuntimeTransition["events"];
   readonly inspection: Readonly<SetupDrivenRuntimeInspection>;
+  readonly projection: Readonly<SetupDrivenLabProjection>;
 }
 
 export interface SetupDrivenTitrationSession {
@@ -99,6 +144,7 @@ export interface SetupDrivenTitrationSession {
   getState(): Readonly<TitrationState>;
   getGenericState(): Readonly<GenericLabState>;
   getInspection(): Readonly<SetupDrivenRuntimeInspection>;
+  getProjection(): Readonly<SetupDrivenLabProjection>;
   dispatch(action: NormalizedLabAction): SetupDrivenTitrationTransition;
 }
 
@@ -249,17 +295,137 @@ function createSession(
     });
   }
 
+  function projection(): Readonly<SetupDrivenLabProjection> {
+    const state = runtime.getState();
+    const workflow = runtime.program.workflow;
+    const placements = new Map(
+      workflow.layout.placements.map((placement) => [
+        placement.equipmentInstanceId,
+        placement.placementSlotId
+      ])
+    );
+    const equipment = runtime.program.equipment.map((binding) => {
+      if (!componentRegistry.has(binding.equipmentDefinitionId)) {
+        throw new SetupDrivenSessionError(
+          SETUP_DRIVEN_SESSION_ERROR_CODES.projectionInvalid,
+          `Equipment definition ${binding.equipmentDefinitionId} is no longer registered.`
+        );
+      }
+      const definition = componentRegistry.get(binding.equipmentDefinitionId);
+      const authored = workflow.equipment.find(
+        ({ instanceId }) => instanceId === binding.instanceId
+      );
+      const current = state.equipment.find(
+        ({ instanceId }) => instanceId === binding.instanceId
+      );
+      const placementSlotId = placements.get(binding.instanceId);
+      if (!authored || !current || !placementSlotId) {
+        throw new SetupDrivenSessionError(
+          SETUP_DRIVEN_SESSION_ERROR_CODES.projectionInvalid,
+          `Equipment instance ${binding.instanceId} has an incomplete setup projection.`
+        );
+      }
+      return Object.freeze({
+        instanceId: binding.instanceId,
+        equipmentDefinitionId: binding.equipmentDefinitionId,
+        visualAdapterDefinitionId: definition.visualAdapterDefinitionId,
+        placementSlotId,
+        label: authored.label,
+        capabilityIds: Object.freeze([...binding.capabilityIds]),
+        stateFields: Object.freeze(
+          Object.fromEntries(
+            current.fields.map(({ key, value }) => [
+              key,
+              Array.isArray(value) ? Object.freeze([...value]) : value
+            ])
+          )
+        )
+      });
+    });
+    const materials = runtime.program.materials.map((binding) => {
+      const ledgerEntry = state.materialLedger.materials.find(
+        ({ materialInstanceId }) => materialInstanceId === binding.instanceId
+      );
+      if (!ledgerEntry) {
+        throw new SetupDrivenSessionError(
+          SETUP_DRIVEN_SESSION_ERROR_CODES.projectionInvalid,
+          `Material instance ${binding.instanceId} is missing from the runtime ledger.`
+        );
+      }
+      return Object.freeze({
+        instanceId: binding.instanceId,
+        materialProfileId: binding.materialProfileId,
+        containerInstanceId: binding.containerInstanceId,
+        locations: Object.freeze(
+          ledgerEntry.locations.map((location) =>
+            Object.freeze({ ...location })
+          )
+        )
+      });
+    });
+    const diagnosisStatus = new Map(
+      state.diagnoses.map(({ ruleId, status }) => [ruleId, status])
+    );
+    const attemptCounts = new Map(
+      state.permissionAttempts.map(({ permissionId, count }) => [
+        permissionId,
+        count
+      ])
+    );
+    const actions = runtime.program.actions.map(({ permission }) => {
+      const attemptsUsed = attemptCounts.get(permission.id) ?? 0;
+      const available =
+        state.workflowStatus === "in_progress" &&
+        permission.availability.allSatisfiedRuleIds.every(
+          (ruleId) => diagnosisStatus.get(ruleId) === "satisfied"
+        ) &&
+        permission.availability.allUnsatisfiedRuleIds.every(
+          (ruleId) => diagnosisStatus.get(ruleId) !== "satisfied"
+        ) &&
+        (permission.maxAttempts === undefined ||
+          attemptsUsed < permission.maxAttempts);
+      return Object.freeze({
+        permissionId: permission.id,
+        actionId: permission.actionId,
+        sourceEquipmentInstanceId: permission.sourceEquipmentInstanceId ?? null,
+        targetEquipmentInstanceIds: Object.freeze([
+          ...permission.targetEquipmentInstanceIds
+        ]),
+        available,
+        attemptsUsed,
+        maxAttempts: permission.maxAttempts ?? null,
+        authoredLimits: Object.freeze({ ...(permission.authoredLimits ?? {}) })
+      });
+    });
+
+    return Object.freeze({
+      workflowId: state.provenance.workflowId,
+      workflowHash: state.provenance.workflowHash,
+      equipment: Object.freeze(equipment),
+      materials: Object.freeze(materials),
+      actions: Object.freeze(actions),
+      availablePermissionIds: Object.freeze(
+        actions
+          .filter(({ available }) => available)
+          .map(({ permissionId }) => permissionId)
+      ),
+      diagnoses: state.diagnoses
+    });
+  }
+
   return Object.freeze({
     mode: "setup_driven_v2" as const,
     getState: projectedState,
     getGenericState: runtime.getState,
     getInspection: inspection,
+    getProjection: projection,
     dispatch(action: NormalizedLabAction) {
       const transition = runtime.dispatch(action);
       return Object.freeze({
         state: projectedState(),
         events: transition.events,
-        inspection: inspection()
+        inspection: inspection(),
+        projection: projection()
       });
     }
   });
