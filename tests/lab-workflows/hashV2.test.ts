@@ -77,7 +77,7 @@ describe("version-aware LabWorkflowSpec hashing", () => {
     );
     expect(preimage).toBe(`${LAB_WORKFLOW_HASH_DOMAIN_V2}${canonical}`);
     expect(hashLabWorkflowSpec(draft)).toMatchInlineSnapshot(
-      `"sha256:890e20771e6a46ff4fdef8b966035c70d9ff1af2bb1327bcc9bf8c9817eeba15"`
+      `"sha256:ed275561d0d1ee91089eddfe729193c6e7368e0521168f7976fa8eb17198e5a2"`
     );
     expect(labWorkflowHashMatches(draft, hashLabWorkflowSpec(draft))).toBe(
       true

@@ -5,6 +5,12 @@ import type {
 } from "../../../experiments/shared";
 import type { ActionParameterDefinition } from "../../registries/actions";
 import {
+  applyExecutedMaterialAction,
+  initializeMaterialLedger,
+  quantityToIntegerUnits,
+  validateMaterialLedger
+} from "../../chemistry-models/material-ledger";
+import {
   GENERIC_LAB_RUNTIME_ERROR_CODES as ERROR,
   GenericLabRuntimeError
 } from "./errors";
@@ -212,6 +218,41 @@ function assertStateMatchesProgram(
   compiled: CompiledGenericRuntime
 ): void {
   validateEquipment(state.equipment, compiled.program);
+  const ledger = validateMaterialLedger(state.materialLedger);
+  const materialById = new Map(
+    compiled.program.materials.map((material) => [
+      material.instanceId,
+      material
+    ])
+  );
+  if (
+    ledger.materials.length !== materialById.size ||
+    ledger.materials.some((material) => {
+      const compiledMaterial = materialById.get(material.materialInstanceId);
+      return (
+        !compiledMaterial ||
+        material.materialProfileId !== compiledMaterial.materialProfileId ||
+        material.materialVersion !== compiledMaterial.materialVersion ||
+        material.unitId !== compiledMaterial.quantityUnitId ||
+        quantityToIntegerUnits(material.initialAmount, material.unitId) !==
+          quantityToIntegerUnits(
+            compiledMaterial.quantityAmount,
+            compiledMaterial.quantityUnitId
+          ) ||
+        material.locations.some(
+          ({ equipmentInstanceId }) =>
+            !compiled.program.equipment.some(
+              ({ instanceId }) => instanceId === equipmentInstanceId
+            )
+        )
+      );
+    })
+  ) {
+    fail(
+      ERROR.invalidState,
+      "State material ledger does not match the compiled lab definition."
+    );
+  }
   if (
     !sameIdSet(
       state.permissionAttempts.map(({ permissionId }) => permissionId),
@@ -502,6 +543,15 @@ function parseTransition(
     );
   }
   const materialAction = parsedMaterialAction?.data ?? null;
+  const transferMaterialIds = materialAction
+    ? [
+        ...new Set(
+          materialAction.transfers.map(
+            ({ materialInstanceId }) => materialInstanceId
+          )
+        )
+      ]
+    : [];
   if (
     materialAction &&
     (materialAction.actionId !== action.actionId ||
@@ -511,12 +561,28 @@ function parseTransition(
         materialAction.targetEquipmentInstanceIds,
         action.targetEquipmentInstanceIds
       ) ||
+      !sameIds(materialAction.materialInstanceIds, transferMaterialIds) ||
       materialAction.materialInstanceIds.some(
         (id) =>
           !compiled.program.materials.some(
             ({ instanceId }) => instanceId === id
           )
-      ))
+      ) ||
+      materialAction.transfers.some((transfer) => {
+        const material = compiled.program.materials.find(
+          ({ instanceId }) => instanceId === transfer.materialInstanceId
+        );
+        return (
+          transfer.sourceEquipmentInstanceId !==
+            action.sourceEquipmentInstanceId ||
+          !action.targetEquipmentInstanceIds.includes(
+            transfer.targetEquipmentInstanceId
+          ) ||
+          !material ||
+          transfer.materialProfileId !== material.materialProfileId ||
+          transfer.unitId !== material.quantityUnitId
+        );
+      }))
   ) {
     fail(
       ERROR.portContractMismatch,
@@ -566,6 +632,16 @@ export function createGenericLabDefinition(
         "Generic runtime resume seeds are not supported by LC2-200."
       );
     }
+    const materialLedger = initializeMaterialLedger(
+      program.materials.map((material) => ({
+        materialInstanceId: material.instanceId,
+        materialProfileId: material.materialProfileId,
+        materialVersion: material.materialVersion,
+        containerInstanceId: material.containerInstanceId,
+        amount: material.quantityAmount,
+        unitId: material.quantityUnitId
+      }))
+    );
     const initialized = program.equipment.map((binding) => {
       const adapter = compiled.ports.mechanicalAdapters.find(
         ({ adapterId }) => adapterId === binding.mechanicalAdapterId
@@ -577,7 +653,9 @@ export function createGenericLabDefinition(
         );
       }
       try {
-        return adapter.initializeEquipment(binding);
+        return adapter.initializeEquipment(
+          deepFreeze({ binding, materialLedger })
+        );
       } catch {
         fail(
           ERROR.transitionRejected,
@@ -591,7 +669,11 @@ export function createGenericLabDefinition(
     try {
       chemistry = genericChemistryProjectionSchema.parse(
         compiled.ports.models.initialize(
-          deepFreeze({ program, equipment: deepFreeze(equipment) })
+          deepFreeze({
+            program,
+            equipment: deepFreeze(equipment),
+            materialLedger
+          })
         )
       );
     } catch (error) {
@@ -624,6 +706,7 @@ export function createGenericLabDefinition(
       provenance: program.provenance,
       sequence: 0,
       equipment,
+      materialLedger,
       chemistry,
       diagnoses,
       permissionAttempts: program.actions.map(({ permission }) => ({
@@ -682,6 +765,7 @@ export function createGenericLabDefinition(
       source: resolved.source,
       targets: resolved.targets,
       equipment: state.equipment,
+      materialLedger: state.materialLedger,
       preconditions: resolved.binding.preconditions
     });
     runCheck(
@@ -706,6 +790,25 @@ export function createGenericLabDefinition(
       );
     }
 
+    let materialLedger = state.materialLedger;
+    if (mechanical.materialAction) {
+      try {
+        materialLedger = applyExecutedMaterialAction(
+          state.materialLedger,
+          mechanical.materialAction,
+          program.equipment.map(({ instanceId, measurement }) => ({
+            equipmentInstanceId: instanceId,
+            capacityML: measurement?.capacityML ?? null
+          }))
+        );
+      } catch {
+        fail(
+          ERROR.transitionRejected,
+          "Material ledger rejected the mechanical transition."
+        );
+      }
+    }
+
     let chemistry;
     try {
       chemistry = genericChemistryProjectionSchema.parse(
@@ -714,6 +817,7 @@ export function createGenericLabDefinition(
             program,
             previous: state.chemistry,
             equipment: mechanical.equipment,
+            materialLedger,
             materialAction: mechanical.materialAction
           })
         )
@@ -749,6 +853,7 @@ export function createGenericLabDefinition(
       ...state,
       sequence: state.sequence + 1,
       equipment: mechanical.equipment,
+      materialLedger,
       chemistry,
       diagnoses,
       permissionAttempts: incrementAttempts(state, action.permissionId),

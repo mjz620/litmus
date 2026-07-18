@@ -23,6 +23,7 @@ export {
   type CompiledMaterialBinding,
   type GenericChemistryProjection,
   type GenericEquipmentState,
+  type GenericEquipmentInitializationContext,
   type GenericLabConfig,
   type GenericLabRuntime,
   type GenericLabRuntimeTransition,

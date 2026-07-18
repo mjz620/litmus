@@ -40,7 +40,9 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 
 `LC2-200` adds the framework-free generic runtime scaffold beside the unchanged titration assembler. It implements the existing `ExperimentDefinition` contract, compiles immutable exact v2 equipment/material/action/model/rule/provenance bindings once, validates normalized permissions/connections/capabilities/parameters/attempts/preconditions/safety before mutation, invokes exact injected mechanical/model/evaluator ports, and exposes serializable immutable state, observables, ground truth, events, and diagnoses. The public runtime wrapper calls `ExperimentDefinition.step()` exactly once per dispatch. Only test implementations are registered.
 
-This is not yet a production capability-driven runtime. Family/engine IDs remain v1 compatibility authority for the legacy assembler, ordered steps remain legacy runtime control flow, and the production student scene is fixed. The Workflow Judge, reusable mechanics/material ledger, chemistry-module coordinator, constraint evaluator, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. V2 Preview/Assign are intentionally disabled, and migrated titration remains partially supported until verified chemistry providers and its explicit compatibility adapter are registered. Existing optional `workflowVersionId` fields remain provenance seams only.
+`LC2-201` adds the first production reusable liquid mechanics and conserved material state without changing the legacy titration engine. Generic runtime schema `1.1.0` adds the required ledger; no `1.0.0` scaffold state was persisted or route-consumed. A serializable material ledger retains exact profile, unit, immutable initial quantity, and sorted per-equipment allocations; typed executed-transfer deltas carry exact before/after quantities into the model boundary. Code-owned burette, flask, reagent-bottle, and indicator-bottle adapter registrations initialize equipment projections, while the burette adapter implements bounded fill, dispense, rinse-state, and read mechanics. Capacity, availability, nonnegative quantities, exact micro-milliliter conservation, target acceptance, ambiguity, and replay determinism fail closed. Distilled water now has one exact 50 mL binding preset, enabling a validated chemistry-free transfer fixture through the generic `ExperimentDefinition.step()` path. Generic rinse deliberately consumes no invented volume and emits no legacy dilution/evidence semantics.
+
+This is not yet a production capability-driven student runtime. Family/engine IDs remain v1 compatibility authority for the legacy assembler, ordered steps remain legacy runtime control flow, and the production student scene is fixed. The Workflow Judge, chemistry-module coordinator, constraint evaluator, semantic event envelopes, generic trace replay, human Composer, second shared-runtime lab, immutable definition persistence, and assignment gates are missing. V2 Preview/Assign are intentionally disabled, and migrated titration remains partially supported until verified chemistry providers and its explicit compatibility adapter are registered. Existing optional `workflowVersionId` fields remain provenance seams only.
 
 ## Deterministic/AI boundary
 
@@ -106,7 +108,7 @@ Lab Composer transitional implementation present in source/tests:
 - T0201–T0206-equivalent registry, schema, hashing, and hard-validation foundation under `src/lab-workflows/**` and `tests/lab-workflows/**`;
 - T0207 canonical titration seed/replay and T0208 titration-specific runtime assembler/adapters;
 - T0209 initial Lab Authoring Agent route and tests under `src/lib/agent/lab-authoring/**`, `src/app/api/lab-composer/author/**`, and `tests/ai/lab-composer/authoring/**`.
-- LC2-100–LC2-200 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, version-aware hashing, hard validation/eligibility, generic runtime scaffold, and exact tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
+- LC2-100–LC2-201 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, version-aware hashing, hard validation/eligibility, generic runtime scaffold, liquid mechanics, conserved material ledger, and exact tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
 
 The exact historical ticket completion reports were not added for these transitional files. Implementation status is based on current source and passing tests, not assumed ticket completion. T0210–T0220 are superseded by the capability-driven `LC2-*` sequence.
 
@@ -138,10 +140,10 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ## Latest local verification
 
 ```text
-npm run typecheck    pass — 2026-07-17 LC2-200
-npm run lint         pass — 2026-07-17 LC2-200
-npm run format:check pass — 2026-07-17 LC2-200
-npm test             pass — 67 files / 388 tests
+npm run typecheck    pass — 2026-07-17 LC2-201
+npm run lint         pass — 2026-07-17 LC2-201
+npm run format:check pass — 2026-07-17 LC2-201
+npm test             pass — 70 files / 401 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
 ```
 
@@ -156,4 +158,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-The next normal implementation ticket is `LC2-201`, reusable equipment mechanics and the material ledger. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.
+The next normal implementation ticket is `LC2-202`, chemistry-module coordination and registered observables. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md). Do not execute T0210–T0220 as written. Precipitation remains a static exact-ID plugin and is not automatically Composer support.

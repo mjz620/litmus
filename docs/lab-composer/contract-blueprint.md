@@ -192,7 +192,7 @@ interface MaterialBinding {
 
 Concentrations and other verified scientific parameters live in code-owned material/configuration presets, not authored free-form fields. A v2 definition may select an exact allowed preset but cannot write chemical formulas or serialized model state.
 
-Current compatibility note: phenolphthalein, bromothymol blue, and methyl orange each have exact one- and two-drop presets matching the deterministic engine/UI choices. Distilled water is also an exact verified profile because the current engine supports a deterministic water-rinse action. Its `usageModes` contains only `legacy_action_parameter`, and it intentionally has no quantity preset because the legacy action exposes no physical rinse volume or consumable ledger. Do not invent one; a later mechanical/material-ledger ticket must define and test that quantity before v2 material binding treats it as consumable inventory.
+Current compatibility note: phenolphthalein, bromothymol blue, and methyl orange each have exact one- and two-drop presets matching the deterministic engine/UI choices. `LC2-201` adds an exact 50 mL distilled-water quantity preset for consumable v2 material bindings and chemistry-free transfer tests. This does **not** assign a rinse consumption amount: the legacy rinse action still exposes no physical volume, so generic rinse leaves the ledger unchanged and delegates dilution, evidence, flags, and exact legacy event behavior to the later titration compatibility adapter.
 
 ## Chemistry model modules
 

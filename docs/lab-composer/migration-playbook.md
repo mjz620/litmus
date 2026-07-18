@@ -144,6 +144,8 @@ The generic coordinator may use an explicit legacy titration adapter at first. I
 
 Implementation note: LC2-200 adds the coordinator scaffold beside the unchanged legacy assembler. It compiles exact equipment/material/action/model/rule bindings, uses a dedicated current-artifact runtime-admission check, and routes normalized actions through `ExperimentDefinition.step()`. Its mechanical, safety, model, and evaluator implementations are injected exact ports; only the no-chemistry test fixture supplies implementations at this stage. Validator Preview/Assign flags remain false, and no production route consumes the scaffold.
 
+`LC2-201` replaces the mechanical test-only boundary with code-owned reusable liquid adapters and adds a serializable conserved material ledger. Initial quantities resolve from exact presets, one material can split across sorted equipment locations, and transfer deltas preserve an immutable initial-quantity anchor. Fill and dispense update both ledger and apparatus projections; read is immutable. Rinse records only an exact bound source solvent in the apparatus projection and never invents a consumed volume, concentration change, legacy flag, or skill evidence. The legacy titration engine and assembler remain unchanged, Preview/Assign remain closed, and seeded titration reconstruction is deferred to `LC2-300`.
+
 Runtime comparison for each characterization trace:
 
 - same initial scientific state;

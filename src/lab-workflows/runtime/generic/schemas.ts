@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { workflowDiagnosisSchema } from "../../schema/conditions";
 import {
+  executedMaterialActionSchema,
+  materialLedgerSchema
+} from "../../chemistry-models/material-ledger";
+import {
   resolvedAdapterV2Schema,
   resolvedChemistryModelV2Schema
 } from "../../schema/v2";
@@ -72,12 +76,7 @@ export const genericEquipmentStateSchema = z.strictObject({
   fields: z.array(genericStateFieldSchema).max(256)
 });
 
-export const genericMaterialActionSchema = z.strictObject({
-  actionId: idSchema,
-  sourceEquipmentInstanceId: idSchema.optional(),
-  targetEquipmentInstanceIds: z.array(idSchema).max(64),
-  materialInstanceIds: z.array(idSchema).max(64)
-});
+export const genericMaterialActionSchema = executedMaterialActionSchema;
 
 export const genericObservableSchema = z.strictObject({
   observableId: idSchema,
@@ -135,6 +134,7 @@ export const genericLabStateSchema = z.strictObject({
   provenance: runtimeProvenanceSchema,
   sequence: z.number().int().min(0),
   equipment: z.array(genericEquipmentStateSchema).max(64),
+  materialLedger: materialLedgerSchema,
   chemistry: genericChemistryProjectionSchema,
   diagnoses: z.array(workflowDiagnosisSchema).max(256),
   permissionAttempts: z

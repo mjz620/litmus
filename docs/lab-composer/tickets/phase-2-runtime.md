@@ -35,6 +35,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 
 ## LC2-201 — Reusable equipment mechanics and material ledger
 
+**Status:** Implemented on 2026-07-17.
+
 **Objective:** Implement the minimum pure mechanical transitions and material ledger/volume conservation needed by current titration compatibility actions.
 
 **Dependencies:** `LC2-200`.
@@ -57,6 +59,8 @@ Phase 2 creates deterministic local runtime infrastructure. It does not switch t
 **Acceptance:** Generic coordinator can execute verified mechanical/material deltas with no chemistry formulas and no family awareness.
 
 **Stop:** If existing titration rinse semantics include engine-specific evidence/conditioning, represent that through the later legacy adapter, not a generic mechanic guess.
+
+**Implementation note:** Generic runtime schema `1.1.0` now carries a strict sorted material ledger with exact profile/version/unit, immutable initial quantity, and split equipment allocations. There are no persisted or route-consumed `1.0.0` generic states; stale scaffold payloads fail closed. The runtime compiles exact quantity presets, initializes apparatus projections from the ledger, validates typed executed-transfer deltas, and applies capacity/conservation before model coordination. Code-owned liquid adapters implement bounded fill, dispense, rinse projection, and read behavior without chemistry formulas or family metadata. An exact 50 mL distilled-water preset provides the chemistry-free integration fixture. Rinse does not consume an invented quantity or reproduce legacy dilution, event flags, or skill evidence. Existing titration runtime behavior is unchanged.
 
 ## LC2-202 — Chemistry module coordinator and registered observables
 

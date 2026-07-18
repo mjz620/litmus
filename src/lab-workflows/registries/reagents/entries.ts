@@ -148,7 +148,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     version: "1.0.0",
     displayName: "Distilled water",
     phase: "pure_liquid",
-    usageModes: ["legacy_action_parameter"],
+    usageModes: ["material_binding", "legacy_action_parameter"],
     providedChemistryCapabilityIds: [],
     compatibleContainerCapabilityIds: [
       "capability.contain_liquid.v1",
@@ -156,7 +156,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     ],
     initializationPresetSchemaId:
       "schema.material_initialization.pure_liquid.v1",
-    quantityPresetIds: [],
+    quantityPresetIds: ["quantity-preset.distilled_water_50ml.v1"],
     safetyPolicyIds: [],
     profileKind: "pure_liquid",
     concentrationM: null,
@@ -164,7 +164,9 @@ export const REAGENT_REGISTRY_ENTRIES = [
     compatibleEngineIds: ENGINE,
     compatibleFamilyIds: FAMILY,
     allowedRoleIds: ["rinse_solvent"],
-    requestedAmountLimits: [],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ],
     safetyConstraintIds: [],
     availability: "verified"
   }

@@ -10,7 +10,7 @@ import {
 
 describe("titration component registry", () => {
   it("lists only the four currently verified titration component contracts", () => {
-    expect(componentRegistry.snapshotId).toBe("components.2.0.0");
+    expect(componentRegistry.snapshotId).toBe("components.2.1.0");
     expect(componentRegistry.list().map(({ id }) => id)).toEqual([
       "component.burette.v1",
       "component.erlenmeyer_flask.v1",

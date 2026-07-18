@@ -72,12 +72,12 @@ const SOURCE_REGISTRY_SNAPSHOT_IDS = Object.freeze({
   capabilities: "capabilities.1.0.0",
   actions: "actions.2.0.0",
   chemistryModels: "chemistry-models.1.0.0",
-  components: "components.2.0.0",
-  configurations: "configurations.2.1.0",
+  components: "components.2.1.0",
+  configurations: "configurations.2.2.0",
   engines: "engines.1.1.0",
   eventFlags: "event-flags.1.0.0",
   eventTypes: "event-types.1.0.0",
-  reagents: "reagents.2.1.0",
+  reagents: "reagents.2.2.0",
   safety: "safety.1.0.0",
   skills: "skills.1.0.0"
 });

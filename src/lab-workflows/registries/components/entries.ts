@@ -207,7 +207,7 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     stateSchemaAvailability: "verified",
     defaultConfigurationPresetId:
       "component_config.reagent_bottle.titrant_source.v1",
-    defaultConfigurationPresetAvailability: "declared",
+    defaultConfigurationPresetAvailability: "verified",
     visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
     visualAdapterDefinitionAvailability: "verified",
     mechanicalAdapterId: "mechanical-adapter.reagent_bottle.v1",

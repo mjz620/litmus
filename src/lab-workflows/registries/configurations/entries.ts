@@ -143,9 +143,8 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   entry(
     "component_config.reagent_bottle.titrant_source.v1",
     "component_configuration",
-    "Declared reagent-bottle source configuration referenced by the equipment contract.",
+    "Verified reagent-bottle liquid-source configuration.",
     {
-      availability: "declared",
       compatibleComponentIds: ["component.reagent_bottle.v1"],
       compatibleFamilyIds: [],
       scope: "equipment",
@@ -178,6 +177,17 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Indicator shelf placement backed by the current titration bench.",
     {
       compatibleComponentIds: ["component.indicator_bottle.v1"],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.reagent_station.v1",
+    "placement",
+    "Liquid-source placement on the current laboratory preparation station.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
       scope: "layout",
       schemaId: "schema.layout_configuration.titration_bench.v1"
     }
@@ -373,5 +383,8 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   ]),
   quantity("quantity-preset.methyl_orange_2_drops.v1", 2, "unit.drop.v1", [
     "reagent.methyl_orange.v1"
+  ]),
+  quantity("quantity-preset.distilled_water_50ml.v1", 50, "unit.ml.v1", [
+    "reagent.distilled_water.v1"
   ])
 ] as const satisfies readonly ConfigurationRegistryEntry[];

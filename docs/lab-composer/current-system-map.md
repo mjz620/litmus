@@ -34,7 +34,7 @@
 | capability registry | Implemented contract metadata | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | exact equipment/chemistry categories and honest availability; no capability-driven runtime consumer yet |
 | component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | current equipment has exact capabilities and state/config/visual/mechanical references; the titration adapter still consumes the deprecated concrete visual export name for v1 compatibility |
 | action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact source/target capabilities, parameter schemas, preconditions, errors, event contracts, adapters, and behavior mode coexist with unchanged titration engine/family mappings |
-| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | `materialRegistry` is a facade over exact HCl, NaOH, three engine-supported indicators, and distilled water; quantity/config/schema metadata is present, while v1 engine/family/component fields remain authority |
+| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | `materialRegistry` is a facade over exact HCl, NaOH, three engine-supported indicators, and distilled water; exact quantity/config/schema metadata includes one 50 mL water transfer preset, while v1 engine/family/component fields remain compatibility metadata |
 | engine registry | Implemented, transitional | [`src/lab-workflows/registries/engines`](../../src/lab-workflows/registries/engines) | only `engine.titration.v1`; must not be cloned for dilution |
 | skills | Implemented | [`src/lab-workflows/registries/skills`](../../src/lab-workflows/registries/skills) | availability currently derived from family/runtime support |
 | events/flags | Implemented, transitional | [`src/lab-workflows/registries/event-flags`](../../src/lab-workflows/registries/event-flags) | exact titration event mapping; no normalized action/rule evidence metadata |
@@ -48,10 +48,10 @@ Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows).
 | Registry | Current snapshot | Historical snapshot retained |
 | --- | --- | --- |
 | capabilities | `capabilities.1.0.0` | none |
-| components | `components.2.0.0` | `components.1.0.0` |
+| components | `components.2.1.0` | `components.1.0.0`, `components.2.0.0` |
 | actions | `actions.2.0.0` | `actions.1.0.0` |
-| reagents/materials | `reagents.2.1.0` | `reagents.1.0.0`, `reagents.2.0.0` |
-| configurations | `configurations.2.1.0` | `configurations.1.0.0`, `configurations.2.0.0` |
+| reagents/materials | `reagents.2.2.0` | `reagents.1.0.0`, `reagents.2.0.0`, `reagents.2.1.0` |
+| configurations | `configurations.2.2.0` | `configurations.1.0.0`, `configurations.2.0.0`, `configurations.2.1.0` |
 | engines | `engines.1.1.0` | `engines.1.0.0` |
 | chemistry-model metadata | `chemistry-models.1.0.0` | none |
 
@@ -71,7 +71,8 @@ The capability and chemistry-model snapshots are not added to v1 validation arti
 | seed replay validator | Implemented, transitional | [`src/lab-workflows/seedReplay.ts`](../../src/lab-workflows/seedReplay.ts) | Do not add more family cases; replace with normalized trace runner later |
 | titration adapter | Implemented, transitional | [`src/lab-workflows/adapters/titration`](../../src/lab-workflows/adapters/titration) | Make legacy dependency visible; retain through parity and historical replay |
 | titration workflow assembler | Implemented, transitional | [`src/lab-workflows/runtime/titrationRuntime.ts`](../../src/lab-workflows/runtime/titrationRuntime.ts) | Current steps are runtime control flow; do not generalize by adding family switches |
-| generic coordinator | Implemented scaffold | [`src/lab-workflows/runtime/generic`](../../src/lab-workflows/runtime/generic) | Compiles current contract-runnable v2 definitions and coordinates exact injected ports through `ExperimentDefinition.step()`; only test ports exist, so production Preview/Assign remain closed |
+| generic coordinator | Implemented scaffold | [`src/lab-workflows/runtime/generic`](../../src/lab-workflows/runtime/generic) | Compiles current contract-runnable v2 definitions and coordinates exact ports through `ExperimentDefinition.step()`; reusable mechanics exist, but model/evaluator ports and route eligibility are incomplete, so production Preview/Assign remain closed |
+| reusable liquid mechanics and material ledger | Implemented, not route-enabled | [`src/lab-workflows/mechanics`](../../src/lab-workflows/mechanics), [`src/lab-workflows/chemistry-models/material-ledger`](../../src/lab-workflows/chemistry-models/material-ledger) | Exact adapters and conserved transfer deltas support chemistry-free fill/dispense/rinse/read projections; no legacy titration chemistry/events are reproduced and Preview/Assign remain closed |
 | constraint contracts | Implemented, structural only | [`src/lab-workflows/schema/conditions.ts`](../../src/lab-workflows/schema/conditions.ts) | Closed bounded data; parsing does not resolve IDs or make a workflow runnable |
 | constraint evaluator/diagnoses | Missing | future `src/lab-workflows/evaluation/**` | Consume the implemented contracts plus observables/events; never calculate chemistry |
 | chemistry model contracts/resolution | Implemented metadata layer | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models) | pure exact provider/dependency resolution exists; production metadata is intentionally empty and no chemistry implementation was extracted |

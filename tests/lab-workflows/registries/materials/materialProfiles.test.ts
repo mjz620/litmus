@@ -42,10 +42,11 @@ import { createSchemaValidWorkflowDraft } from "../../schema/fixtures";
 describe("LC2-102 material profiles", () => {
   it("evolves the exact reagent entries through one material facade", () => {
     expect(materialRegistry).toBe(reagentRegistry);
-    expect(reagentRegistry.snapshotId).toBe("reagents.2.1.0");
+    expect(reagentRegistry.snapshotId).toBe("reagents.2.2.0");
     expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual([
       "reagents.1.0.0",
-      "reagents.2.0.0"
+      "reagents.2.0.0",
+      "reagents.2.1.0"
     ]);
     expect(materialRegistry.list().map(({ id }) => id)).toEqual([
       "reagent.hydrochloric_acid_0_100m.v1",
@@ -223,12 +224,12 @@ describe("LC2-102 material profiles", () => {
     }
   );
 
-  it("registers distilled water without inventing a physical rinse volume", () => {
+  it("registers exact consumable water without inventing a rinse volume", () => {
     const water = materialRegistry.get("reagent.distilled_water.v1");
     expect(water).toMatchObject({
       displayName: "Distilled water",
       phase: "pure_liquid",
-      usageModes: ["legacy_action_parameter"],
+      usageModes: ["material_binding", "legacy_action_parameter"],
       initializationPresetSchemaId:
         "schema.material_initialization.pure_liquid.v1",
       compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
@@ -240,8 +241,17 @@ describe("LC2-102 material profiles", () => {
       allowedRoleIds: ["rinse_solvent"],
       availability: "verified"
     });
-    expect(water.quantityPresetIds).toEqual([]);
-    expect(water.requestedAmountLimits).toEqual([]);
+    expect(water.quantityPresetIds).toEqual([
+      "quantity-preset.distilled_water_50ml.v1"
+    ]);
+    expect(water.requestedAmountLimits).toEqual([
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ]);
+    expect(getQuantityPreset(water.quantityPresetIds[0]!)).toMatchObject({
+      amount: 50,
+      unitId: "unit.ml.v1",
+      compatibleMaterialProfileIds: [water.id]
+    });
     expect(water.safetyPolicyIds).toEqual([]);
     expect(engineRegistry.get("engine.titration.v1").reagentIds).toContain(
       water.id
@@ -354,7 +364,7 @@ describe("LC2-102 material profiles", () => {
       ENDPOINT_CONTROL_PRELAB_EXPECTED_HASH
     );
     expect(outcome.validation.registrySnapshotIds.reagents).toBe(
-      "reagents.2.1.0"
+      "reagents.2.2.0"
     );
   });
 

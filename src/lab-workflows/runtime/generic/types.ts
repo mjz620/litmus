@@ -7,6 +7,11 @@ import type {
 } from "../../../experiments/shared";
 import type { EquipmentCapabilityId } from "../../capabilities";
 import type {
+  ExecutedMaterialAction,
+  MaterialLedger,
+  MaterialQuantityUnitId
+} from "../../chemistry-models/material-ledger";
+import type {
   ActionParameterDefinition,
   EquipmentPreconditionEntry
 } from "../../registries/actions";
@@ -19,7 +24,7 @@ import type {
 } from "../../schema/v2";
 import type { WorkflowDiagnosis, WorkflowRule } from "../../schema/conditions";
 
-export const GENERIC_LAB_RUNTIME_SCHEMA_VERSION = "1.0.0" as const;
+export const GENERIC_LAB_RUNTIME_SCHEMA_VERSION = "1.1.0" as const;
 
 export type GenericStateValue =
   | boolean
@@ -90,6 +95,7 @@ export interface GenericLabState {
   readonly provenance: GenericRuntimeProvenance;
   readonly sequence: number;
   readonly equipment: readonly GenericEquipmentState[];
+  readonly materialLedger: MaterialLedger;
   readonly chemistry: GenericChemistryProjection;
   readonly diagnoses: readonly WorkflowDiagnosis[];
   readonly permissionAttempts: readonly GenericPermissionAttempt[];
@@ -130,6 +136,11 @@ export interface CompiledEquipmentBinding {
     readonly allowedValues: readonly string[];
   }[];
   readonly capabilityIds: readonly EquipmentCapabilityId[];
+  readonly measurement: {
+    readonly capacityML: number;
+    readonly reportIncrementML: number;
+    readonly toleranceML: number;
+  } | null;
   readonly mechanicalAdapterId: string;
   readonly safetyPolicyIds: readonly string[];
 }
@@ -138,6 +149,8 @@ export interface CompiledMaterialBinding extends MaterialBindingV2 {
   readonly materialVersion: string;
   readonly providedChemistryCapabilityIds: readonly string[];
   readonly requiredContainerCapabilityIds: readonly EquipmentCapabilityId[];
+  readonly quantityAmount: number;
+  readonly quantityUnitId: MaterialQuantityUnitId;
 }
 
 export interface CompiledActionBinding {
@@ -164,16 +177,12 @@ export interface CompiledGenericLabProgram {
   readonly safetyPolicyIds: readonly string[];
 }
 
-export interface GenericMaterialAction {
-  readonly actionId: string;
-  readonly sourceEquipmentInstanceId?: string;
-  readonly targetEquipmentInstanceIds: readonly string[];
-  readonly materialInstanceIds: readonly string[];
-}
+/** @deprecated Use ExecutedMaterialAction. Kept as an LC2-200 source alias. */
+export type GenericMaterialAction = ExecutedMaterialAction;
 
 export interface GenericMechanicalTransition {
   readonly equipment: readonly GenericEquipmentState[];
-  readonly materialAction: GenericMaterialAction | null;
+  readonly materialAction: ExecutedMaterialAction | null;
   readonly events: readonly SemanticEvent[];
 }
 
@@ -197,7 +206,13 @@ export interface GenericMechanicalContext {
   readonly source: Readonly<GenericEquipmentState> | null;
   readonly targets: readonly Readonly<GenericEquipmentState>[];
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
+  readonly materialLedger: Readonly<MaterialLedger>;
   readonly preconditions: readonly EquipmentPreconditionEntry[];
+}
+
+export interface GenericEquipmentInitializationContext {
+  readonly binding: Readonly<CompiledEquipmentBinding>;
+  readonly materialLedger: Readonly<MaterialLedger>;
 }
 
 export interface GenericMechanicalAdapterPort {
@@ -207,7 +222,7 @@ export interface GenericMechanicalAdapterPort {
   readonly supportedActionIds: readonly string[];
   readonly supportedPreconditionIds: readonly string[];
   initializeEquipment(
-    binding: Readonly<CompiledEquipmentBinding>
+    context: Readonly<GenericEquipmentInitializationContext>
   ): GenericEquipmentState;
   checkPreconditions(
     context: Readonly<GenericMechanicalContext>
@@ -232,13 +247,15 @@ export interface GenericSafetyPolicyPort {
 export interface GenericModelInitializationContext {
   readonly program: Readonly<CompiledGenericLabProgram>;
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
+  readonly materialLedger: Readonly<MaterialLedger>;
 }
 
 export interface GenericModelTransitionContext {
   readonly program: Readonly<CompiledGenericLabProgram>;
   readonly previous: Readonly<GenericChemistryProjection>;
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
-  readonly materialAction: Readonly<GenericMaterialAction> | null;
+  readonly materialLedger: Readonly<MaterialLedger>;
+  readonly materialAction: Readonly<ExecutedMaterialAction> | null;
 }
 
 export interface GenericModelCoordinatorPort {

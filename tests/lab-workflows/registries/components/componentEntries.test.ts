@@ -74,7 +74,7 @@ describe("verified component entry metadata", () => {
     ]);
   });
 
-  it("does not claim unimplemented flask chemistry or bottle interactions", () => {
+  it("keeps flask chemistry out while exposing verified bottle mechanics", () => {
     const flask = componentRegistry.get("component.erlenmeyer_flask.v1");
     const reagentBottle = componentRegistry.get("component.reagent_bottle.v1");
     const indicatorBottle = componentRegistry.get(
@@ -97,7 +97,7 @@ describe("verified component entry metadata", () => {
     ]);
     expect(indicatorBottle.emittedEventTypes).toEqual(["select_indicator"]);
     expect(reagentBottle.defaultConfigurationPresetAvailability).toBe(
-      "declared"
+      "verified"
     );
     expect(reagentBottle.capabilityIds).not.toContain(
       "capability.measure_volume.v1"

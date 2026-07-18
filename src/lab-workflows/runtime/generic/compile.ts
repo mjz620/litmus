@@ -146,6 +146,13 @@ function compileEquipment(
         allowedValues: [...(field.allowedValues ?? [])]
       })),
       capabilityIds: [...definition.capabilityIds],
+      measurement: definition.measurement
+        ? {
+            capacityML: definition.measurement.capacityML,
+            reportIncrementML: definition.measurement.reportIncrementML,
+            toleranceML: definition.measurement.toleranceML
+          }
+        : null,
       mechanicalAdapterId: definition.mechanicalAdapterId,
       safetyPolicyIds: [...definition.safetyConstraintIds]
     };
@@ -158,6 +165,14 @@ function compileMaterials(
 ): readonly CompiledMaterialBinding[] {
   return workflow.materials.map((binding) => {
     const profile = registries.materials.get(binding.materialProfileId);
+    const quantity = registries.configurations.get(binding.quantityPresetId);
+    if (quantity.category !== "quantity_preset") {
+      runtimeError(
+        ERROR.portContractMismatch,
+        `Validated quantity ${binding.quantityPresetId} is not a quantity preset.`,
+        { materialInstanceId: binding.instanceId }
+      );
+    }
     return {
       ...binding,
       materialVersion: profile.version,
@@ -166,7 +181,9 @@ function compileMaterials(
       ],
       requiredContainerCapabilityIds: [
         ...profile.compatibleContainerCapabilityIds
-      ]
+      ],
+      quantityAmount: quantity.amount,
+      quantityUnitId: quantity.unitId
     };
   });
 }

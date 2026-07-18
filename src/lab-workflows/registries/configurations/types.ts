@@ -52,6 +52,7 @@ export type ConfigurationSchemaId =
 export type QuantityPresetId =
   | "quantity-preset.bromothymol_blue_1_drop.v1"
   | "quantity-preset.bromothymol_blue_2_drops.v1"
+  | "quantity-preset.distilled_water_50ml.v1"
   | "quantity-preset.hydrochloric_acid_0_100m_25ml.v1"
   | "quantity-preset.methyl_orange_1_drop.v1"
   | "quantity-preset.methyl_orange_2_drops.v1"

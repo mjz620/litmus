@@ -107,12 +107,13 @@ export interface ComponentRegistryEntry {
 }
 
 export interface ComponentRegistrySnapshot {
-  readonly snapshotId: "components.2.0.0";
+  readonly snapshotId: "components.2.1.0";
   readonly entries: readonly ComponentRegistryEntry[];
 }
 
 export const LEGACY_COMPONENT_REGISTRY_SNAPSHOT_IDS = Object.freeze([
-  "components.1.0.0"
+  "components.1.0.0",
+  "components.2.0.0"
 ] as const);
 
 export type ComponentRegistryErrorCode =

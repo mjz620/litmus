@@ -184,6 +184,10 @@ describe("generic LabWorkflowSpec v2 runtime scaffold", () => {
 
   it("rejects invalid permissions, connections, and parameters inside step before mechanics", () => {
     const invalidActions: readonly NormalizedLabAction[] = [
+      {
+        ...action({}),
+        schemaVersion: "1.0.0"
+      } as unknown as NormalizedLabAction,
       action({ permissionId: "permission.unknown" }),
       action({ actionId: "action.fill.v1" }),
       action({ sourceEquipmentInstanceId: undefined }),

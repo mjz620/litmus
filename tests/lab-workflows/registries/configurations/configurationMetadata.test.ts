@@ -19,10 +19,11 @@ import {
 
 describe("LC2-102 configuration metadata", () => {
   it("bumps the semantic snapshot and retains its legacy provenance ID", () => {
-    expect(configurationRegistry.snapshotId).toBe("configurations.2.1.0");
+    expect(configurationRegistry.snapshotId).toBe("configurations.2.2.0");
     expect(LEGACY_CONFIGURATION_REGISTRY_SNAPSHOT_IDS).toEqual([
       "configurations.1.0.0",
-      "configurations.2.0.0"
+      "configurations.2.0.0",
+      "configurations.2.1.0"
     ]);
   });
 
@@ -108,24 +109,19 @@ describe("LC2-102 configuration metadata", () => {
     }
   });
 
-  it("registers the LC2-100 reagent-bottle reference honestly as declared", () => {
+  it("promotes the reagent-bottle configuration with executable liquid mechanics", () => {
     const preset = configurationRegistry.get(
       "component_config.reagent_bottle.titrant_source.v1"
     );
     expect(preset).toMatchObject({
       category: "component_configuration",
-      availability: "declared",
+      availability: "verified",
       compatibleComponentIds: ["component.reagent_bottle.v1"],
       compatibleFamilyIds: [],
       scope: "equipment",
       schemaId: "schema.equipment_configuration.reagent_bottle.v1"
     });
-    expect(() => requireVerifiedConfigurationEntry(preset.id)).toThrowError(
-      new ConfigurationMetadataError(
-        "configuration_registry.unavailable",
-        preset.id
-      )
-    );
+    expect(requireVerifiedConfigurationEntry(preset.id)).toBe(preset);
   });
 
   it("resolves only exact quantity preset IDs and fixed code-owned values", () => {
@@ -183,6 +179,12 @@ describe("LC2-102 configuration metadata", () => {
         2,
         "unit.drop.v1",
         "reagent.methyl_orange.v1"
+      ],
+      [
+        "quantity-preset.distilled_water_50ml.v1",
+        50,
+        "unit.ml.v1",
+        "reagent.distilled_water.v1"
       ]
     ] as const;
 

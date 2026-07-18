@@ -181,6 +181,190 @@ export function createRunnableMechanicalV2Draft(): LabWorkflowDraftV2 {
   };
 }
 
+/** Chemistry-free water transfer used to prove the generic material pipeline. */
+export function createRunnableLiquidTransferV2Draft(): LabWorkflowDraftV2 {
+  return {
+    schemaVersion: "2.0.0",
+    id: "workflow.water_transfer.validation_fixture.v2",
+    revision: 1,
+    sourceRequest: "Practice a bounded liquid transfer into a burette.",
+    metadata: {
+      title: "Water transfer check",
+      learningObjective: "Transfer a bounded liquid volume into a burette.",
+      studentSummary: "Fill the burette from the registered water source.",
+      gradeBand: "mixed_high_school",
+      estimatedMinutes: 5,
+      difficulty: "intro",
+      tags: ["measurement", "transfer"],
+      accessibilityNotes: ["The fill control is keyboard operable."],
+      deviceProfileId: "device.chromebook_core.v1"
+    },
+    objectiveIds: ["burette_conditioning"],
+    equipment: [
+      {
+        instanceId: "water_source",
+        equipmentDefinitionId: "component.reagent_bottle.v1",
+        configurationPresetId:
+          "component_config.reagent_bottle.titrant_source.v1",
+        label: "Distilled water source",
+        required: true
+      },
+      {
+        instanceId: "transfer_burette",
+        equipmentDefinitionId: "component.burette.v1",
+        configurationPresetId: "component_config.burette.50ml.v1",
+        label: "Transfer burette",
+        required: true
+      }
+    ],
+    materials: [
+      {
+        instanceId: "material.water",
+        materialProfileId: "reagent.distilled_water.v1",
+        containerInstanceId: "water_source",
+        quantityPresetId: "quantity-preset.distilled_water_50ml.v1"
+      }
+    ],
+    layout: {
+      configurationSchemaId: "schema.layout_configuration.titration_bench.v1",
+      placements: [
+        {
+          equipmentInstanceId: "water_source",
+          placementSlotId: "placement.reagent_station.v1"
+        },
+        {
+          equipmentInstanceId: "transfer_burette",
+          placementSlotId: "placement.bench_center_stand.v1"
+        }
+      ]
+    },
+    requiredChemistryCapabilityIds: [],
+    permittedActions: [
+      {
+        id: "permission.fill_transfer_burette",
+        actionId: "action.fill.v1",
+        sourceEquipmentInstanceId: "water_source",
+        targetEquipmentInstanceIds: ["transfer_burette"],
+        maxAttempts: 2,
+        availability: {
+          allSatisfiedRuleIds: [],
+          allUnsatisfiedRuleIds: ["rule.workflow_complete"]
+        }
+      }
+    ],
+    rules: [
+      {
+        id: "rule.fill_observed",
+        kind: "required",
+        condition: {
+          kind: "action_observed",
+          actionId: "action.fill.v1",
+          sourceEquipmentInstanceId: "water_source",
+          targetEquipmentInstanceIds: ["transfer_burette"]
+        },
+        severity: "procedural",
+        recoverable: true,
+        terminal: false,
+        objectiveIds: ["burette_conditioning"]
+      },
+      {
+        id: "rule.workflow_complete",
+        kind: "success",
+        condition: {
+          kind: "registered_completion_policy_satisfied",
+          completionPolicyId: "completion.all_required_observations.v1",
+          evidenceRuleIds: ["rule.fill_observed"]
+        },
+        severity: "procedural",
+        recoverable: true,
+        terminal: false,
+        objectiveIds: ["burette_conditioning"]
+      },
+      {
+        id: "rule.score_fill",
+        kind: "scoring",
+        condition: {
+          kind: "action_observed",
+          actionId: "action.fill.v1",
+          sourceEquipmentInstanceId: "water_source",
+          targetEquipmentInstanceIds: ["transfer_burette"]
+        },
+        severity: "info",
+        recoverable: true,
+        terminal: false,
+        objectiveIds: ["burette_conditioning"],
+        points: 2
+      }
+    ],
+    instructions: [
+      {
+        id: "instruction.fill",
+        title: "Fill the burette",
+        guidance: "Transfer a bounded volume from the registered source.",
+        relatedRuleIds: ["rule.fill_observed", "rule.workflow_complete"]
+      }
+    ],
+    coachPolicy: { triggers: [], adaptiveRetries: [] },
+    rubric: {
+      id: "rubric.water_transfer.validation_fixture.v2",
+      version: "2.0.0",
+      title: "Water transfer rubric",
+      criteria: [
+        {
+          id: "criterion.fill",
+          objectiveIds: ["burette_conditioning"],
+          ruleIds: ["rule.score_fill"],
+          description: "Executes the bounded fill action.",
+          maxPoints: 2,
+          assessmentModeId: "assessment.event_performance.v1",
+          evidenceMappings: [
+            {
+              kind: "rule_diagnosis",
+              ruleId: "rule.score_fill",
+              required: true
+            }
+          ],
+          scoringGuide: ["0: no fill", "2: bounded fill completed"]
+        }
+      ],
+      totalPoints: 2,
+      passingPolicyId: "passing.percent_70.v1"
+    },
+    safetyPolicyIds: ["safety.virtual_titration_ppe_notice.v1"],
+    safetyBindings: [
+      {
+        safetyPolicyId: "safety.virtual_titration_ppe_notice.v1",
+        equipmentInstanceIds: ["water_source", "transfer_burette"],
+        materialInstanceIds: []
+      }
+    ],
+    presentation: {
+      instructionGuidance: [
+        {
+          instructionId: "instruction.fill",
+          teacherRationale: "Produces deterministic liquid-transfer evidence.",
+          equipmentInstanceIds: ["water_source", "transfer_burette"]
+        }
+      ],
+      materialLabels: [
+        {
+          materialInstanceId: "material.water",
+          displayLabel: "Distilled water"
+        }
+      ],
+      rulePrompts: [
+        {
+          ruleId: "rule.fill_observed",
+          studentPrompt: "Transfer water into the burette."
+        }
+      ]
+    },
+    supportStatus: "draft_unvalidated",
+    validation: null,
+    judgeCritique: null
+  };
+}
+
 /** Returns the deterministic canonical v1 migration used by v2 validator tests. */
 export function createMigratedEndpointV2Draft(): LabWorkflowDraftV2 {
   return migrateLabWorkflowV1ToV2(ENDPOINT_CONTROL_PRELAB_DRAFT);
