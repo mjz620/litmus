@@ -39,6 +39,14 @@ import {
 } from "../lib/agent/client";
 import type { CoachRequest, CoachResponse } from "../lib/agent/schemas";
 import { decideCoachTrigger } from "../lib/agent/triggerPolicy";
+import {
+  createSetupDrivenTitrationSession,
+  normalizeSetupDrivenTitrationAction,
+  type LabSessionRuntimeMode,
+  type SetupDrivenLabSelection,
+  type SetupDrivenRuntimeInspection,
+  type SetupDrivenTitrationSession
+} from "./setupDrivenLabSession";
 
 export type LabExperimentConfig = TitrationConfig | PrecipitationConfig;
 export type LabExperimentState = TitrationState | PrecipitationState;
@@ -59,6 +67,7 @@ interface LoadExperimentRequestBase {
   mode?: "practice" | "assignment" | "demo" | "preview";
   parentSessionId?: string;
   workflowVersionId?: string;
+  runtimeMode?: LabSessionRuntimeMode;
 }
 
 export type LoadExperimentRequest =
@@ -66,6 +75,7 @@ export type LoadExperimentRequest =
       experimentId: "acid_base_titration";
       config: TitrationConfig;
       seed?: Partial<TitrationState>;
+      setupDrivenSelection?: SetupDrivenLabSelection;
     })
   | (LoadExperimentRequestBase & {
       experimentId: "precipitation_solubility";
@@ -80,6 +90,8 @@ export interface LabStore {
   mode: "practice" | "assignment" | "demo" | "preview";
   parentSessionId: string | null;
   workflowVersionId: string | null;
+  runtimeMode: LabSessionRuntimeMode;
+  runtimeInspection: SetupDrivenRuntimeInspection | null;
   definition: RegisteredExperimentDefinition | null;
   state: LabExperimentState | null;
   studentModel: StudentModel | null;
@@ -121,6 +133,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
   const coachClient = options.coachClient ?? new NoopCoachClient();
   let nextEventSequence = 0;
   let nextCoachMessageSequence = 0;
+  let setupDrivenTitrationSession: SetupDrivenTitrationSession | null = null;
 
   const store = create<LabStore>((set, get) => ({
     status: "idle",
@@ -129,6 +142,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
     mode: options.mode ?? "practice",
     parentSessionId: options.parentSessionId ?? null,
     workflowVersionId: options.workflowVersionId ?? null,
+    runtimeMode: "legacy",
+    runtimeInspection: null,
     definition: null,
     state: null,
     studentModel: null,
@@ -152,6 +167,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           request.parentSessionId ?? options.parentSessionId ?? null,
         workflowVersionId:
           request.workflowVersionId ?? options.workflowVersionId ?? null,
+        runtimeMode: request.runtimeMode ?? "legacy",
+        runtimeInspection: null,
         definition: null,
         state: null,
         studentModel: null,
@@ -168,15 +185,19 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
 
       try {
         nextEventSequence = 0;
-        const { definition, state } =
+        setupDrivenTitrationSession = null;
+        const { definition, state, setupDrivenSession } =
           await initializeRegisteredExperiment(request);
+        setupDrivenTitrationSession = setupDrivenSession;
         const studentModel = newStudentModel(request.sessionId, definition);
 
         set({
           status: "ready",
           definition,
           state,
-          studentModel
+          studentModel,
+          runtimeMode: setupDrivenSession?.mode ?? "legacy",
+          runtimeInspection: setupDrivenSession?.getInspection() ?? null
         });
         queueCheckpoint([], state, studentModel);
       } catch (error) {
@@ -185,6 +206,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           definition: null,
           state: null,
           studentModel: null,
+          runtimeInspection: null,
           error: getErrorMessage(error)
         });
         throw error;
@@ -204,13 +226,23 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         throw new LabStoreNotReadyError();
       }
 
-      const result = stepRegisteredExperiment(
-        current.experimentId,
-        current.definition,
-        current.state,
-        action
-      );
-      const studentModel = result.events.reduce(
+      const setupTransition = setupDrivenTitrationSession
+        ? dispatchSetupDrivenTitration(
+            current.experimentId,
+            action,
+            setupDrivenTitrationSession
+          )
+        : null;
+      const result =
+        setupTransition ??
+        stepRegisteredExperiment(
+          current.experimentId,
+          current.definition,
+          current.state,
+          action
+        );
+      const resultEvents: readonly SemanticEvent[] = result.events;
+      const studentModel = resultEvents.reduce(
         (model, event) => applyEvidence(model, event),
         current.studentModel
       );
@@ -218,13 +250,15 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
       set({
         state: result.state,
         studentModel,
-        eventQueue: [...current.eventQueue, ...result.events]
+        eventQueue: [...current.eventQueue, ...resultEvents],
+        runtimeInspection:
+          setupTransition?.inspection ?? current.runtimeInspection
       });
 
-      queueCheckpoint(result.events, result.state, studentModel);
+      queueCheckpoint(resultEvents, result.state, studentModel);
 
       const decision = decideCoachTrigger({
-        recentEvents: [...current.eventQueue, ...result.events].slice(-12)
+        recentEvents: [...current.eventQueue, ...resultEvents].slice(-12)
       });
       if (decision.shouldTrigger) {
         void requestCoach(undefined, decision.source, decision.maxHintLevel);
@@ -370,20 +404,59 @@ async function initializeRegisteredExperiment(
 ): Promise<{
   definition: RegisteredExperimentDefinition;
   state: LabExperimentState;
+  setupDrivenSession: SetupDrivenTitrationSession | null;
 }> {
   if (request.experimentId === "acid_base_titration") {
     const definition = await loadExperimentDefinition(request.experimentId);
+    if (request.runtimeMode === "setup_driven_v2") {
+      if (!request.setupDrivenSelection) {
+        throw new TypeError(
+          "An exact setup-driven workflow ID and hash are required."
+        );
+      }
+      const setupDrivenSession = createSetupDrivenTitrationSession({
+        experimentId: request.experimentId,
+        sessionId: request.sessionId,
+        sessionSeed: request.seed?.sessionSeed ?? request.sessionId,
+        selection: request.setupDrivenSelection
+      });
+      return {
+        definition,
+        state: setupDrivenSession.getState(),
+        setupDrivenSession
+      };
+    }
     return {
       definition,
-      state: definition.createInitialState(request.config, request.seed)
+      state: definition.createInitialState(request.config, request.seed),
+      setupDrivenSession: null
     };
   }
 
+  if (request.runtimeMode === "setup_driven_v2") {
+    throw new TypeError(
+      "The setup-driven titration definition cannot load this experiment."
+    );
+  }
   const definition = await loadExperimentDefinition(request.experimentId);
   return {
     definition,
-    state: definition.createInitialState(request.config, request.seed)
+    state: definition.createInitialState(request.config, request.seed),
+    setupDrivenSession: null
   };
+}
+
+function dispatchSetupDrivenTitration(
+  experimentId: ExperimentId,
+  action: LabExperimentAction,
+  session: SetupDrivenTitrationSession
+) {
+  if (experimentId !== "acid_base_titration" || !isTitrationAction(action)) {
+    throw new TypeError(
+      "Action does not match the setup-driven titration definition."
+    );
+  }
+  return session.dispatch(normalizeSetupDrivenTitrationAction(action));
 }
 
 function stepRegisteredExperiment(

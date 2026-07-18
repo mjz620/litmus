@@ -46,7 +46,9 @@ Capability-driven Stage 1A (`LC2-100`–`LC2-103`) is also implemented:
 
 `LC2-301` checks in the strict migrated endpoint-control titration as serialized v2 JSON generated from the deterministic v1-to-v2 mapping. The source remains explicitly unvalidated; its loader revalidates against current exact registries and pins the migration version, v1 content hash, canonical v1 validation hash, source registry snapshots, and v2 canonical hash. Focused equivalence tests run the same seeded actions through the v1 assembler and generic compatibility runtime and compare strict precedence, final engine state, semantic events, diagnoses, completion, and stale validation rejection.
 
-This is not yet a production capability-driven student runtime. The production student route/store/scene still default to the legacy path; no production-adjacent setup-driven session loader consumes the serialized v2 definition yet. V2 Preview/Assign remain disabled. Human Composer, second shared-runtime lab, agent migration, immutable definition persistence, and assignment gates remain missing. Existing optional `workflowVersionId` fields remain provenance seams only. Normalized report submission is also intentionally deferred because no registered v2 report action contract exists; legacy report truth remains characterized directly.
+`LC2-302` adds a production-adjacent setup-driven mode to the existing student session/store rather than a competing state path. The acid-base route selects it only with the exact `?runtime=setup-v2` flag and checked-in workflow ID/hash; missing, invalid, retry, and non-titration requests stay legacy. Store actions permitted by the strict migrated workflow normalize into generic actions, execute through the generic definition's `step()`, and project the adapter-validated titration state for the unchanged UI. Checkpoint and coach consumers remain queued after synchronous simulation, setup state is cleared on legacy reload, initialization fails into the existing accessible error surface, and the development inspector exposes workflow, adapter, model, event, and diagnosis provenance. Canonical workflow hashing now uses a dependency-free synchronous SHA-256 primitive so current-hash validation can execute locally in the browser; known UTF-8 vectors and every frozen workflow hash remain covered.
+
+This is not yet the default production capability-driven student runtime. The production student route/store/scene still default to the legacy path; the exact setup-driven path requires an explicit query flag and retains the existing fixed titration scene. V2 Preview/Assign remain disabled. Human Composer, second shared-runtime lab, agent migration, immutable definition persistence, and assignment gates remain missing. Existing optional `workflowVersionId` fields remain provenance seams only. Normalized report submission is also intentionally deferred because no registered v2 report action contract exists; legacy report truth remains characterized directly.
 
 ## Deterministic/AI boundary
 
@@ -112,7 +114,7 @@ Lab Composer transitional implementation present in source/tests:
 - T0201–T0206-equivalent registry, schema, hashing, and hard-validation foundation under `src/lab-workflows/**` and `tests/lab-workflows/**`;
 - T0207 canonical titration seed/replay and T0208 titration-specific runtime assembler/adapters;
 - T0209 initial Lab Authoring Agent route and tests under `src/lib/agent/lab-authoring/**`, `src/app/api/lab-composer/author/**`, and `tests/ai/lab-composer/authoring/**`.
-- LC2-100–LC2-205 and LC2-300–LC2-301 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, version-aware hashing, hard validation/eligibility, generic runtime, liquid mechanics, constraint/event/replay integration, explicit legacy titration compatibility, serialized v2 titration definition, and exact tests under `src/lab-workflows/**` and `tests/lab-workflows/**`.
+- LC2-100–LC2-205 and LC2-300–LC2-302 capability/equipment/action/material/configuration/chemistry-model/constraint/v2 workflow contracts, migration, platform-neutral version-aware hashing, hard validation/eligibility, generic runtime, liquid mechanics, constraint/event/replay integration, explicit legacy titration compatibility, serialized v2 titration definition, feature-flagged setup-driven student store/session path, and exact tests under `src/lab-workflows/**`, `src/stores/**`, and `tests/**`.
 
 The exact historical ticket completion reports were not added for these transitional files. Implementation status is based on current source and passing tests, not assumed ticket completion. T0210–T0220 are superseded by the capability-driven `LC2-*` sequence.
 
@@ -144,10 +146,11 @@ tests/                         truth, policy, API, persistence, analytics, and b
 ## Latest local verification
 
 ```text
-npm run typecheck    pass — 2026-07-17 LC2-300
-npm run lint         pass — 2026-07-17 LC2-300
-npm test             pass — 78 files / 433 tests
+npm run typecheck    pass — 2026-07-17 LC2-302
+npm run lint         pass — 2026-07-17 LC2-302
+npm test             pass — 80 files / 446 tests
 npm run build        pass with compile-only local Supabase placeholders — 19 generated pages
+npm run test:e2e -- tests/e2e/setup-driven-session.spec.ts    pass — 2 Chromium tests
 ```
 
 E2E, database/RLS, audit, coach eval, and performance profiling were not rerun during the Phase 0 documentation audit; their last scoped evidence remains in the relevant completion reports and `docs/project/Chromebook_Performance.md`.
@@ -161,4 +164,4 @@ E2E, database/RLS, audit, coach eval, and performance profiling were not rerun d
 
 ## Next ticket boundary
 
-Phase 3 is implemented through `LC2-301`; the next ticket is `LC2-302`, the feature-flagged setup-driven session loader/store path. Production remains on the legacy route. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md).
+Phase 3 is implemented through `LC2-302`; the next ticket is `LC2-303`, the setup-driven titration scene and reusable control projection. Production still defaults to the legacy path. Follow [`docs/lab-composer/README.md`](lab-composer/README.md) and the exact [`LC2-*` ticket backlog](lab-composer/tickets/README.md).

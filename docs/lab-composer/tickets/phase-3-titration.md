@@ -57,6 +57,8 @@ Phase 3 proves compatibility by moving the shipped titration through the generic
 
 ## LC2-302 — Setup-driven session loader and store path behind a flag
 
+**Status:** Implemented. `?runtime=setup-v2` opts the acid-base route into the exact checked-in workflow/hash while absent, invalid, retry, and non-titration requests remain legacy. The existing store owns both paths, translates only declared strict-workflow intents into normalized actions, queues unchanged checkpoint/coach consumers after synchronous generic dispatch, exposes generic provenance/diagnoses in the development inspector, and fails initialization closed. The broad scene/control derivation remains `LC2-303`.
+
 **Objective:** Load the validated v2 titration definition into the generic coordinator through a production-adjacent store/session path without replacing the existing route.
 
 **Dependencies:** `LC2-301`.

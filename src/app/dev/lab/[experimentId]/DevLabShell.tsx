@@ -9,6 +9,10 @@ import { PrecipitationWorkspace } from "../../../../components/lab/precipitation
 import { useLabSession } from "../../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../../experiments/registry";
 import { isTitrationState } from "../../../../stores/labStore";
+import type {
+  LabSessionRuntimeMode,
+  SetupDrivenLabSelection
+} from "../../../../stores/setupDrivenLabSession";
 
 import styles from "./page.module.css";
 
@@ -17,6 +21,8 @@ interface DevLabShellProps {
   routeSegment: string;
   title: string;
   replaySeed?: string;
+  runtimeMode?: LabSessionRuntimeMode;
+  setupDrivenSelection?: SetupDrivenLabSelection;
 }
 
 /**
@@ -28,7 +34,9 @@ export function DevLabShell({
   experimentId,
   routeSegment,
   title,
-  replaySeed
+  replaySeed,
+  runtimeMode,
+  setupDrivenSelection
 }: DevLabShellProps) {
   const {
     status,
@@ -40,8 +48,15 @@ export function DevLabShell({
     error,
     isCurrentExperiment,
     isPending,
-    isReady
-  } = useLabSession({ experimentId, replaySeed });
+    isReady,
+    runtimeMode: activeRuntimeMode,
+    runtimeInspection
+  } = useLabSession({
+    experimentId,
+    replaySeed,
+    runtimeMode,
+    setupDrivenSelection
+  });
   const titrationState = isTitrationState(state) ? state : null;
   const chartMaxVolumeML = titrationState
     ? Math.max(
@@ -53,9 +68,15 @@ export function DevLabShell({
       )
     : 0;
 
-  const studentPath = replaySeed
-    ? `/lab/${routeSegment}?seed=${encodeURIComponent(replaySeed)}`
-    : `/lab/${routeSegment}`;
+  const studentQuery = new URLSearchParams();
+  if (replaySeed) studentQuery.set("seed", replaySeed);
+  if (runtimeMode === "setup_driven_v2") {
+    studentQuery.set("runtime", "setup-v2");
+  }
+  const serializedStudentQuery = studentQuery.toString();
+  const studentPath = `/lab/${routeSegment}${
+    serializedStudentQuery ? `?${serializedStudentQuery}` : ""
+  }`;
   const latestEvent = eventQueue.at(-1);
 
   return (
@@ -129,8 +150,46 @@ export function DevLabShell({
               <dd className={styles.code}>{experimentId}</dd>
             </div>
             <div>
+              <dt>Runtime mode</dt>
+              <dd className={styles.code}>{activeRuntimeMode}</dd>
+            </div>
+            <div>
               <dt>Canonical engine ID</dt>
               <dd className={styles.code}>{definition?.id ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Workflow definition</dt>
+              <dd className={styles.code} data-testid="dev-workflow-definition">
+                {runtimeInspection
+                  ? `${runtimeInspection.workflowId} @ ${runtimeInspection.workflowHash}`
+                  : "legacy route"}
+              </dd>
+            </div>
+            <div>
+              <dt>Runtime adapter</dt>
+              <dd className={styles.code} data-testid="dev-runtime-adapter">
+                {runtimeInspection
+                  ? `${runtimeInspection.runtimeAdapterId} ${runtimeInspection.runtimeAdapterVersion}`
+                  : "legacy store"}
+              </dd>
+            </div>
+            <div>
+              <dt>Chemistry models</dt>
+              <dd className={styles.code}>
+                {runtimeInspection
+                  ? runtimeInspection.chemistryModels
+                      .map(({ modelId, version }) => `${modelId} ${version}`)
+                      .join(", ")
+                  : "legacy engine"}
+              </dd>
+            </div>
+            <div>
+              <dt>Workflow diagnoses</dt>
+              <dd>
+                {runtimeInspection
+                  ? `${runtimeInspection.diagnoses.length} · sequence ${runtimeInspection.sequence}`
+                  : "—"}
+              </dd>
             </div>
             <div>
               <dt>Session ID</dt>

@@ -10,6 +10,10 @@ import {
   type TitrationRetrySkillId
 } from "../../experiments/titration/retry";
 import { useLabStore } from "../../stores/labStore";
+import type {
+  LabSessionRuntimeMode,
+  SetupDrivenLabSelection
+} from "../../stores/setupDrivenLabSession";
 
 export interface LabSessionOptions {
   experimentId: ExperimentId;
@@ -17,6 +21,8 @@ export interface LabSessionOptions {
   retrySkillId?: TitrationRetrySkillId;
   parentSessionId?: string;
   mode?: "practice" | "assignment" | "demo" | "preview";
+  runtimeMode?: LabSessionRuntimeMode;
+  setupDrivenSelection?: SetupDrivenLabSelection;
 }
 
 /**
@@ -30,9 +36,11 @@ export function useLabSession({
   replaySeed,
   retrySkillId,
   parentSessionId,
-  mode
+  mode,
+  runtimeMode = "legacy",
+  setupDrivenSelection
 }: LabSessionOptions) {
-  const started = useRef(false);
+  const startedKey = useRef<string | null>(null);
   const status = useLabStore((store) => store.status);
   const loadedExperimentId = useLabStore((store) => store.experimentId);
   const sessionId = useLabStore((store) => store.sessionId);
@@ -41,11 +49,23 @@ export function useLabSession({
   const studentModel = useLabStore((store) => store.studentModel);
   const eventQueue = useLabStore((store) => store.eventQueue);
   const error = useLabStore((store) => store.error);
+  const activeRuntimeMode = useLabStore((store) => store.runtimeMode);
+  const runtimeInspection = useLabStore((store) => store.runtimeInspection);
   const loadExperiment = useLabStore((store) => store.loadExperiment);
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
+    const initializationKey = JSON.stringify({
+      experimentId,
+      replaySeed,
+      retrySkillId,
+      parentSessionId,
+      mode,
+      runtimeMode,
+      workflowId: setupDrivenSelection?.workflowId,
+      workflowHash: setupDrivenSelection?.workflowHash
+    });
+    if (startedKey.current === initializationKey) return;
+    startedKey.current = initializationKey;
 
     const newSessionId = globalThis.crypto?.randomUUID
       ? globalThis.crypto.randomUUID()
@@ -65,7 +85,10 @@ export function useLabSession({
           retryScenario?.config ?? generateTitrationSessionConfig(sessionSeed),
         seed: retryScenario?.seed ?? { sessionSeed },
         mode,
-        parentSessionId
+        parentSessionId,
+        runtimeMode,
+        setupDrivenSelection,
+        workflowVersionId: setupDrivenSelection?.workflowHash
       }).catch(() => undefined);
     } else {
       void loadExperiment({
@@ -74,7 +97,8 @@ export function useLabSession({
         config: DEFAULT_PRECIPITATION_CONFIG,
         seed: { sessionSeed },
         mode,
-        parentSessionId
+        parentSessionId,
+        runtimeMode
       }).catch(() => undefined);
     }
   }, [
@@ -83,7 +107,9 @@ export function useLabSession({
     mode,
     parentSessionId,
     replaySeed,
-    retrySkillId
+    retrySkillId,
+    runtimeMode,
+    setupDrivenSelection
   ]);
 
   const isCurrentExperiment = loadedExperimentId === experimentId;
@@ -105,7 +131,9 @@ export function useLabSession({
     isCurrentExperiment,
     isPending,
     isReady,
-    latestPH: typeof latestPH === "number" ? latestPH : undefined
+    latestPH: typeof latestPH === "number" ? latestPH : undefined,
+    runtimeMode: activeRuntimeMode,
+    runtimeInspection
   };
 }
 

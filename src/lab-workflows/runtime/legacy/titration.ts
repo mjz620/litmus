@@ -329,6 +329,13 @@ function parseState(serialized: string): TitrationState {
   }
 }
 
+/** Exact UI/session projection for the serialized compatibility boundary. */
+export function parseLegacyTitrationCompatibilityState(
+  serialized: string
+): Readonly<TitrationState> {
+  return deepFreeze(parseState(serialized));
+}
+
 function serializeState(state: Readonly<TitrationState>): string {
   return JSON.stringify(legacyStateSchema.parse(state));
 }

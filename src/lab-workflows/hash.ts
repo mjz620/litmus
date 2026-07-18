@@ -1,10 +1,9 @@
-import { createHash } from "node:crypto";
-
 import type { LabWorkflowSpecV1 } from "./schema";
 import {
   versionedLabWorkflowSpecSchema,
   type LabWorkflowSpecV2
 } from "./schema/v2";
+import { sha256Hex } from "./sha256";
 
 export const LAB_WORKFLOW_HASH_ALGORITHM = "sha256" as const;
 export const LAB_WORKFLOW_HASH_DOMAIN_V2 =
@@ -221,11 +220,7 @@ export function serializeLabWorkflowSpecHashPreimage(input: unknown): string {
 
 export function hashLabWorkflowSpec(input: unknown): string {
   const preimage = serializeLabWorkflowSpecHashPreimage(input);
-  return `${LAB_WORKFLOW_HASH_ALGORITHM}:${createHash(
-    LAB_WORKFLOW_HASH_ALGORITHM
-  )
-    .update(preimage, "utf8")
-    .digest("hex")}`;
+  return `${LAB_WORKFLOW_HASH_ALGORITHM}:${sha256Hex(preimage)}`;
 }
 
 export function labWorkflowHashMatches(

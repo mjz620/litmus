@@ -11,6 +11,10 @@ import type { ExperimentId } from "../../../experiments/registry";
 import type { TitrationRetrySkillId } from "../../../experiments/titration/retry";
 import { RetryBanner } from "../../../components/lab/retry/RetryBanner";
 import { isTitrationState } from "../../../stores/labStore";
+import type {
+  LabSessionRuntimeMode,
+  SetupDrivenLabSelection
+} from "../../../stores/setupDrivenLabSession";
 
 import styles from "./page.module.css";
 
@@ -21,6 +25,8 @@ interface LabRouteShellProps {
   retrySkillId?: TitrationRetrySkillId;
   parentSessionId?: string;
   mode?: "practice" | "assignment" | "demo" | "preview";
+  runtimeMode?: LabSessionRuntimeMode;
+  setupDrivenSelection?: SetupDrivenLabSelection;
 }
 
 /**
@@ -34,7 +40,9 @@ export function LabRouteShell({
   replaySeed,
   retrySkillId,
   parentSessionId,
-  mode
+  mode,
+  runtimeMode,
+  setupDrivenSelection
 }: LabRouteShellProps) {
   const { status, state, error, isCurrentExperiment, isPending, isReady } =
     useLabSession({
@@ -42,7 +50,9 @@ export function LabRouteShell({
       replaySeed,
       retrySkillId,
       parentSessionId,
-      mode
+      mode,
+      runtimeMode,
+      setupDrivenSelection
     });
   const titrationState = isTitrationState(state) ? state : null;
   const chartMaxVolumeML = titrationState

@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { EXAMPLE_STRONG } from "../../src/experiments/titration/titration";
+import {
+  EXAMPLE_STRONG,
+  titration
+} from "../../src/experiments/titration/titration";
 import { DEFAULT_PRECIPITATION_CONFIG } from "../../src/experiments/precipitation/precipitation";
 import {
   createLabStore,
@@ -12,6 +15,10 @@ import {
   CheckpointQueue,
   type CheckpointRequest
 } from "../../src/lib/persistence";
+import {
+  STRICT_TITRATION_SETUP_SELECTION,
+  resolveLabSessionRuntimeMode
+} from "../../src/stores/setupDrivenLabSession";
 
 describe("lab store", () => {
   it("loads a seeded experiment, StudentModel, and empty event queue", async () => {
@@ -320,6 +327,213 @@ describe("lab store", () => {
     expect(store.getState().studentModel?.experimentId).toBe(
       "precipitation_solubility"
     );
+  });
+
+  it("loads the exact serialized titration through the setup-driven store path", async () => {
+    const store = createLabStore();
+    const step = vi.spyOn(titration, "step");
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "setup-driven-store",
+      config: EXAMPLE_STRONG,
+      seed: { sessionSeed: "setup-driven-seed" },
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION,
+      workflowVersionId: STRICT_TITRATION_SETUP_SELECTION.workflowHash
+    });
+
+    const initial = store.getState();
+    expect(initial.status).toBe("ready");
+    expect(initial.runtimeMode).toBe("setup_driven_v2");
+    expect(initial.workflowVersionId).toBe(
+      STRICT_TITRATION_SETUP_SELECTION.workflowHash
+    );
+    expect(initial.runtimeInspection).toMatchObject({
+      mode: "setup_driven_v2",
+      workflowId: STRICT_TITRATION_SETUP_SELECTION.workflowId,
+      workflowHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash,
+      sequence: 0,
+      runtimeAdapterId: "runtime-adapter.titration.v1",
+      engineId: "engine.titration.v1",
+      chemistryModels: [
+        {
+          modelId: "chemistry-model.legacy_titration.v1",
+          version: "1.0.0"
+        }
+      ]
+    });
+    expect(requireTitrationState(initial.state)).toMatchObject({
+      sessionSeed: "setup-driven-seed",
+      titrantAddedML: 22,
+      buretteAvailableML: 28,
+      indicatorAdded: true
+    });
+
+    store.getState().dispatch({ type: "read_meniscus", reportedML: 22 });
+    store.getState().dispatch({
+      type: "add_titrant",
+      volumeML: 0.5,
+      durationS: 25
+    });
+
+    const updated = store.getState();
+    expect(requireTitrationState(updated.state).titrantAddedML).toBe(22.5);
+    expect(updated.eventQueue.map(({ type }) => type)).toEqual([
+      "read_meniscus",
+      "add_titrant"
+    ]);
+    expect(updated.runtimeInspection).toMatchObject({
+      sequence: 2,
+      eventSequence: 2
+    });
+    expect(updated.runtimeInspection?.eventIds).toHaveLength(2);
+    expect(step).toHaveBeenCalledTimes(2);
+    step.mockRestore();
+  });
+
+  it("clears the setup runtime when the same store reloads in legacy mode", async () => {
+    const store = createLabStore();
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "setup-before-reload",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+    expect(store.getState().runtimeInspection).not.toBeNull();
+
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "legacy-after-reload",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "legacy"
+    });
+    store.getState().dispatch({ type: "rinse_burette", solvent: "titrant" });
+
+    expect(store.getState().runtimeMode).toBe("legacy");
+    expect(store.getState().runtimeInspection).toBeNull();
+    expect(
+      requireTitrationState(store.getState().state).buretteConditioned
+    ).toBe(true);
+  });
+
+  it("keeps setup-driven simulation synchronous while checkpoint and coach work wait", async () => {
+    let releaseCheckpoint!: () => void;
+    const checkpointBlocked = new Promise<void>((resolve) => {
+      releaseCheckpoint = resolve;
+    });
+    let releaseCoach!: () => void;
+    const coachBlocked = new Promise<void>((resolve) => {
+      releaseCoach = resolve;
+    });
+    let coachRequested = false;
+    const queue = new CheckpointQueue({
+      async send() {
+        await checkpointBlocked;
+      }
+    });
+    const store = createLabStore({
+      checkpointQueue: queue,
+      coachClient: {
+        async request() {
+          coachRequested = true;
+          await coachBlocked;
+          return {
+            shouldRespond: false,
+            interventionType: "none",
+            skillIds: [],
+            hintLevel: 0,
+            message: "",
+            evidenceEventTypes: [],
+            safety: { refused: false }
+          };
+        }
+      }
+    });
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "setup-driven-nonblocking",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+    store.getState().dispatch({ type: "read_meniscus", reportedML: 22 });
+    for (let index = 0; index < 5; index += 1) {
+      store.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.5,
+        durationS: 25
+      });
+    }
+
+    const before = performance.now();
+    store.getState().dispatch({
+      type: "add_titrant",
+      volumeML: 0.5,
+      durationS: 0.1
+    });
+    const elapsed = performance.now() - before;
+
+    expect(elapsed).toBeLessThan(50);
+    expect(requireTitrationState(store.getState().state).titrantAddedML).toBe(
+      25
+    );
+    expect(store.getState().lastCheckpoint?.events?.at(-1)?.payload.type).toBe(
+      "add_titrant"
+    );
+    expect(coachRequested).toBe(true);
+    expect(store.getState().coachStatus).toBe("loading");
+
+    releaseCheckpoint();
+    releaseCoach();
+    await queue.whenIdle();
+  });
+
+  it("fails closed for a missing or stale setup-driven selection", async () => {
+    const store = createLabStore();
+    await expect(
+      store.getState().loadExperiment({
+        experimentId: "acid_base_titration",
+        sessionId: "setup-driven-missing",
+        config: EXAMPLE_STRONG,
+        runtimeMode: "setup_driven_v2"
+      })
+    ).rejects.toThrow("exact setup-driven workflow ID and hash");
+    expect(store.getState()).toMatchObject({
+      status: "error",
+      runtimeMode: "setup_driven_v2",
+      runtimeInspection: null
+    });
+
+    await expect(
+      store.getState().loadExperiment({
+        experimentId: "acid_base_titration",
+        sessionId: "setup-driven-stale",
+        config: EXAMPLE_STRONG,
+        runtimeMode: "setup_driven_v2",
+        setupDrivenSelection: {
+          ...STRICT_TITRATION_SETUP_SELECTION,
+          workflowHash:
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        } as unknown as typeof STRICT_TITRATION_SETUP_SELECTION
+      })
+    ).rejects.toThrow("definition ID or hash is not eligible");
+    expect(store.getState().status).toBe("error");
+  });
+
+  it("defaults invalid, absent, and non-titration runtime flags to legacy", () => {
+    expect(resolveLabSessionRuntimeMode("acid_base_titration", undefined)).toBe(
+      "legacy"
+    );
+    expect(
+      resolveLabSessionRuntimeMode("acid_base_titration", "not-a-runtime")
+    ).toBe("legacy");
+    expect(
+      resolveLabSessionRuntimeMode("precipitation_solubility", "setup-v2")
+    ).toBe("legacy");
+    expect(
+      resolveLabSessionRuntimeMode("acid_base_titration", "setup-v2")
+    ).toBe("setup_driven_v2");
   });
 });
 

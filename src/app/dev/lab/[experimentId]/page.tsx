@@ -2,11 +2,18 @@ import { notFound } from "next/navigation";
 
 import { resolveExperimentId } from "../../../../components/ui/experimentRoutes";
 import { getExperimentManifest } from "../../../../experiments/registry";
+import {
+  STRICT_TITRATION_SETUP_SELECTION,
+  resolveLabSessionRuntimeMode
+} from "../../../../stores/setupDrivenLabSession";
 import { DevLabShell } from "./DevLabShell";
 
 interface DevLabPageProps {
   params: Promise<{ experimentId: string }>;
-  searchParams: Promise<{ seed?: string | string[] }>;
+  searchParams: Promise<{
+    seed?: string | string[];
+    runtime?: string | string[];
+  }>;
 }
 
 /**
@@ -23,7 +30,7 @@ export default async function DevLabPage({
   }
 
   const { experimentId: routeSegment } = await params;
-  const { seed } = await searchParams;
+  const { seed, runtime } = await searchParams;
   const experimentId = resolveExperimentId(routeSegment);
 
   if (!experimentId) {
@@ -33,6 +40,11 @@ export default async function DevLabPage({
   const manifest = getExperimentManifest(experimentId);
   const requestedSeed = Array.isArray(seed) ? seed[0] : seed;
   const replaySeed = requestedSeed?.trim().slice(0, 128) || undefined;
+  const requestedRuntime = Array.isArray(runtime) ? runtime[0] : runtime;
+  const runtimeMode = resolveLabSessionRuntimeMode(
+    experimentId,
+    requestedRuntime
+  );
 
   return (
     <DevLabShell
@@ -40,6 +52,12 @@ export default async function DevLabPage({
       routeSegment={routeSegment}
       title={manifest.title}
       replaySeed={replaySeed}
+      runtimeMode={runtimeMode}
+      setupDrivenSelection={
+        runtimeMode === "setup_driven_v2"
+          ? STRICT_TITRATION_SETUP_SELECTION
+          : undefined
+      }
     />
   );
 }

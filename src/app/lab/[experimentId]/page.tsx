@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { resolveExperimentId } from "../../../components/ui/experimentRoutes";
 import { getExperimentManifest } from "../../../experiments/registry";
 import { isTitrationRetrySkillId } from "../../../experiments/titration/retry";
+import {
+  STRICT_TITRATION_SETUP_SELECTION,
+  resolveLabSessionRuntimeMode
+} from "../../../stores/setupDrivenLabSession";
 import { LabRouteShell } from "./LabRouteShell";
 
 interface LabPageProps {
@@ -11,12 +15,13 @@ interface LabPageProps {
     seed?: string | string[];
     retry?: string | string[];
     parent?: string | string[];
+    runtime?: string | string[];
   }>;
 }
 
 export default async function LabPage({ params, searchParams }: LabPageProps) {
   const { experimentId: routeSegment } = await params;
-  const { seed, retry, parent } = await searchParams;
+  const { seed, retry, parent, runtime } = await searchParams;
   const experimentId = resolveExperimentId(routeSegment);
 
   if (!experimentId) {
@@ -32,6 +37,10 @@ export default async function LabPage({ params, searchParams }: LabPageProps) {
     : undefined;
   const requestedParent = Array.isArray(parent) ? parent[0] : parent;
   const parentSessionId = requestedParent?.trim().slice(0, 160) || undefined;
+  const requestedRuntime = Array.isArray(runtime) ? runtime[0] : runtime;
+  const runtimeMode = retrySkillId
+    ? "legacy"
+    : resolveLabSessionRuntimeMode(experimentId, requestedRuntime);
 
   return (
     <LabRouteShell
@@ -40,6 +49,12 @@ export default async function LabPage({ params, searchParams }: LabPageProps) {
       replaySeed={replaySeed}
       retrySkillId={retrySkillId}
       parentSessionId={parentSessionId}
+      runtimeMode={runtimeMode}
+      setupDrivenSelection={
+        runtimeMode === "setup_driven_v2"
+          ? STRICT_TITRATION_SETUP_SELECTION
+          : undefined
+      }
     />
   );
 }

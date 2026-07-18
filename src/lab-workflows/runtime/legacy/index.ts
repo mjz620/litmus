@@ -1,6 +1,7 @@
 export {
   adaptNormalizedTitrationAction,
-  createLegacyTitrationRuntimePorts
+  createLegacyTitrationRuntimePorts,
+  parseLegacyTitrationCompatibilityState
 } from "./titration";
 export {
   LEGACY_TITRATION_COMPATIBILITY_ERROR_CODES,
