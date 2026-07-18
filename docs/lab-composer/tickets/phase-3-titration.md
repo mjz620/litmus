@@ -31,6 +31,8 @@ Phase 3 proves compatibility by moving the shipped titration through the generic
 
 ## LC2-301 — Serialized v2 titration definition and v1 equivalence
 
+**Status:** Implemented. The exact deterministic v1 migration is checked in as an unvalidated JSON source, its v1 content/validation and v2 canonical hashes are pinned, and the public loader always revalidates it against current exact registries before use. Strict v1/generic traces have state, event, completion, precedence, and stale-artifact parity coverage. Production routing remains legacy.
+
 **Objective:** Check in the migrated canonical titration as a validated-capable serialized v2 definition and prove its strict migrated behavior matches v1.
 
 **Dependencies:** `LC2-300`, `LC2-106`, `LC2-107`.

@@ -1,0 +1,485 @@
+{
+  "schemaVersion": "2.0.0",
+  "id": "workflow.endpoint_control_prelab.seed.v1",
+  "revision": 1,
+  "sourceRequest": "Create a 7-minute acid-base titration pre-lab focused on endpoint control and meniscus reading.",
+  "metadata": {
+    "title": "Endpoint Control and Meniscus Reading",
+    "learningObjective": "Read a burette correctly and use dropwise delivery near the endpoint.",
+    "studentSummary": "Practice the final stage of a strong acid/strong base titration.",
+    "gradeBand": "mixed_high_school",
+    "estimatedMinutes": 7,
+    "difficulty": "intermediate",
+    "tags": ["pre-lab", "titration", "measurement"],
+    "accessibilityNotes": [
+      "Keyboard-operable precision controls are available."
+    ],
+    "deviceProfileId": "device.chromebook_core.v1"
+  },
+  "catalog": { "familyId": "family.acid_base_titration.v1" },
+  "objectiveIds": ["endpoint_control", "meniscus_reading"],
+  "equipment": [
+    {
+      "instanceId": "titrant_burette",
+      "equipmentDefinitionId": "component.burette.v1",
+      "configurationPresetId": "component_config.burette.50ml.v1",
+      "label": "Titrant burette",
+      "required": true
+    },
+    {
+      "instanceId": "analyte_flask",
+      "equipmentDefinitionId": "component.erlenmeyer_flask.v1",
+      "configurationPresetId": "component_config.erlenmeyer.125ml.v1",
+      "label": "Analyte flask",
+      "required": true
+    },
+    {
+      "instanceId": "indicator_source",
+      "equipmentDefinitionId": "component.indicator_bottle.v1",
+      "configurationPresetId": "component_config.indicator_dropper.v1",
+      "label": "Phenolphthalein",
+      "required": true
+    }
+  ],
+  "materials": [
+    {
+      "instanceId": "titrant",
+      "materialProfileId": "reagent.sodium_hydroxide_0_100m.v1",
+      "containerInstanceId": "titrant_burette",
+      "quantityPresetId": "quantity-preset.sodium_hydroxide_0_100m_50ml.v1"
+    },
+    {
+      "instanceId": "analyte",
+      "materialProfileId": "reagent.hydrochloric_acid_0_100m.v1",
+      "containerInstanceId": "analyte_flask",
+      "quantityPresetId": "quantity-preset.hydrochloric_acid_0_100m_25ml.v1"
+    },
+    {
+      "instanceId": "indicator",
+      "materialProfileId": "reagent.phenolphthalein.v1",
+      "containerInstanceId": "indicator_source",
+      "quantityPresetId": "quantity-preset.phenolphthalein_2_drops.v1"
+    }
+  ],
+  "layout": {
+    "configurationSchemaId": "schema.layout_configuration.titration_bench.v1",
+    "placements": [
+      {
+        "equipmentInstanceId": "titrant_burette",
+        "placementSlotId": "placement.bench_center_stand.v1"
+      },
+      {
+        "equipmentInstanceId": "analyte_flask",
+        "placementSlotId": "placement.under_burette.v1"
+      },
+      {
+        "equipmentInstanceId": "indicator_source",
+        "placementSlotId": "placement.indicator_shelf.v1"
+      }
+    ]
+  },
+  "requiredChemistryCapabilityIds": [
+    "chemistry.material_ledger.v1",
+    "chemistry.volume_conservation.v1",
+    "chemistry.solution_mixing.v1",
+    "chemistry.acid_base_equilibrium.v1",
+    "chemistry.indicator_response.v1",
+    "chemistry.instrument_observables.v1"
+  ],
+  "permittedActions": [
+    {
+      "id": "migration.permission.s1.a1",
+      "actionId": "action.read_volume.v1",
+      "sourceEquipmentInstanceId": "titrant_burette",
+      "targetEquipmentInstanceIds": [],
+      "parameterPresetId": "action_params.burette_reading.v1",
+      "maxAttempts": 3,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": ["migration.rule.s1.completion"]
+      }
+    },
+    {
+      "id": "migration.permission.s2.a1",
+      "actionId": "action.dispense.v1",
+      "sourceEquipmentInstanceId": "titrant_burette",
+      "targetEquipmentInstanceIds": ["analyte_flask"],
+      "parameterPresetId": "action_params.titration_dropwise_or_slow.v1",
+      "authoredLimits": { "maxVolumeMLPerAction": 0.5 },
+      "maxAttempts": 20,
+      "availability": {
+        "allSatisfiedRuleIds": ["migration.rule.s1.completion"],
+        "allUnsatisfiedRuleIds": ["migration.rule.s2.completion"]
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "migration.rule.s1.o1",
+      "kind": "required",
+      "condition": {
+        "kind": "observation_recorded",
+        "observationKeyId": "observation.reported_volume_ml.v1",
+        "eventTypeId": "event.read_meniscus.v1",
+        "expectedValueSourceId": "observable.burette_reading_ml.v1"
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["meniscus_reading"]
+    },
+    {
+      "id": "migration.rule.s1.completion",
+      "kind": "required",
+      "condition": {
+        "kind": "registered_completion_policy_satisfied",
+        "completionPolicyId": "completion.all_required_observations.v1",
+        "evidenceRuleIds": ["migration.rule.s1.o1"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["meniscus_reading"]
+    },
+    {
+      "id": "migration.rule.s2.o1",
+      "kind": "required",
+      "condition": {
+        "kind": "event_flag",
+        "flagId": "flag.endpoint_overshoot.v1",
+        "presence": "absent",
+        "eventTypeId": "event.add_titrant.v1"
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["endpoint_control"]
+    },
+    {
+      "id": "migration.rule.s2.completion",
+      "kind": "success",
+      "condition": {
+        "kind": "registered_completion_policy_satisfied",
+        "completionPolicyId": "completion.engine_endpoint_observed.v1",
+        "evidenceRuleIds": ["migration.rule.s2.o1"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["endpoint_control"]
+    },
+    {
+      "id": "migration.rule.s1.before.s2",
+      "kind": "ordering",
+      "condition": {
+        "kind": "rule_satisfied_before",
+        "predecessorRuleId": "migration.rule.s1.completion",
+        "successorRuleId": "migration.rule.s2.completion"
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["endpoint_control"]
+    },
+    {
+      "id": "migration.rule.c1.e1",
+      "kind": "scoring",
+      "condition": {
+        "kind": "semantic_event_observed",
+        "eventTypeId": "event.read_meniscus.v1"
+      },
+      "severity": "info",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["meniscus_reading"]
+    },
+    {
+      "id": "migration.rule.c1.e2",
+      "kind": "scoring",
+      "condition": {
+        "kind": "observation_recorded",
+        "observationKeyId": "observation.reported_volume_ml.v1"
+      },
+      "severity": "info",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["meniscus_reading"]
+    },
+    {
+      "id": "migration.rule.c1.e3",
+      "kind": "scoring",
+      "condition": {
+        "kind": "student_response_submitted",
+        "submissionFieldId": "submission.initial_burette_reading.v1"
+      },
+      "severity": "info",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["meniscus_reading"]
+    },
+    {
+      "id": "migration.rule.c2.e1",
+      "kind": "scoring",
+      "condition": {
+        "kind": "semantic_event_observed",
+        "eventTypeId": "event.add_titrant.v1"
+      },
+      "severity": "info",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["endpoint_control"]
+    },
+    {
+      "id": "migration.rule.c2.e2",
+      "kind": "scoring",
+      "condition": {
+        "kind": "observation_recorded",
+        "observationKeyId": "observation.observed_color.v1"
+      },
+      "severity": "info",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["endpoint_control"]
+    },
+    {
+      "id": "migration.rule.c2.e3",
+      "kind": "scoring",
+      "condition": {
+        "kind": "student_response_submitted",
+        "submissionFieldId": "submission.endpoint_reflection.v1"
+      },
+      "severity": "info",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["endpoint_control"]
+    }
+  ],
+  "instructions": [
+    {
+      "id": "read_initial_burette",
+      "title": "Read the burette",
+      "guidance": "At eye level, record the bottom of the concave meniscus.",
+      "relatedRuleIds": ["migration.rule.s1.o1", "migration.rule.s1.completion"]
+    },
+    {
+      "id": "approach_endpoint",
+      "title": "Approach the endpoint",
+      "guidance": "Add titrant slowly, switching to dropwise control near the endpoint.",
+      "relatedRuleIds": ["migration.rule.s2.o1", "migration.rule.s2.completion"]
+    }
+  ],
+  "coachPolicy": {
+    "triggers": [
+      {
+        "id": "coach_high_flow",
+        "objectiveIds": ["endpoint_control"],
+        "eventTypeIds": ["event.add_titrant.v1"],
+        "flagIds": [
+          "flag.flow_rate_high_near_endpoint.v1",
+          "flag.endpoint_overshoot.v1"
+        ],
+        "triggerTypeId": "coach_trigger.mistake_reflection.v1",
+        "hintStrategyId": "hint.endpoint_control_graduated.v1",
+        "maxHintLevel": 2,
+        "cooldownEventCount": 2,
+        "staySilentOnEventReasonIds": [
+          "evidence.controlled_addition_near_endpoint.v1"
+        ]
+      }
+    ],
+    "adaptiveRetries": [
+      {
+        "id": "retry_endpoint",
+        "templateId": "retry.endpoint_control_near_endpoint.v1",
+        "targetObjectiveIds": ["endpoint_control"],
+        "eligibleFlagIds": [
+          "flag.flow_rate_high_near_endpoint.v1",
+          "flag.endpoint_overshoot.v1"
+        ],
+        "initializationPresetId": "seed.titration.near_endpoint_22ml.v1",
+        "maxMinutes": 3,
+        "studentGoal": "Reach the endpoint using controlled dropwise additions.",
+        "successEvidenceReasonIds": [
+          "evidence.controlled_addition_near_endpoint.v1"
+        ]
+      }
+    ]
+  },
+  "rubric": {
+    "id": "rubric.endpoint_control_prelab.seed.v1",
+    "version": "1.0.0",
+    "title": "Endpoint-control pre-lab rubric",
+    "criteria": [
+      {
+        "id": "meniscus",
+        "objectiveIds": ["meniscus_reading"],
+        "ruleIds": [
+          "migration.rule.c1.e1",
+          "migration.rule.c1.e2",
+          "migration.rule.c1.e3"
+        ],
+        "description": "Reads and records the bottom of the meniscus to burette precision.",
+        "maxPoints": 2,
+        "assessmentModeId": "assessment.event_plus_entry.v1",
+        "evidenceMappings": [
+          {
+            "kind": "semantic_event",
+            "eventTypeId": "event.read_meniscus.v1",
+            "required": true
+          },
+          {
+            "kind": "semantic_event_observation",
+            "observationKeyId": "observation.reported_volume_ml.v1",
+            "required": true
+          },
+          {
+            "kind": "student_response",
+            "submissionFieldId": "submission.initial_burette_reading.v1",
+            "required": true
+          }
+        ],
+        "scoringGuide": [
+          "0: unsupported reading",
+          "1: method or precision partly correct",
+          "2: both correct"
+        ]
+      },
+      {
+        "id": "endpoint",
+        "objectiveIds": ["endpoint_control"],
+        "ruleIds": [
+          "migration.rule.c2.e1",
+          "migration.rule.c2.e2",
+          "migration.rule.c2.e3"
+        ],
+        "description": "Uses controlled additions near endpoint without overshoot.",
+        "maxPoints": 3,
+        "assessmentModeId": "assessment.event_performance.v1",
+        "evidenceMappings": [
+          {
+            "kind": "semantic_event",
+            "eventTypeId": "event.add_titrant.v1",
+            "required": true
+          },
+          {
+            "kind": "semantic_event_observation",
+            "observationKeyId": "observation.observed_color.v1",
+            "required": true
+          },
+          {
+            "kind": "student_response",
+            "submissionFieldId": "submission.endpoint_reflection.v1",
+            "required": true
+          }
+        ],
+        "scoringGuide": [
+          "0: major overshoot",
+          "1: inconsistent control",
+          "2: controlled with prompting",
+          "3: controlled independently"
+        ]
+      }
+    ],
+    "totalPoints": 5,
+    "passingPolicyId": "passing.percent_70.v1"
+  },
+  "safetyPolicyIds": ["safety.virtual_titration_ppe_notice.v1"],
+  "safetyBindings": [
+    {
+      "safetyPolicyId": "safety.virtual_titration_ppe_notice.v1",
+      "equipmentInstanceIds": [
+        "titrant_burette",
+        "analyte_flask",
+        "indicator_source"
+      ],
+      "materialInstanceIds": []
+    }
+  ],
+  "presentation": {
+    "instructionGuidance": [
+      {
+        "instructionId": "read_initial_burette",
+        "teacherRationale": "Establishes apparatus-appropriate reading before delivery.",
+        "equipmentInstanceIds": ["titrant_burette"]
+      },
+      {
+        "instructionId": "approach_endpoint",
+        "teacherRationale": "Produces direct endpoint-control evidence.",
+        "equipmentInstanceIds": ["titrant_burette", "analyte_flask"]
+      }
+    ],
+    "materialLabels": [
+      {
+        "materialInstanceId": "titrant",
+        "displayLabel": "0.100 M sodium hydroxide"
+      },
+      {
+        "materialInstanceId": "analyte",
+        "displayLabel": "0.100 M hydrochloric acid"
+      },
+      {
+        "materialInstanceId": "indicator",
+        "displayLabel": "Phenolphthalein indicator"
+      }
+    ],
+    "rulePrompts": [
+      {
+        "ruleId": "migration.rule.s1.o1",
+        "studentPrompt": "Record the burette reading to the correct precision."
+      },
+      {
+        "ruleId": "migration.rule.s2.o1",
+        "studentPrompt": "Stop at the first persistent endpoint color."
+      }
+    ]
+  },
+  "compatibility": {
+    "kind": "legacy_v1",
+    "runtimeAdapterId": "runtime-adapter.titration.v1",
+    "runtimeAdapterVersion": "1.0.0",
+    "engineId": "engine.titration.v1",
+    "engineConfigurationPresetId": "engine_config.titration.strong_acid_strong_base_25ml.v1",
+    "initializationPresetId": "seed.titration.near_endpoint_22ml.v1",
+    "equipmentRoleBindings": [
+      {
+        "equipmentInstanceId": "titrant_burette",
+        "legacyRoleId": "titrant_delivery"
+      },
+      {
+        "equipmentInstanceId": "analyte_flask",
+        "legacyRoleId": "reaction_vessel"
+      },
+      {
+        "equipmentInstanceId": "indicator_source",
+        "legacyRoleId": "indicator_source"
+      }
+    ],
+    "materialRoleBindings": [
+      { "materialInstanceId": "titrant", "legacyRoleId": "titrant" },
+      { "materialInstanceId": "analyte", "legacyRoleId": "analyte" },
+      { "materialInstanceId": "indicator", "legacyRoleId": "indicator" }
+    ]
+  },
+  "provenance": {
+    "kind": "migrated_v1",
+    "sourceSchemaVersion": "1.0.0",
+    "sourceSpecHash": "sha256:5c5994100e9e6c3467b87da4554f06ed61490c39b1bd6e134b7b5b32ed84e863",
+    "migrationVersion": "1.0.0",
+    "sourceRegistrySnapshotIds": {
+      "capabilities": "capabilities.1.1.0",
+      "actions": "actions.2.0.0",
+      "chemistryModels": "chemistry-models.1.1.0",
+      "components": "components.2.1.0",
+      "configurations": "configurations.2.3.0",
+      "engines": "engines.1.1.0",
+      "eventFlags": "event-flags.1.0.0",
+      "eventTypes": "event-types.1.0.0",
+      "reagents": "reagents.2.2.0",
+      "safety": "safety.1.0.0",
+      "skills": "skills.1.0.0"
+    }
+  },
+  "supportStatus": "draft_unvalidated",
+  "validation": null,
+  "judgeCritique": null
+}
