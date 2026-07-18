@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { labWorkflowConsumerContextSchema } from "../../lab-workflows/consumers";
+
 const scalarSchema = z.union([z.string(), z.number(), z.boolean()]);
 export const semanticEventSchema = z.object({
   type: z.string().min(1).max(128),
@@ -38,6 +40,7 @@ export const coachRequestSchema = z.object({
   currentState: z.unknown(),
   recentEvents: z.array(semanticEventSchema).max(50),
   studentModel: studentModelSchema,
+  labWorkflowContext: labWorkflowConsumerContextSchema.optional(),
   studentQuestion: z.string().trim().min(1).max(600).optional(),
   activeProcedureStep: z.string().max(160).optional(),
   triggerPolicy: z.object({

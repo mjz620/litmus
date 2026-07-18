@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { labWorkflowConsumerContextSchema } from "../../lab-workflows/consumers";
+
 import { semanticEventSchema, studentModelSchema } from "./schemas";
 
 export const reportTextSchema = z.object({
@@ -15,6 +17,7 @@ export const evaluateRequestSchema = z.object({
   finalState: z.unknown(),
   events: z.array(semanticEventSchema).max(1000),
   studentModel: studentModelSchema,
+  labWorkflowContext: labWorkflowConsumerContextSchema.optional(),
   studentText: reportTextSchema
 });
 

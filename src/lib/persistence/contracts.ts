@@ -1,6 +1,14 @@
 import { z } from "zod";
 
 import type { SemanticEvent, SkillEstimate } from "../../experiments/shared";
+import {
+  labWorkflowConsumerContextSchema,
+  type LabWorkflowConsumerContext
+} from "../../lab-workflows/consumers";
+import {
+  genericLabActionTraceSchema,
+  type GenericLabActionTrace
+} from "../../lab-workflows/replay";
 
 export const CHECKPOINT_SCHEMA_VERSION = "1";
 export type SaveStatus = "idle" | "pending" | "saved" | "error";
@@ -32,6 +40,10 @@ export interface CheckpointRequest {
   workflowVersionId?: string;
   events?: CheckpointEvent[];
   skillEstimates?: CheckpointSkillEstimate[];
+  /** Local v2 provenance; immutable database version storage lands in Phase 8. */
+  labWorkflowContext?: LabWorkflowConsumerContext;
+  /** Complete normalized action prefix for deterministic local replay. */
+  normalizedActionTrace?: GenericLabActionTrace;
   finalState?: unknown;
   completedAt?: string;
 }
@@ -83,6 +95,8 @@ export const checkpointRequestSchema = z.object({
     )
     .max(200)
     .optional(),
+  labWorkflowContext: labWorkflowConsumerContextSchema.optional(),
+  normalizedActionTrace: genericLabActionTraceSchema.optional(),
   finalState: z.unknown().optional(),
   completedAt: z.string().datetime().optional()
 });

@@ -85,3 +85,56 @@ test("runtime query defaults invalid and precipitation requests to legacy", asyn
     "legacy route"
   );
 });
+
+test("setup-driven demo records workflow, diagnosis, and replay provenance for technical inspection", async ({
+  page
+}) => {
+  await page.goto("/demo/student?runtime=setup-v2");
+  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
+    timeout: 30_000
+  });
+  await expect(page.locator("[data-runtime-mode]")).toHaveAttribute(
+    "data-runtime-mode",
+    "setup_driven_v2"
+  );
+  await page
+    .getByRole("button", { name: "Precision controls", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Meniscus", exact: true }).click();
+  await page.getByRole("button", { name: "Use displayed reading" }).click();
+  await page.getByRole("button", { name: "Record meniscus reading" }).click();
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem("labbench.demo.trace.v1");
+        if (!raw) return null;
+        const trace = JSON.parse(raw) as {
+          labWorkflowContext?: { eventEnvelopes?: unknown[] };
+          normalizedActionTrace?: { actions?: unknown[] };
+        };
+        return {
+          eventCount: trace.labWorkflowContext?.eventEnvelopes?.length,
+          actionCount: trace.normalizedActionTrace?.actions?.length
+        };
+      })
+    )
+    .toEqual({ eventCount: 1, actionCount: 1 });
+
+  await page.goto("/demo/technical");
+  await expect(
+    page.getByRole("heading", { name: "Live technical trace" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Validated workflow provenance" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Workflow consumer context" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Normalized replay trace" })
+  ).toBeVisible();
+  await expect(
+    page.getByText("workflow.endpoint_control_prelab.seed.v1").first()
+  ).toBeVisible();
+});

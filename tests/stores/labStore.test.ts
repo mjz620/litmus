@@ -386,6 +386,20 @@ describe("lab store", () => {
       ],
       availablePermissionIds: ["migration.permission.s1.a1"]
     });
+    expect(initial.runtimeConsumerContext).toMatchObject({
+      workflow: {
+        id: STRICT_TITRATION_SETUP_SELECTION.workflowId,
+        canonicalSpecHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash
+      },
+      objectiveIds: ["endpoint_control", "meniscus_reading"],
+      rubric: { id: "rubric.endpoint_control_prelab.seed.v1" },
+      eventEnvelopes: []
+    });
+    expect(initial.runtimeActionTrace).toMatchObject({
+      sessionId: "setup-driven-store",
+      sessionSeed: "setup-driven-seed",
+      actions: []
+    });
     expect(requireTitrationState(initial.state)).toMatchObject({
       sessionSeed: "setup-driven-seed",
       titrantAddedML: 22,
@@ -411,6 +425,15 @@ describe("lab store", () => {
       eventSequence: 2
     });
     expect(updated.runtimeInspection?.eventIds).toHaveLength(2);
+    expect(updated.runtimeConsumerContext?.eventEnvelopes).toHaveLength(2);
+    expect(updated.runtimeActionTrace?.actions).toHaveLength(2);
+    expect(updated.lastCheckpoint?.labWorkflowContext?.workflow).toMatchObject({
+      id: STRICT_TITRATION_SETUP_SELECTION.workflowId,
+      canonicalSpecHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash
+    });
+    expect(updated.lastCheckpoint?.normalizedActionTrace?.actions).toHaveLength(
+      2
+    );
     expect(updated.runtimeProjection?.availablePermissionIds).toEqual([
       "migration.permission.s2.a1"
     ]);
@@ -439,9 +462,37 @@ describe("lab store", () => {
 
     expect(store.getState().runtimeMode).toBe("legacy");
     expect(store.getState().runtimeInspection).toBeNull();
+    expect(store.getState().runtimeConsumerContext).toBeNull();
+    expect(store.getState().runtimeActionTrace).toBeNull();
     expect(
       requireTitrationState(store.getState().state).buretteConditioned
     ).toBe(true);
+  });
+
+  it("preserves report submission without inventing an unregistered normalized action", async () => {
+    const store = createLabStore();
+    const step = vi.spyOn(titration, "step");
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "setup-driven-report",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+    store.getState().dispatch({
+      type: "submit_report",
+      reportedMolarityM: 0.1,
+      explanation: "Evidence-grounded setup-driven report"
+    });
+
+    expect(requireTitrationState(store.getState().state).submitted).toBe(true);
+    expect(store.getState().eventQueue.at(-1)).toMatchObject({
+      type: "submit_report"
+    });
+    expect(store.getState().runtimeActionTrace?.actions).toEqual([]);
+    expect(store.getState().runtimeConsumerContext?.eventEnvelopes).toEqual([]);
+    expect(step).toHaveBeenCalledTimes(1);
+    step.mockRestore();
   });
 
   it("keeps setup-driven simulation synchronous while checkpoint and coach work wait", async () => {
@@ -510,6 +561,12 @@ describe("lab store", () => {
     );
     expect(coachRequested).toBe(true);
     expect(store.getState().coachStatus).toBe("loading");
+    expect(
+      store.getState().lastCoachRequest?.labWorkflowContext?.workflow
+    ).toMatchObject({
+      id: STRICT_TITRATION_SETUP_SELECTION.workflowId,
+      canonicalSpecHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash
+    });
 
     releaseCheckpoint();
     releaseCoach();

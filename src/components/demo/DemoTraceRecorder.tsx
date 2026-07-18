@@ -18,6 +18,13 @@ export function DemoTraceRecorder() {
   const coachMessages = useLabStore((store) => store.coachMessages);
   const lastCoachRequest = useLabStore((store) => store.lastCoachRequest);
   const lastCheckpoint = useLabStore((store) => store.lastCheckpoint);
+  const runtimeInspection = useLabStore((store) => store.runtimeInspection);
+  const labWorkflowContext = useLabStore(
+    (store) => store.runtimeConsumerContext
+  );
+  const normalizedActionTrace = useLabStore(
+    (store) => store.runtimeActionTrace
+  );
 
   useEffect(() => {
     if (!sessionId || !state || !studentModel) return;
@@ -30,7 +37,10 @@ export function DemoTraceRecorder() {
       studentModel,
       coachMessages,
       lastCoachRequest,
-      lastCheckpoint
+      lastCheckpoint,
+      runtimeInspection,
+      labWorkflowContext,
+      normalizedActionTrace
     });
     window.dispatchEvent(
       new StorageEvent("storage", { key: DEMO_TRACE_STORAGE_KEY })
@@ -40,6 +50,9 @@ export function DemoTraceRecorder() {
     events,
     lastCheckpoint,
     lastCoachRequest,
+    labWorkflowContext,
+    normalizedActionTrace,
+    runtimeInspection,
     sessionId,
     state,
     studentModel

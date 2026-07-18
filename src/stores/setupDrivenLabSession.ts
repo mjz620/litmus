@@ -8,6 +8,14 @@ import {
   validateStrictMigratedTitrationV2
 } from "../lab-workflows/definitions/titration";
 import {
+  createLabWorkflowConsumerContext,
+  type LabWorkflowConsumerContext
+} from "../lab-workflows/consumers";
+import {
+  createGenericLabActionTrace,
+  type GenericLabActionTrace
+} from "../lab-workflows/replay";
+import {
   GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
   assembleGenericLabRuntime,
   createLegacyTitrationRuntimePorts,
@@ -145,6 +153,8 @@ export interface SetupDrivenTitrationSession {
   getGenericState(): Readonly<GenericLabState>;
   getInspection(): Readonly<SetupDrivenRuntimeInspection>;
   getProjection(): Readonly<SetupDrivenLabProjection>;
+  getConsumerContext(): Readonly<LabWorkflowConsumerContext>;
+  getActionTrace(): Readonly<GenericLabActionTrace>;
   dispatch(action: NormalizedLabAction): SetupDrivenTitrationTransition;
 }
 
@@ -240,12 +250,15 @@ export function createSetupDrivenTitrationSession(
     createLegacyTitrationRuntimePorts(workflow)
   );
 
-  return createSession(runtime);
+  return createSession(runtime, input.sessionSeed);
 }
 
 function createSession(
-  runtime: GenericLabRuntime
+  runtime: GenericLabRuntime,
+  sessionSeed: string
 ): SetupDrivenTitrationSession {
+  const actions: NormalizedLabAction[] = [];
+
   function projectedState(): Readonly<TitrationState> {
     const compatibility = runtime.getState().compatibilityState;
     if (!compatibility) {
@@ -419,8 +432,22 @@ function createSession(
     getGenericState: runtime.getState,
     getInspection: inspection,
     getProjection: projection,
+    getConsumerContext: () =>
+      createLabWorkflowConsumerContext(
+        runtime.program.workflow,
+        runtime.getState()
+      ),
+    getActionTrace: () =>
+      createGenericLabActionTrace({
+        traceId: `${runtime.getState().sessionId}:normalized-actions`,
+        sessionId: runtime.getState().sessionId,
+        sessionSeed,
+        workflow: runtime.program.workflow,
+        actions
+      }),
     dispatch(action: NormalizedLabAction) {
       const transition = runtime.dispatch(action);
+      actions.push(action);
       return Object.freeze({
         state: projectedState(),
         events: transition.events,

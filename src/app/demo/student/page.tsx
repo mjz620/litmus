@@ -1,9 +1,25 @@
 import { DemoTraceRecorder } from "../../../components/demo/DemoTraceRecorder";
+import {
+  STRICT_TITRATION_SETUP_SELECTION,
+  resolveLabSessionRuntimeMode
+} from "../../../stores/setupDrivenLabSession";
 import { LabRouteShell } from "../../lab/[experimentId]/LabRouteShell";
 
 import styles from "./page.module.css";
 
-export default function DemoStudentPage() {
+interface DemoStudentPageProps {
+  searchParams: Promise<{ runtime?: string | string[] }>;
+}
+
+export default async function DemoStudentPage({
+  searchParams
+}: DemoStudentPageProps) {
+  const { runtime } = await searchParams;
+  const requestedRuntime = Array.isArray(runtime) ? runtime[0] : runtime;
+  const runtimeMode = resolveLabSessionRuntimeMode(
+    "acid_base_titration",
+    requestedRuntime
+  );
   return (
     <>
       <aside className={styles.guide} role="note">
@@ -21,6 +37,12 @@ export default function DemoStudentPage() {
         title="Acid–Base Titration — Demo"
         retrySkillId="endpoint_control"
         mode="demo"
+        runtimeMode={runtimeMode}
+        setupDrivenSelection={
+          runtimeMode === "setup_driven_v2"
+            ? STRICT_TITRATION_SETUP_SELECTION
+            : undefined
+        }
       />
       <DemoTraceRecorder />
     </>

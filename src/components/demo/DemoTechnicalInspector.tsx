@@ -36,7 +36,10 @@ export function DemoTechnicalInspector() {
     ["StudentModel", trace.studentModel],
     ["Last coach payload", trace.lastCoachRequest],
     ["Coach messages", trace.coachMessages],
-    ["Last checkpoint", trace.lastCheckpoint]
+    ["Last checkpoint", trace.lastCheckpoint],
+    ["Validated workflow provenance", trace.runtimeInspection ?? null],
+    ["Workflow consumer context", trace.labWorkflowContext ?? null],
+    ["Normalized replay trace", trace.normalizedActionTrace ?? null]
   ] as const;
   return (
     <main className={styles.page}>

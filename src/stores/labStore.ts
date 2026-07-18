@@ -39,6 +39,8 @@ import {
 } from "../lib/agent/client";
 import type { CoachRequest, CoachResponse } from "../lib/agent/schemas";
 import { decideCoachTrigger } from "../lib/agent/triggerPolicy";
+import type { LabWorkflowConsumerContext } from "../lab-workflows/consumers";
+import type { GenericLabActionTrace } from "../lab-workflows/replay";
 import {
   createSetupDrivenTitrationSession,
   normalizeSetupDrivenTitrationAction,
@@ -94,6 +96,8 @@ export interface LabStore {
   runtimeMode: LabSessionRuntimeMode;
   runtimeInspection: SetupDrivenRuntimeInspection | null;
   runtimeProjection: SetupDrivenLabProjection | null;
+  runtimeConsumerContext: LabWorkflowConsumerContext | null;
+  runtimeActionTrace: GenericLabActionTrace | null;
   definition: RegisteredExperimentDefinition | null;
   state: LabExperimentState | null;
   studentModel: StudentModel | null;
@@ -147,6 +151,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
     runtimeMode: "legacy",
     runtimeInspection: null,
     runtimeProjection: null,
+    runtimeConsumerContext: null,
+    runtimeActionTrace: null,
     definition: null,
     state: null,
     studentModel: null,
@@ -173,6 +179,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         runtimeMode: request.runtimeMode ?? "legacy",
         runtimeInspection: null,
         runtimeProjection: null,
+        runtimeConsumerContext: null,
+        runtimeActionTrace: null,
         definition: null,
         state: null,
         studentModel: null,
@@ -202,7 +210,10 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           studentModel,
           runtimeMode: setupDrivenSession?.mode ?? "legacy",
           runtimeInspection: setupDrivenSession?.getInspection() ?? null,
-          runtimeProjection: setupDrivenSession?.getProjection() ?? null
+          runtimeProjection: setupDrivenSession?.getProjection() ?? null,
+          runtimeConsumerContext:
+            setupDrivenSession?.getConsumerContext() ?? null,
+          runtimeActionTrace: setupDrivenSession?.getActionTrace() ?? null
         });
         queueCheckpoint([], state, studentModel);
       } catch (error) {
@@ -213,6 +224,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           studentModel: null,
           runtimeInspection: null,
           runtimeProjection: null,
+          runtimeConsumerContext: null,
+          runtimeActionTrace: null,
           error: getErrorMessage(error)
         });
         throw error;
@@ -260,7 +273,13 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         runtimeInspection:
           setupTransition?.inspection ?? current.runtimeInspection,
         runtimeProjection:
-          setupTransition?.projection ?? current.runtimeProjection
+          setupTransition?.projection ?? current.runtimeProjection,
+        runtimeConsumerContext:
+          setupDrivenTitrationSession?.getConsumerContext() ??
+          current.runtimeConsumerContext,
+        runtimeActionTrace:
+          setupDrivenTitrationSession?.getActionTrace() ??
+          current.runtimeActionTrace
       });
 
       queueCheckpoint(resultEvents, result.state, studentModel);
@@ -344,6 +363,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         ([skillId, estimate]) => ({ skillId, ...estimate })
       ),
       finalState: completed ? state : undefined,
+      labWorkflowContext: current.runtimeConsumerContext ?? undefined,
+      normalizedActionTrace: current.runtimeActionTrace ?? undefined,
       completedAt: completed ? new Date().toISOString() : undefined
     };
     store.setState({ lastCheckpoint: checkpoint });
@@ -374,6 +395,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         currentState: current.state,
         recentEvents: current.eventQueue.slice(-12),
         studentModel: current.studentModel,
+        labWorkflowContext: current.runtimeConsumerContext ?? undefined,
         studentQuestion,
         triggerPolicy: { source, maxHintLevel }
       };
@@ -464,6 +486,10 @@ function dispatchSetupDrivenTitration(
       "Action does not match the setup-driven titration definition."
     );
   }
+  // Report submission is an existing consumer action, not a registered lab
+  // mechanic. Preserve its direct ExperimentDefinition.step() path until a
+  // reviewed report action contract exists; never invent a normalized action.
+  if (action.type === "submit_report") return null;
   return session.dispatch(normalizeSetupDrivenTitrationAction(action));
 }
 

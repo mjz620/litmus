@@ -71,6 +71,7 @@ export function ReportForm() {
           finalState: current.state,
           events: current.eventQueue,
           studentModel: current.studentModel,
+          labWorkflowContext: current.runtimeConsumerContext ?? undefined,
           studentText
         })
       });

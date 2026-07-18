@@ -117,6 +117,8 @@ Phase 3 proves compatibility by moving the shipped titration through the generic
 
 **Dependencies:** `LC2-303`.
 
+**Status:** Implemented. The flagged setup-driven session now exposes one immutable workflow consumer context—current validated hash/revision, objectives, authored rubric, deterministic diagnoses, stable event envelopes, and final observables—to the unchanged coach and report payloads, local checkpoint records, demo trace, and technical inspector. Checkpoints also retain the complete normalized action prefix for deterministic local replay while database version storage remains deferred to Phase 8. Report submission intentionally retains its direct legacy `ExperimentDefinition.step()` compatibility path because no registered report mechanic exists. A separate hash-pinned native v2 titration draft removes the migrated presentation-order edge, accepts read-first and delivery-first traces, and executes valid, alternate-valid, recoverable, terminal-overshoot, and exact tolerance-boundary cases against the real generic coordinator. The strict migrated fixture and default legacy route remain unchanged.
+
 **Allowed areas:** narrow adapters across coach/evaluator/checkpoint/demo/technical UI, native titration v2 definition/trace fixture, integration/e2e tests/docs.
 
 **Do not touch:** agent/Judge generation, immutable persistence schema, legacy path deletion, chemistry formulas.

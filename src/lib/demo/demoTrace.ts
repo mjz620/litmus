@@ -4,6 +4,9 @@ import type { CoachMessage } from "../../stores/labStore";
 import type { CoachRequest } from "../agent/schemas";
 import type { CheckpointRequest } from "../persistence";
 import type { ClassAnalyticsInput } from "../analytics/classAnalytics";
+import type { LabWorkflowConsumerContext } from "../../lab-workflows/consumers";
+import type { GenericLabActionTrace } from "../../lab-workflows/replay";
+import type { SetupDrivenRuntimeInspection } from "../../stores/setupDrivenLabSession";
 
 export const DEMO_TRACE_STORAGE_KEY = "labbench.demo.trace.v1";
 export const DEMO_LIVE_STUDENT_ID = "00000000-0000-4000-8000-000000000299";
@@ -18,6 +21,9 @@ export interface DemoTrace {
   coachMessages: CoachMessage[];
   lastCoachRequest: CoachRequest | null;
   lastCheckpoint: CheckpointRequest | null;
+  runtimeInspection?: SetupDrivenRuntimeInspection | null;
+  labWorkflowContext?: LabWorkflowConsumerContext | null;
+  normalizedActionTrace?: GenericLabActionTrace | null;
 }
 
 export function readDemoTrace(
