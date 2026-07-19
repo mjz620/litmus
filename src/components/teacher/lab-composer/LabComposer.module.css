@@ -4,6 +4,10 @@
   padding-bottom: var(--space-12);
 }
 
+.composer [hidden] {
+  display: none !important;
+}
+
 .statusBar,
 .statusBar > div,
 .statusActions,
@@ -15,22 +19,50 @@
 }
 
 .statusBar {
-  position: sticky;
-  z-index: 20;
-  top: 0;
+  position: relative;
+  z-index: 1;
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface) 95%, transparent);
-  box-shadow: var(--shadow-floating);
-  backdrop-filter: blur(0.5rem);
+  box-shadow: var(--shadow-card);
 }
 
 .statusBar > div,
 .statusActions {
   gap: var(--space-3);
+}
+
+.statusActions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.newLabControl {
+  position: relative;
+}
+
+.newLabMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 16rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md, 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12));
+}
+
+.newLabMenu button {
+  width: 100%;
+  text-align: left;
 }
 
 .statusBar span {
@@ -99,6 +131,98 @@
   border-radius: var(--radius-md);
   background: var(--color-primary-soft);
   color: var(--color-primary);
+}
+
+.stageNavigation {
+  overflow-x: auto;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+}
+
+.stageNavigation ol {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(10rem, 1fr));
+  gap: var(--space-1);
+  min-width: 52rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stageNavigation button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 var(--space-2);
+  width: 100%;
+  min-height: 4.5rem;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+}
+
+.stageNavigation button[aria-current="step"] {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.stageNavigation button > span {
+  display: grid;
+  grid-row: 1 / span 2;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+}
+
+.stageNavigation button > small {
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: 0.7rem;
+  font-weight: var(--type-ui-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stageIntroduction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.4fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  border-left: 0.3rem solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.stageIntroduction h2:focus {
+  outline: none;
+}
+
+.stageIntroduction > div > span,
+.stageIntroduction aside span,
+.stageIntroduction aside small {
+  display: block;
+  color: var(--color-ink-muted);
+}
+
+.stageIntroduction aside {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.stageIntroduction aside small {
+  font-size: var(--text-xs);
 }
 
 .validationPanel {
@@ -183,6 +307,47 @@
   font-size: var(--text-sm);
 }
 
+.authoritySummary,
+.humanSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.authoritySummary div,
+.humanSummary div {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.authoritySummary dt,
+.humanSummary dt {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-bold);
+  text-transform: uppercase;
+}
+
+.authoritySummary dd,
+.humanSummary dd {
+  margin: var(--space-1) 0 0;
+}
+
+.technicalDetails {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+}
+
+.technicalDetails summary {
+  cursor: pointer;
+  font-weight: var(--type-ui-semibold);
+}
+
 .issueList {
   display: grid;
   gap: var(--space-2);
@@ -193,16 +358,20 @@
 
 .issueList li {
   display: grid;
-  grid-template-columns: minmax(12rem, 0.7fr) minmax(10rem, 0.7fr) minmax(
-      15rem,
-      1.6fr
-    ) auto;
+  grid-template-columns:
+    minmax(9rem, 0.7fr) minmax(9rem, 0.7fr) minmax(13rem, 1.6fr)
+    auto auto;
   gap: var(--space-2);
   padding: var(--space-3);
   border-left: 0.25rem solid var(--color-warning);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   font-size: var(--text-sm);
+}
+
+.issueList button {
+  min-height: 2.25rem;
+  align-self: center;
 }
 
 .issueList li[data-severity="error"] {
@@ -228,6 +397,172 @@
   padding: var(--space-3);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-sm);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.judgePanel {
+  display: grid;
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 2vw, var(--space-6));
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.judgePanel[data-status="current"] {
+  border-color: var(--color-primary);
+}
+
+.judgePanel[data-status="stale"],
+.judgePanel[data-status="stopped"] {
+  border-color: var(--color-warning);
+}
+
+.judgePanelHeader,
+.judgePanelActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.judgePanelHeader p,
+.judgePanelHeader h3 {
+  margin: 0;
+}
+
+.judgePanelHeader p {
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.judgePanelHeader > strong {
+  flex: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.judgeAuthorityNote,
+.judgeStaleNotice,
+.judgeTermination {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+}
+
+.judgeAuthorityNote {
+  border-left: 0.25rem solid var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.judgeStaleNotice,
+.judgeTermination {
+  border: 1px solid var(--color-warning);
+  background: var(--color-warning-soft);
+}
+
+.judgeReviewBody {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.judgeReviewSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.judgeReviewSummary > div {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.judgeReviewSummary dt {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-bold);
+  text-transform: uppercase;
+}
+
+.judgeReviewSummary dd {
+  margin: var(--space-1) 0 0;
+}
+
+.judgeIssueList {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.judgeIssueList > li {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-left: 0.25rem solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.judgeIssueList > li > span,
+.judgeIssueList small,
+.judgePanelActions small {
+  color: var(--color-ink-muted);
+}
+
+.judgeIssueList > li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.judgeIssueList > li > div p {
+  flex: 1 1 24rem;
+  margin: 0;
+}
+
+.judgePanelActions button {
+  width: auto;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+.judgeHistory summary {
+  cursor: pointer;
+  font-weight: var(--type-ui-semibold);
+}
+
+.judgeHistory ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-6);
+}
+
+.judgeHistory li {
+  padding: var(--space-2);
+}
+
+.judgeHistory li strong,
+.judgeHistory li span {
+  display: block;
+}
+
+.judgeHistory li span {
   color: var(--color-ink-muted);
   font-size: var(--text-sm);
 }
@@ -262,6 +597,14 @@
   align-items: start;
 }
 
+.setupWorkspace {
+  display: grid;
+  grid-template-columns: 18rem minmax(26rem, 1fr) 22rem;
+  gap: clamp(0.75rem, 1.2vw, 1rem);
+  align-items: start;
+  min-width: 0;
+}
+
 .library,
 .benchPanel,
 .inspector,
@@ -273,6 +616,14 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
+}
+
+.setupWorkspace > .library {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .library > header,
@@ -321,6 +672,117 @@
   gap: var(--space-2);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
+}
+
+.libraryList article[data-dragging="true"],
+.materialChip[data-dragging="true"] {
+  opacity: 0.55;
+}
+
+.libraryList article label {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.dragHandle {
+  border-style: dashed !important;
+  color: var(--color-primary);
+  touch-action: none;
+}
+
+.dragOverlay {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 13rem;
+  max-width: 20rem;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+  color: var(--color-ink);
+  cursor: grabbing;
+}
+
+.dragOverlay span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.materialChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.boundMaterialList {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boundMaterialList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.boundMaterialList span {
+  display: grid;
+  min-width: 0;
+}
+
+.concentrationEditor {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.concentrationEditor label,
+.concentrationEditor small {
+  margin: 0;
+}
+
+.concentrationInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.concentrationInputRow span {
+  display: block;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.concentrationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.concentrationActions button {
+  width: auto;
+}
+
+.materialChip {
+  min-height: 2.35rem !important;
+  border-radius: var(--radius-pill) !important;
+  background: var(--color-primary-soft) !important;
+  color: var(--color-primary);
+  touch-action: none;
 }
 
 .libraryList article > div,
@@ -386,6 +848,72 @@
   color: white;
 }
 
+.setupViewSwitch {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.setupViewSwitch button {
+  border-color: transparent;
+  background: transparent;
+}
+
+.setupViewSwitch button[aria-pressed="true"] {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.composer3dEditor {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.composer3dCanvas {
+  height: clamp(28rem, 58vh, 42rem);
+  min-height: 28rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  touch-action: none;
+}
+
+.composer3dLoading {
+  display: grid;
+  place-items: center;
+  min-height: 28rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+
+.composer3dHelp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 3rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+}
+
+.composer3dHelp p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.composer3dHelp button {
+  flex: none;
+}
+
 .bench {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -409,22 +937,148 @@
     auto;
 }
 
-.bench > button {
+.setupSupportNote {
   display: grid;
-  align-content: space-between;
-  min-height: 8rem;
-  padding: var(--space-3);
-  text-align: left;
-}
-
-.bench > button[data-occupied="true"] {
-  border-color: var(--color-primary);
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-left: 0.25rem solid var(--color-primary);
+  border-radius: var(--radius-sm);
   background: var(--color-primary-soft);
 }
 
-.bench > button span {
+.setupSupportNote span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.benchSlot {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 8rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.benchSlot[data-over="true"] {
+  border-color: var(--color-primary);
+  outline: 0.2rem solid
+    color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.benchSlot[data-disabled="true"] {
+  border-style: dashed;
+  background: color-mix(
+    in srgb,
+    var(--color-danger-soft) 45%,
+    var(--color-surface)
+  );
+}
+
+.benchSlot[data-selected="true"],
+.benchSlot[data-occupied="true"] {
+  border-color: var(--color-primary);
+}
+
+.slotSelection {
+  display: grid;
+  align-content: space-between;
+  width: 100%;
+  min-height: 5rem;
+  padding: var(--space-3);
+  border: 0 !important;
+  background: transparent !important;
+  text-align: left;
+}
+
+.benchSlot[data-occupied="true"] .slotSelection {
+  background: var(--color-primary-soft) !important;
+}
+
+.benchSlot span,
+.benchSlot small {
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
+}
+
+.slotActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.slotActions button {
+  min-height: 2.35rem;
+  flex: 1;
+  padding: 0.35rem 0.55rem;
+}
+
+.trashZone {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
+.trashZone[data-active="true"] {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.trashZone[data-over="true"] {
+  border-style: solid;
+  color: var(--color-danger);
+}
+
+.interactionInspector {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+}
+
+.interactionInspector > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.interactionInspector span {
+  display: grid;
+  min-width: 0;
+}
+
+.inspectorDrawerToggle {
+  display: none;
+}
+
+.inlineError {
+  display: block;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 0.2rem solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-danger) !important;
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+}
+
+.helpText {
+  display: block;
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .inlineForm,
@@ -513,6 +1167,399 @@
   align-items: start;
 }
 
+.workflowGrid[data-stage="define"] > section,
+.workflowGrid[data-stage="assess"] > section {
+  grid-column: 1 / -1;
+}
+
+.graphWorkspace,
+.assessWorkspace {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.graphHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.relationshipControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(10rem, 1fr)) auto;
+  gap: var(--space-3);
+  align-items: end;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.relationshipControls legend {
+  padding-inline: var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--type-ui-bold);
+}
+
+.relationshipControls label {
+  margin: 0;
+}
+
+.graphCanvas {
+  height: clamp(30rem, 62vh, 45rem);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.graphView {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.graphHelp {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.graphCanvas :global(.react-flow__node) {
+  width: 15rem;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+
+.graphCanvas :global(.react-flow__node.selected) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem
+    color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.graphCanvas :global(.react-flow__edge-path) {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.graphCanvas :global(.react-flow__handle) {
+  width: 1rem;
+  height: 1rem;
+  border: 0.2rem solid var(--color-surface);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+  cursor: crosshair;
+}
+
+.graphControls {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.graphControls button {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.graphControls button:last-child {
+  border-right: 0;
+}
+
+.graphNodeContent {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-left: 0.3rem solid var(--color-primary);
+}
+
+.graphNodeContent[data-role="success"] {
+  border-left-color: var(--color-success);
+}
+
+.graphNodeContent[data-role="failure"],
+.graphNodeContent[data-role="safety"] {
+  border-left-color: var(--color-danger);
+}
+
+.graphNodeContent[data-role="best-practice"] {
+  border-left-color: var(--color-warning);
+}
+
+.graphNodeContent span,
+.graphNodeContent small {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.workflowOutline,
+.workflowOutline ol,
+.workflowOutline ul {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.workflowOutline ol,
+.workflowOutline ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflowOutline li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.workflowOutline li[data-selected="true"] {
+  border-color: var(--color-primary);
+}
+
+.workflowOutline li > button:first-child {
+  display: grid;
+  gap: var(--space-1);
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.ruleInspector,
+.criterionInspector {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.ruleInspector > header,
+.criterionInspector > header,
+.ruleInspector > fieldset,
+.criterionInspector > fieldset,
+.inspectorActions {
+  grid-column: 1 / -1;
+}
+
+.inspectorActions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.inspectorActions button {
+  width: auto;
+}
+
+.relationshipColumns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.relationshipColumns > section {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.relationshipColumns ul,
+.validatorRelationshipIssues {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relationshipColumns li {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.relationshipColumns li > button:first-child {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  text-align: left;
+}
+
+.relationshipColumns button[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.relationshipColumns span,
+.relationshipColumns small {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.validatorRelationshipIssues li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-left: 0.2rem solid var(--color-warning);
+  background: var(--color-warning-soft);
+}
+
+.definitionForm {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.objectiveSection {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.objectiveSection .lede {
+  margin: 0 0 var(--space-4);
+}
+
+.definitionForm .fullRow {
+  grid-column: 1 / -1;
+}
+
+.objectiveChecks,
+.removalChoices {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.objectiveChecks label,
+.removalChoices label,
+.destructiveConfirmation {
+  display: flex !important;
+  align-items: flex-start;
+  gap: var(--space-2) !important;
+  margin: 0 !important;
+}
+
+.objectiveChecks input,
+.removalChoices input,
+.destructiveConfirmation input {
+  width: auto;
+  min-height: auto;
+  margin-top: 0.2rem;
+}
+
+.dialogBackdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(12 24 21 / 58%);
+}
+
+.dialog {
+  display: grid;
+  gap: var(--space-4);
+  width: min(46rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+}
+
+.dialog header span {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--color-ink-muted);
+}
+
+.dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.dialog footer .primaryButton {
+  width: auto;
+}
+
+.confirmDanger {
+  border-color: var(--color-danger) !important;
+  background: var(--color-danger) !important;
+  color: white;
+}
+
+.impactSection ul {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 14rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.impactSection li {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+}
+
+.compatibilityWarning {
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-soft);
+}
+
+.lede {
+  max-width: 68ch;
+  color: var(--color-ink-muted);
+}
+
 .checkList {
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 }
@@ -573,7 +1620,535 @@
   color: var(--color-ink-muted);
 }
 
+.agentWorkspace {
+  display: grid;
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 2vw, var(--space-6));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.agentWorkspaceHeader,
+.agentProposalHeader,
+.agentDeterministicChecks > header,
+.agentProposalActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.agentWorkspaceHeader > span {
+  max-width: 42rem;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.agentRequestForm {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(12rem, auto);
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.agentRequestForm label {
+  margin: 0;
+}
+
+.agentRequestForm textarea {
+  min-height: 5.5rem;
+}
+
+.agentRequestForm > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.agentRequestForm small {
+  max-width: 23rem;
+  color: var(--color-ink-muted);
+}
+
+.agentGenerateButton,
+.agentUseButton {
+  border-color: var(--color-primary) !important;
+  background: var(--color-primary) !important;
+  color: white;
+}
+
+.agentProgress {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, white);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+}
+
+.agentProgress > header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.agentProgress > header > span {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+}
+
+.agentProgress h3,
+.agentProgress p {
+  margin: 0;
+}
+
+.agentProgress p,
+.agentProgress small {
+  color: var(--color-ink-muted);
+}
+
+.agentProgress ol {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agentProgress li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.agentProgress li > span {
+  flex: none;
+  color: var(--color-primary);
+}
+
+.agentProgress li[data-state="current"] {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.agentProgress li[data-state="upcoming"] {
+  opacity: 0.62;
+}
+
+.agentFallbackNotice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink) !important;
+  font-weight: 700;
+}
+
+.agentError,
+.agentStaleNotice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+}
+
+.agentError {
+  border: 1px solid color-mix(in srgb, var(--color-danger) 45%, white);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.agentProposal {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.agentProposalHeader > strong,
+.agentDeterministicChecks > header > strong {
+  flex: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+}
+
+.agentProposal[data-proposal-outcome="unsupported"]
+  .agentProposalHeader
+  > strong,
+.agentProposal[data-proposal-outcome="rejected_for_safety"]
+  .agentProposalHeader
+  > strong,
+.agentProposal[data-proposal-outcome="limited"] .agentProposalHeader > strong {
+  background: var(--color-warning-soft);
+  color: var(--color-ink);
+}
+
+.agentSuggestionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+}
+
+.agentSuggestionGrid > section {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.agentSuggestionGrid h4,
+.agentDeterministicChecks h4 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+.agentSuggestionGrid p,
+.agentSuggestionGrid ul {
+  margin: 0;
+}
+
+.agentSuggestionGrid ul {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: 1.25rem;
+}
+
+.agentDeterministicChecks {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-md);
+  background: var(--color-success-soft);
+}
+
+.agentWorkspace[data-proposal-state="stale"] .agentDeterministicChecks {
+  border-color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+
+.agentDeterministicChecks > header p {
+  margin-bottom: var(--space-1);
+}
+
+.agentStaleNotice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  border: 1px solid var(--color-warning);
+  background: var(--color-surface);
+}
+
+.agentStaleNotice span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.agentStaleNotice button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.agentCheckSummary,
+.agentGenerationDetails dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.agentCheckSummary > div,
+.agentGenerationDetails dl > div {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.agentCheckSummary dt,
+.agentGenerationDetails dt {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-bold);
+  text-transform: uppercase;
+}
+
+.agentCheckSummary dd,
+.agentGenerationDetails dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.agentTraceList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agentTraceList li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-left: 0.25rem solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.agentTraceList li[data-passed="true"] {
+  border-left-color: var(--color-success);
+}
+
+.agentTraceList span,
+.agentTraceList small {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.agentProposalActions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.agentProposalActions strong {
+  color: var(--color-success);
+}
+
+.agentLoopTab {
+  display: grid;
+  gap: var(--space-5);
+  padding: clamp(var(--space-4), 2vw, var(--space-6));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.agentLoopTab > header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.agentLoopTab > header p,
+.agentLoopTab > header h2,
+.agentLoopTab > header span {
+  margin: 0;
+}
+
+.agentLoopTab > header span,
+.agentLoopTimelineHeader p,
+.agentLoopTimeline p {
+  color: var(--color-ink-muted);
+}
+
+.agentLoopAuthority {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.agentLoopAuthority h3,
+.agentLoopTimelineHeader h3 {
+  margin: 0;
+}
+
+.agentLoopAuthority ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agentLoopAuthority li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.agentLoopAuthority span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.agentLoopTimelineHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.agentLoopTimelineHeader p {
+  margin: var(--space-1) 0 0;
+}
+
+.agentLoopTimelineHeader > span {
+  flex: none;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.agentLoopTimeline {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agentLoopTimeline li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 0.25rem solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.agentLoopTimeline li[data-state="passed"] {
+  border-left-color: var(--color-success);
+}
+
+.agentLoopTimeline li[data-state="working"] {
+  border-left-color: var(--color-primary);
+}
+
+.agentLoopTimeline li[data-state="needs-attention"] {
+  border-left-color: var(--color-warning);
+}
+
+.agentLoopTimeline li > span {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  font-weight: var(--type-ui-bold);
+}
+
+.agentLoopTimeline li[data-state="passed"] > span {
+  color: var(--color-success);
+}
+
+.agentLoopTimeline li[data-state="working"] > span {
+  color: var(--color-primary);
+}
+
+.agentLoopTimeline li[data-state="needs-attention"] > span {
+  color: var(--color-warning);
+}
+
+.agentLoopTimeline li > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.agentLoopTimeline small {
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.agentLoopTimeline p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.agentLoopActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.agentLoopActions button {
+  width: auto;
+}
+
+.agentGenerationDetails {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.agentGenerationDetails summary {
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  font-weight: var(--type-ui-semibold);
+}
+
+.agentGenerationDetails[open] summary {
+  margin-bottom: var(--space-3);
+}
+
+.stageFooter {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) 1fr minmax(7rem, auto);
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+}
+
+.stageFooter span {
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
+.stageFooter .primaryButton {
+  width: auto;
+}
+
 @media (max-width: 72rem) {
+  .setupWorkspace {
+    grid-template-columns: 18rem minmax(24rem, 1fr);
+  }
+
+  .setupWorkspace .inspectorDrawerToggle {
+    display: block;
+    grid-column: 1 / -1;
+  }
+
+  .setupWorkspace .inspector {
+    display: none;
+    grid-column: 1 / -1;
+  }
+
+  .setupWorkspace .inspector[data-drawer-open="true"] {
+    display: grid;
+  }
+
   .editorGrid {
     grid-template-columns: minmax(16rem, 0.8fr) minmax(24rem, 1.4fr);
   }
@@ -588,9 +2163,76 @@
 }
 
 @media (max-width: 54rem) {
+  .setupWorkspace > .library {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .stageNavigation ol {
+    grid-template-columns: repeat(6, minmax(7rem, 1fr));
+    min-width: 0;
+  }
+
   .editorGrid,
-  .workflowGrid {
+  .workflowGrid,
+  .setupWorkspace,
+  .relationshipColumns,
+  .definitionForm,
+  .ruleInspector,
+  .criterionInspector,
+  .relationshipControls {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .definitionForm .fullRow,
+  .ruleInspector > header,
+  .criterionInspector > header,
+  .ruleInspector > fieldset,
+  .criterionInspector > fieldset,
+  .inspectorActions {
+    grid-column: auto;
+  }
+
+  .stageIntroduction {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agentWorkspaceHeader,
+  .agentProposalHeader,
+  .agentDeterministicChecks > header,
+  .agentProposalActions,
+  .judgePanelHeader,
+  .judgePanelActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agentLoopTimelineHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agentLoopTimelineHeader > span {
+    text-align: left;
+  }
+
+  .agentLoopAuthority ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agentRequestForm,
+  .agentStaleNotice {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agentProgress ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agentStaleNotice button {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .actionPanel,
@@ -599,6 +2241,7 @@
   }
 
   .statusBar,
+  .stageIntroduction,
   .judgeArea,
   .compactList li,
   .ruleList li {
@@ -610,9 +2253,22 @@
   .issueList li {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .graphHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .composer3dCanvas {
+    height: 30rem;
+  }
 }
 
 @media (max-width: 34rem) {
+  .stageNavigation ol {
+    min-width: 43rem;
+  }
+
   .bench {
     grid-template-columns: minmax(0, 1fr);
     padding: var(--space-3);
@@ -622,8 +2278,22 @@
     width: 100%;
   }
 
+  .setupViewSwitch,
+  .composer3dHelp {
+    width: 100%;
+  }
+
+  .composer3dHelp {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .tabs button {
     flex: 1;
+  }
+
+  .agentLoopAuthority ol {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

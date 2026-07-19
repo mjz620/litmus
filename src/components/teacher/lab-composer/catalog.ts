@@ -4,6 +4,45 @@ import { componentRegistry } from "../../../lab-workflows/registries/components"
 import { configurationRegistry } from "../../../lab-workflows/registries/configurations";
 import { materialRegistry } from "../../../lab-workflows/registries/reagents";
 import { skillRegistry } from "../../../lab-workflows/registries/skills";
+import { BLANK_LAB_V2_DRAFT } from "../../../lab-workflows/definitions/blank-lab";
+import { SOLUTION_PREPARATION_V2_DRAFT } from "../../../lab-workflows/definitions/solution-preparation";
+import { NATIVE_TITRATION_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-control";
+import type { LabWorkflowDraftV2 } from "../../../lab-workflows/schema/v2";
+
+export type ComposerLabTemplateId =
+  | "blank"
+  | "solution_preparation"
+  | "titration";
+
+export interface ComposerLabTemplate {
+  readonly id: ComposerLabTemplateId;
+  readonly title: string;
+  readonly description: string;
+  readonly draft: Readonly<LabWorkflowDraftV2>;
+}
+
+export const composerLabTemplateCatalog: readonly ComposerLabTemplate[] =
+  Object.freeze([
+    Object.freeze({
+      id: "blank" as const,
+      title: "Start from scratch",
+      description: "Build a lab from verified equipment and actions.",
+      draft: BLANK_LAB_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "titration" as const,
+      title: "Acid–base titration",
+      description: "Practice endpoint control and precise meniscus reading.",
+      draft: NATIVE_TITRATION_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "solution_preparation" as const,
+      title: "Prepare a solution",
+      description:
+        "Measure an aliquot, dilute to the mark, and mix a verified solution.",
+      draft: SOLUTION_PREPARATION_V2_DRAFT
+    })
+  ]);
 
 export const composerEquipmentCatalog = componentRegistry
   .list()

@@ -3,11 +3,11 @@ import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
 
 export default function TeacherLabComposerPage() {
   return (
-    <ProductShell width="wide">
+    <ProductShell width="composer">
       <PageHeader
-        eyebrow="Teacher workspace · Lab Composer"
-        title="Compose a verified lab"
-        description="Arrange registered equipment and materials, then express flexible workflow constraints and evidence mappings. Every edit stays unvalidated until deterministic review."
+        eyebrow="Teacher tools · Lab builder"
+        title="Build a student lab"
+        description="Choose what students will learn, set up their bench, decide what actions matter, and check the experience before previewing it."
         backHref="/teacher/classes"
         backLabel="Classes"
       />

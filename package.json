@@ -17,10 +17,12 @@
     "eval:coach": "vitest run tests/coach/evalHarness.test.ts --reporter=verbose"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
+    "@xyflow/react": "^12.11.2",
     "next": "16.2.10",
     "openai": "^6.48.0",
     "react": "19.2.7",

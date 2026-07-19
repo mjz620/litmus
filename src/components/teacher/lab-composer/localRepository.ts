@@ -10,6 +10,7 @@ import {
 
 export const LOCAL_LAB_DRAFT_KEY_PREFIX = "labbench.composer.draft.v1:";
 export const LOCAL_LAB_PREVIEW_KEY_PREFIX = "labbench.composer.preview.v1:";
+export const LOCAL_LAB_WORKING_DRAFT_KEY = "labbench.composer.working-draft.v1";
 export const LOCAL_LAB_PREVIEW_SCHEMA_VERSION = "1.0.0" as const;
 
 export interface ComposerStorage {
@@ -25,6 +26,9 @@ export interface LabDraftRepository {
   save(name: string, draft: unknown): void;
   load(name: string): Readonly<LabWorkflowDraftV2> | null;
   remove(name: string): void;
+  saveWorking(draft: unknown): void;
+  loadWorking(): Readonly<LabWorkflowDraftV2> | null;
+  clearWorking(): void;
 }
 
 export interface LabPreviewRepository {
@@ -83,6 +87,24 @@ export class LocalLabDraftRepository implements LabDraftRepository {
 
   remove(name: string): void {
     this.storage.removeItem(draftKey(name));
+  }
+
+  /**
+   * Autosave the single in-progress working draft. This is separate from named
+   * saves and from the one-shot preview-return draft: it exists only so an
+   * accidental refresh or navigation does not discard unsaved authoring.
+   */
+  saveWorking(draft: unknown): void {
+    this.storage.setItem(LOCAL_LAB_WORKING_DRAFT_KEY, serializeLabDraft(draft));
+  }
+
+  loadWorking(): Readonly<LabWorkflowDraftV2> | null {
+    const serialized = this.storage.getItem(LOCAL_LAB_WORKING_DRAFT_KEY);
+    return serialized === null ? null : deserializeLabDraft(serialized);
+  }
+
+  clearWorking(): void {
+    this.storage.removeItem(LOCAL_LAB_WORKING_DRAFT_KEY);
   }
 }
 

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import styles from "./ProductShell.module.css";
 
-type ContentWidth = "narrow" | "standard" | "wide";
+type ContentWidth = "narrow" | "standard" | "wide" | "composer";
 
 interface ProductShellProps {
   children: ReactNode;

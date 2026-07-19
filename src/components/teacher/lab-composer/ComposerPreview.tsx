@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { LabRouteShell } from "../../../app/lab/[experimentId]/LabRouteShell";
+import { NativeSetupDrivenWorkspace } from "../../lab/setup-driven/NativeSetupDrivenWorkspace";
 import type { ValidatedLabWorkflowSpecV2 } from "../../../lab-workflows/schema/v2";
 import { evaluateLabWorkflowEligibilityV2 } from "../../../lab-workflows/validation";
 import { LocalLabPreviewRepository } from "./localRepository";
@@ -41,13 +42,11 @@ export function ComposerPreview() {
           );
         }
         setState({ workflow, error: null });
-      } catch (error) {
+      } catch {
         setState({
           workflow: null,
           error:
-            error instanceof Error
-              ? error.message
-              : "The saved preview could not be loaded."
+            "This preview is no longer available. Return to the Composer, check the lab, and open Preview again."
         });
       }
     }, 0);
@@ -68,7 +67,7 @@ export function ComposerPreview() {
   if (!state.workflow) {
     return (
       <main className={styles.failure}>
-        <p role="status">Loading exact validated definition…</p>
+        <p role="status">Loading teacher preview…</p>
       </main>
     );
   }
@@ -83,21 +82,29 @@ export function ComposerPreview() {
     <div className={styles.preview} data-testid="composer-preview">
       <header className={styles.banner}>
         <div>
-          <p>Isolated teacher preview · metrics are not assigned</p>
+          <p>Teacher preview · student results are not saved</p>
           <strong>{workflow.metadata.title}</strong>
-          <code>{workflow.validation.canonicalSpecHash}</code>
         </div>
         <Link href="/teacher/lab-composer">← Return to Composer</Link>
       </header>
-      <LabRouteShell
-        experimentId="acid_base_titration"
-        title={`Preview · ${workflow.metadata.title}`}
-        replaySeed={`composer-preview:${workflow.validation.canonicalSpecHash}`}
-        mode="preview"
-        runtimeMode="setup_driven_v2"
-        setupDrivenSelection={selection}
-        setupDrivenWorkflow={workflow}
-      />
+      {workflow.compatibility ? (
+        <LabRouteShell
+          experimentId="acid_base_titration"
+          title={`Preview · ${workflow.metadata.title}`}
+          replaySeed={`composer-preview:${workflow.validation.canonicalSpecHash}`}
+          mode="preview"
+          runtimeMode="setup_driven_v2"
+          setupDrivenSelection={selection}
+          setupDrivenWorkflow={workflow}
+        />
+      ) : (
+        <main className={styles.nativePreview}>
+          <NativeSetupDrivenWorkspace
+            workflow={workflow}
+            replaySeed={`composer-preview:${workflow.validation.canonicalSpecHash}`}
+          />
+        </main>
+      )}
     </div>
   );
 }

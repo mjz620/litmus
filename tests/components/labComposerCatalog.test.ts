@@ -46,7 +46,17 @@ describe("teacher Lab Composer catalog projection", () => {
 
     expect(
       quantityPresetsFor("reagent.distilled_water.v1").map(({ id }) => id)
-    ).toEqual(["quantity-preset.distilled_water_50ml.v1"]);
+    ).toEqual([
+      "quantity-preset.distilled_water_250ml.v1",
+      "quantity-preset.distilled_water_50ml.v1"
+    ]);
+    expect(composerEquipmentCatalog.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([
+        "component.volumetric_pipette.v1",
+        "component.volumetric_flask.v1",
+        "component.wash_bottle.v1"
+      ])
+    );
     expect(
       composerEquipmentConfigurationCatalog.some(
         (entry) =>

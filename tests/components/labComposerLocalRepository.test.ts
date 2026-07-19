@@ -8,6 +8,9 @@ import {
   type ComposerStorage
 } from "../../src/components/teacher/lab-composer/localRepository";
 import { NATIVE_TITRATION_V2_DRAFT } from "../../src/lab-workflows/definitions/titration/native-endpoint-control";
+import { validateSolutionPreparationV2 } from "../../src/lab-workflows/definitions/solution-preparation";
+import { migrateLabWorkflowV2_0ToV2_1 } from "../../src/lab-workflows/schema/migration";
+import { labWorkflowDraftV2_1Schema } from "../../src/lab-workflows/schema/v2";
 import { validateLabWorkflowSpecV2 } from "../../src/lab-workflows/validation";
 
 class MemoryStorage implements ComposerStorage {
@@ -52,6 +55,54 @@ describe("local Lab Composer repositories", () => {
     expect(repository.load("Endpoint practice")).toBeNull();
   });
 
+  it("autosaves, restores, and clears a single working draft (LC2-410)", () => {
+    const storage = new MemoryStorage();
+    const repository = new LocalLabDraftRepository(storage);
+
+    // Nothing saved yet.
+    expect(repository.loadWorking()).toBeNull();
+
+    repository.saveWorking(NATIVE_TITRATION_V2_DRAFT);
+    expect(repository.loadWorking()).toEqual(NATIVE_TITRATION_V2_DRAFT);
+
+    // The working draft is independent of named saves and of the saved list.
+    expect(repository.list()).toEqual([]);
+
+    repository.clearWorking();
+    expect(repository.loadWorking()).toBeNull();
+  });
+
+  it("round-trips a canonical teacher-authored concentration exactly", () => {
+    const migrated = migrateLabWorkflowV2_0ToV2_1(NATIVE_TITRATION_V2_DRAFT);
+    const authored = labWorkflowDraftV2_1Schema.parse({
+      ...migrated,
+      materials: [
+        {
+          ...migrated.materials[0],
+          materialProfileId: "reagent.sodium_chloride_aqueous.v1",
+          quantityPresetId: "quantity-preset.sodium_chloride_solution_50ml.v1",
+          initialization: {
+            kind: "bounded_concentration",
+            configurationSchemaId:
+              "schema.material_initialization.bounded_concentration.v1",
+            concentration: {
+              decimalValue: "0.375",
+              unitId: "unit.mol_per_l.v1"
+            }
+          }
+        },
+        ...migrated.materials.slice(1)
+      ]
+    });
+    const storage = new MemoryStorage();
+    const repository = new LocalLabDraftRepository(storage);
+
+    repository.save("Custom stock", authored);
+    expect(repository.load("Custom stock")).toEqual(authored);
+    repository.saveWorking(authored);
+    expect(repository.loadWorking()).toEqual(authored);
+  });
+
   it("stores only strict validated previews and rejects stale hash keys", () => {
     const storage = new MemoryStorage();
     const repository = new LocalLabPreviewRepository(storage);
@@ -72,5 +123,11 @@ describe("local Lab Composer repositories", () => {
     );
     expect(() => repository.load(staleHash)).toThrowError(/hash/);
     expect(() => repository.save(NATIVE_TITRATION_V2_DRAFT)).toThrow();
+
+    const solution = validateSolutionPreparationV2("2026-07-18T15:00:00.000Z");
+    repository.save(solution);
+    expect(repository.load(solution.validation.canonicalSpecHash)).toEqual(
+      solution
+    );
   });
 });
