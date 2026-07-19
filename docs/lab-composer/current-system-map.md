@@ -1,6 +1,6 @@
 # Current Lab Composer System Map
 
-**Audited:** 2026-07-17
+**Audited:** 2026-07-18
 **Purpose:** give implementation agents a factual map of the repository before they extend contracts. “Current” means implemented in source, not merely planned in documentation.
 
 ## Support status legend
@@ -31,15 +31,15 @@
 | version-aware canonical hash | Implemented | [`src/lab-workflows/hash.ts`](../../src/lab-workflows/hash.ts) | v1 bytes remain frozen; v2 uses a frozen schema domain and rejects non-JSON input; only support/validation/Judge artifacts are excluded |
 | pure v1-to-v2 migration | Implemented, non-authoritative | [`src/lab-workflows/schema/migration.ts`](../../src/lab-workflows/schema/migration.ts) | exact mappings only; stable IDs/provenance; always emits `draft_unvalidated` with null validation/Judge artifacts |
 | v1 hard validator and eligibility | Implemented | [`src/lab-workflows/validation.ts`](../../src/lab-workflows/validation.ts) | family/engine are compatibility authority; step order is exact; v2 is not accepted yet |
-| capability registry | Implemented contract metadata | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | exact equipment/chemistry categories and honest availability; no capability-driven runtime consumer yet |
-| component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | current equipment has exact capabilities and state/config/visual/mechanical references; the titration adapter still consumes the deprecated concrete visual export name for v1 compatibility |
-| action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact source/target capabilities, parameter schemas, preconditions, errors, event contracts, adapters, and behavior mode coexist with unchanged titration engine/family mappings |
-| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | `materialRegistry` is a facade over exact HCl, NaOH, three engine-supported indicators, and distilled water; exact quantity/config/schema metadata includes one 50 mL water transfer preset, while v1 engine/family/component fields remain compatibility metadata |
+| capability registry | Implemented | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | reusable transfer, rinse, fill-to-mark, mix, and bounded concentration/dilution capabilities are verified |
+| component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | titration plus family-neutral volumetric pipette/flask and wash bottle have exact state/config/visual/mechanical references; the v1 adapter still consumes deprecated concrete visual names only for legacy titration |
+| action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact native transfer/conditioning/fill-to-mark/mix contracts coexist with unchanged nullable legacy engine mappings |
+| reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | exact titration profiles, distilled water, fixed sodium-chloride compatibility stock, and a separately registered sodium-chloride identity with bounded schema 2.1 concentration authoring |
 | engine registry | Implemented, transitional | [`src/lab-workflows/registries/engines`](../../src/lab-workflows/registries/engines) | only `engine.titration.v1`; must not be cloned for dilution |
 | skills | Implemented | [`src/lab-workflows/registries/skills`](../../src/lab-workflows/registries/skills) | availability currently derived from family/runtime support |
-| events/flags | Implemented, transitional | [`src/lab-workflows/registries/event-flags`](../../src/lab-workflows/registries/event-flags) | exact titration event mapping; no normalized action/rule evidence metadata |
-| configurations | Implemented, transitional | [`src/lab-workflows/registries/configurations`](../../src/lab-workflows/registries/configurations) | one registry now distinguishes legacy entries, declared strict schema metadata, and verified code-owned quantity presets |
-| safety | Implemented, limited | [`src/lab-workflows/registries/safety`](../../src/lab-workflows/registries/safety) | current virtual titration policies only |
+| events/flags | Implemented, transitional | [`src/lab-workflows/registries/event-flags`](../../src/lab-workflows/registries/event-flags) | exact titration and native preparation action-event contracts; workflow evidence remains evaluator-owned |
+| configurations | Implemented, transitional | [`src/lab-workflows/registries/configurations`](../../src/lab-workflows/registries/configurations) | exact titration and solution-preparation equipment/layout/quantity metadata |
+| safety | Implemented, limited | [`src/lab-workflows/registries/safety`](../../src/lab-workflows/registries/safety) | separate verified virtual titration and solution-preparation notices plus restricted open flame |
 
 Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows). The Phase 0 coupling baselines are in [`currentArchitectureCharacterization.test.ts`](../../tests/lab-workflows/currentArchitectureCharacterization.test.ts).
 
@@ -47,13 +47,14 @@ Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows).
 
 | Registry | Current snapshot | Historical snapshot retained |
 | --- | --- | --- |
-| capabilities | `capabilities.1.1.0` | `capabilities.1.0.0` |
-| components | `components.2.1.0` | `components.1.0.0`, `components.2.0.0` |
-| actions | `actions.2.0.0` | `actions.1.0.0` |
-| reagents/materials | `reagents.2.2.0` | `reagents.1.0.0`, `reagents.2.0.0`, `reagents.2.1.0` |
-| configurations | `configurations.2.3.0` | `configurations.1.0.0`, `configurations.2.0.0`, `configurations.2.1.0`, `configurations.2.2.0` |
+| capabilities | `capabilities.2.0.0` | `capabilities.1.0.0`, `capabilities.1.1.0` |
+| components | `components.3.0.0` | `components.1.0.0`, `components.2.0.0`, `components.2.1.0` |
+| actions | `actions.3.0.0` | `actions.1.0.0`, `actions.2.0.0` |
+| reagents/materials | `reagents.3.1.0` | `reagents.1.0.0`, `reagents.2.0.0`, `reagents.2.1.0`, `reagents.2.2.0`, `reagents.3.0.0` |
+| configurations | `configurations.3.1.0` | `configurations.1.0.0` through `configurations.3.0.0` |
+| scene placements | `scene-placements.2.0.0` | `scene-placements.1.0.0` |
 | engines | `engines.1.1.0` | `engines.1.0.0` |
-| chemistry-model metadata | `chemistry-models.1.1.0` | `chemistry-models.1.0.0` |
+| chemistry-model metadata | `chemistry-models.2.0.0` | `chemistry-models.1.0.0`, `chemistry-models.1.1.0` |
 
 The capability and chemistry-model snapshots are not added to v1 validation artifacts because the v1 validator does not consume them. Component/action/reagent/configuration snapshot bumps make artifacts carrying their old snapshots stale until revalidation, while canonical v1 workflow content hashes remain unchanged. The v2 validator now records every registry authority it consults, including capabilities, models, action subcontracts, and the engine registry used only by an explicit legacy compatibility descriptor.
 
@@ -71,11 +72,11 @@ The capability and chemistry-model snapshots are not added to v1 validation arti
 | seed replay validator | Implemented, transitional | [`src/lab-workflows/seedReplay.ts`](../../src/lab-workflows/seedReplay.ts) | Do not add more family cases; replace with normalized trace runner later |
 | titration adapter | Implemented, transitional | [`src/lab-workflows/adapters/titration`](../../src/lab-workflows/adapters/titration) | Make legacy dependency visible; retain through parity and historical replay |
 | titration workflow assembler | Implemented, transitional | [`src/lab-workflows/runtime/titrationRuntime.ts`](../../src/lab-workflows/runtime/titrationRuntime.ts) | Current steps are runtime control flow; do not generalize by adding family switches |
-| generic coordinator | Implemented, not route-enabled | [`src/lab-workflows/runtime/generic`](../../src/lab-workflows/runtime/generic) | Compiles contract-runnable v2 definitions, coordinates exact mechanics/models/evaluation/events/replay, and selects atomic legacy compatibility only by validated adapter ID; production Preview/Assign remain closed |
-| reusable liquid mechanics and material ledger | Implemented, not route-enabled | [`src/lab-workflows/mechanics`](../../src/lab-workflows/mechanics), [`src/lab-workflows/chemistry-models/material-ledger`](../../src/lab-workflows/chemistry-models/material-ledger) | Exact adapters and conserved transfer deltas support chemistry-free fill/dispense/rinse/read projections; no legacy titration chemistry/events are reproduced and Preview/Assign remain closed |
+| generic coordinator | Implemented and Composer Preview-enabled | [`src/lab-workflows/runtime/generic`](../../src/lab-workflows/runtime/generic) | Compiles current-hash runnable v2 definitions, coordinates exact mechanics/models/evaluation/events/replay, and selects atomic legacy compatibility only by validated adapter ID; Assign remains closed |
+| reusable liquid mechanics and material ledger | Implemented and native Preview-enabled | [`src/lab-workflows/mechanics`](../../src/lab-workflows/mechanics), [`src/lab-workflows/chemistry-models/material-ledger`](../../src/lab-workflows/chemistry-models/material-ledger) | Exact adapters and conserved transfer deltas support bounded solution-preparation actions through the generic coordinator; unsupported semantics fail closed |
 | constraint contracts | Implemented, structural only | [`src/lab-workflows/schema/conditions.ts`](../../src/lab-workflows/schema/conditions.ts) | Closed bounded data; parsing does not resolve IDs or make a workflow runnable |
-| constraint evaluator/diagnoses | Implemented, not route-enabled | [`src/lab-workflows/evaluation`](../../src/lab-workflows/evaluation) | Consumes registered observables and semantic evidence without calculating chemistry; supports migrated endpoint completion from the engine-owned endpoint observable |
-| chemistry model contracts/resolution | Implemented with legacy compatibility provider | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models) | exact provider/dependency resolution exists; the only production provider is scoped to the titration compatibility adapter and delegates existing truth rather than extracting formulas |
+| constraint evaluator/diagnoses | Implemented and Preview-enabled | [`src/lab-workflows/evaluation`](../../src/lab-workflows/evaluation) | Consumes registered observables and semantic evidence without calculating chemistry; shared student Preview exposes plain-language evidence and diagnoses |
+| chemistry model contracts/resolution | Implemented for legacy titration and bounded native dilution | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models), [`src/lab-workflows/chemistry-models/concentration-dilution`](../../src/lab-workflows/chemistry-models/concentration-dilution) | exact provider/dependency resolution selects either the scoped legacy titration adapter or the family-neutral shared-liquid plus concentration modules; unsupported identities fail closed |
 
 ## Production student UI and state
 
@@ -85,9 +86,9 @@ The capability and chemistry-model snapshots are not added to v1 validation arti
 | session hook | Implemented, transitional | [`src/components/lab/useLabSession.ts`](../../src/components/lab/useLabSession.ts) | Builds experiment-specific configs |
 | lab store | Implemented, transitional | [`src/stores/labStore.ts`](../../src/stores/labStore.ts) | Explicit experiment unions/branches, but actions do call `step()` |
 | titration workspace/scene | Implemented, compatibility target | [`src/components/lab/titration`](../../src/components/lab/titration) | Keep behavior and accessibility until setup-driven parity |
-| fixed 3D equipment graph | Implemented, adapter candidates | [`src/components/lab/three/LabScene.tsx`](../../src/components/lab/three/LabScene.tsx) and neighboring equipment files | Resolve exact visual adapters later; do not import these from core contracts |
+| pose-driven 3D equipment graph | Implemented for current verified adapters | [`src/components/lab/three/LabScene.tsx`](../../src/components/lab/three/LabScene.tsx), [`src/lab-workflows/registries/scene-placements`](../../src/lab-workflows/registries/scene-placements) | Exact registered poses drive equipment, linked apparatus alignment, focus cameras, and indicator paths; no authored coordinates |
 | precipitation workspace | Implemented static UI | [`src/components/lab/precipitation`](../../src/components/lab/precipitation) | Do not copy this page pattern for dilution |
-| setup-driven student scene | Missing | future setup runtime/UI files | One rendering path for serialized supported setups |
+| setup-driven student scene | Implemented for compatibility titration and native solution preparation | [`src/components/lab/titration/setupDrivenScene.ts`](../../src/components/lab/titration/setupDrivenScene.ts), [`src/components/lab/setup-driven`](../../src/components/lab/setup-driven) | Resolves exact visual adapters, poses, and typed controls from validated setup; Composer Preview uses the same generic coordinator while production defaults remain unchanged |
 
 The ongoing visual overhaul in these files belongs to the user and may be present as uncommitted work. Contract agents must not rewrite or reset it.
 
@@ -95,12 +96,15 @@ The ongoing visual overhaul in these files belongs to the user and may be presen
 
 | Surface | Status | Source | Migration rule |
 | --- | --- | --- | --- |
-| deterministic coach trigger | Implemented | [`src/lib/agent/triggerPolicy.ts`](../../src/lib/agent/triggerPolicy.ts), [`src/lib/agent/coach.ts`](../../src/lib/agent/coach.ts), and [`tests/coach`](../../tests/coach) | Preserve question/retry/flag/negative-evidence triggers and positive stay-silent tests |
-| coach API/model | Implemented | [`src/app/api/coach`](../../src/app/api/coach) | Add optional diagnosis/rule context only after those contracts exist; no state mutation |
-| student report evaluator | Implemented | [`src/app/api/evaluate`](../../src/app/api/evaluate) and evaluator agent files | Later consume authored rubric/diagnoses/evidence IDs; keep deterministic fallback |
-| Author Agent prototype | Prototype | [`src/lib/agent/lab-authoring`](../../src/lib/agent/lab-authoring), [`src/app/api/lab-composer/author`](../../src/app/api/lab-composer/author) | Family-oriented and not Level 3; freeze until shared command service exists |
-| Workflow Judge | Missing | no source directory | Implement in Phase 7, not before Level 2 |
-| shared human/agent command service | Missing | future `src/lab-workflows/authoring/**` | Human composer must use it before agent tools wrap it |
+| deterministic coach trigger | Implemented for legacy evidence and v2 diagnoses | [`src/lib/agent/triggerPolicy.ts`](../../src/lib/agent/triggerPolicy.ts), [`src/lib/agent/coach.ts`](../../src/lib/agent/coach.ts), and [`tests/coach`](../../tests/coach) | Questions/retries remain explicit; flags, repeated negative evidence, and violated diagnoses are local trigger inputs; routine success remains silent and event reasons remain deduplicated in the store |
+| coach API/model | Implemented with legacy and diagnosis-aware v2 adapters | [`src/app/api/coach`](../../src/app/api/coach), [`src/lib/agent/authoredCoach.ts`](../../src/lib/agent/authoredCoach.ts), [`src/lib/agent/authoredCoachSchemas.ts`](../../src/lib/agent/authoredCoachSchemas.ts) | V2 rechecks current definition eligibility/hash plus exact objective/instruction/rule/diagnosis/evidence/action projections; output is advisory-only, four-way authority-labeled, timeout-bounded, and unable to mutate/reset/control the workflow; invalid/down providers use deterministic authored guidance while legacy sessions retain the old contract |
+| student report evaluator | Implemented with legacy and authored-rubric contracts | [`src/app/api/evaluate`](../../src/app/api/evaluate), [`src/lib/agent/evaluator.ts`](../../src/lib/agent/evaluator.ts), [`src/lib/agent/authoredEvaluator.ts`](../../src/lib/agent/authoredEvaluator.ts) | Legacy sessions retain the four fixed dimensions/retry behavior; v2 requires an exact current definition and matching generic runtime provenance, cites only supplied evidence IDs, never projects hidden ground truth to the model, and falls back to deterministic authored-rubric scoring |
+| Author Agent legacy endpoint | Prototype, compatibility-frozen | [`src/lib/agent/lab-authoring`](../../src/lib/agent/lab-authoring), [`src/app/api/lab-composer/author`](../../src/app/api/lab-composer/author) | Family-oriented v1 behavior remains readable while the separately versioned capability path is built |
+| Capability author tools | Implemented, server-only | [`src/lib/agent/lab-authoring/capabilityTools.server.ts`](../../src/lib/agent/lab-authoring/capabilityTools.server.ts) | Eleven fixed bounded tools expose exact metadata and edit only the server-owned unvalidated draft through the shared human command transaction service; validation, simulation, approval, and assignment are not tools |
+| Capability author loop and Composer handoff | Implemented, teacher-controlled | [`src/lib/agent/lab-authoring/capabilityAuthor.ts`](../../src/lib/agent/lab-authoring/capabilityAuthor.ts), [`src/app/api/lab-composer/author/capability`](../../src/app/api/lab-composer/author/capability), [`src/components/teacher/lab-composer/ComposerAgentWorkspace.tsx`](../../src/components/teacher/lab-composer/ComposerAgentWorkspace.tsx) | Shows assumptions separately from deterministic validation and five real traces; an exact locally revalidated proposal enters the normal command editor only after explicit teacher acceptance; teacher edits stale generated evidence and close Preview until revalidation; unsupported/safety/limited results remain non-runnable |
+| Workflow Judge | Implemented, advisory-only | [`src/lib/agent/lab-workflow-judge`](../../src/lib/agent/lab-workflow-judge), [`src/app/api/lab-composer/judge`](../../src/app/api/lab-composer/judge) | Requires current preview eligibility plus exact validation, derived capability summary, and all five hash-bound executed trace summaries; bounded critique cites exact paths/evidence and cannot alter workflow validation or eligibility |
+| Composer teaching-review loop | Implemented, bounded and teacher-controlled | [`src/components/teacher/lab-composer/ComposerJudgePanel.tsx`](../../src/components/teacher/lab-composer/ComposerJudgePanel.tsx), [`src/components/teacher/lab-composer/composerJudgeCycle.ts`](../../src/components/teacher/lab-composer/composerJudgeCycle.ts) | Validator and advisory status remain separate; accepted suggestions are fixed shared commands tested on a candidate draft; only a runnable revalidation, five fresh real traces, and a matching follow-up review commit the change; three-call/two-revision/page-session and time/token/cost limits terminate the loop |
+| shared human/agent command service | Implemented for both authoring paths | [`src/lab-workflows/authoring`](../../src/lab-workflows/authoring) | Human edits and server-owned agent edits use the same strict transaction service; the client accepts only a normal v2 draft and never a raw patch |
 
 ## Persistence, assignments, replay, and demo
 
@@ -119,7 +123,7 @@ Do not duplicate these wholesale. Extend them when the corresponding contract ch
 - Chemistry and replay: `tests/experiments/**`
 - Store and action path: `tests/stores/**`
 - Student controls/scenes: `tests/components/**`, `tests/e2e/titration-*.spec.ts`
-- Coach: `tests/coach/**`, `tests/api/coach.test.ts`
+- Coach: `tests/coach/**`, `tests/components/coachPanelPresentation.test.ts`, `tests/stores/labStore.test.ts`, and the setup-driven Coach Playwright case
 - Evaluator/report/retry: evaluator API, report, and retry tests under `tests/api`, `tests/components`, and `tests/e2e`
 - Persistence/checkpoints: `tests/persistence/**`, `tests/api/checkpoint.test.ts`, `tests/db/**`
 - Demo: `tests/demo/**`, `tests/e2e/demo-flow.spec.ts`

@@ -2,11 +2,13 @@
 
 Phase 5 proves reuse with dilution or solution preparation. It must use the same v2 schema, validator, generic `ExperimentDefinition`, mechanics/model coordinator, constraint evaluator, events, replay, human Composer, and student scene as titration.
 
+Implementation status: `LC2-500` through `LC2-503` are complete. The checked-in schema-2.1 sodium-chloride solution-preparation definition is recreated by one shared command transaction, pinned to its canonical hash, validated against exact registries, and exercised through the generic coordinator with canonical, alternate-valid, recoverable, terminal, and tolerance-boundary traces. The same setup-driven student Preview and human Composer now run both native solution preparation and compatibility titration without family dispatch. All ten Level 2 criteria are recorded in [`../level-2-gate.md`](../level-2-gate.md); Phase 6 is unblocked.
+
 ## LC2-500 — Reusable dilution equipment and action mechanics
 
 **Objective:** Register and implement the minimum reusable physical primitives for a bounded volumetric dilution/solution-preparation setup.
 
-**Dependencies:** `LC2-403`.
+**Dependencies:** `LC2-409`.
 
 **Allowed areas:** equipment/action/config/material adapter registries, pure mechanics, UI visual adapters for new equipment, focused tests/docs.
 
@@ -52,11 +54,53 @@ Phase 5 proves reuse with dilution or solution preparation. It must use the same
 
 **Stop:** Do not build universal equilibrium/reaction support or hard-code the expected student target into the module.
 
+## LC2-501A — Bounded teacher-authored concentrations for registered solutions
+
+**Objective:** Let a teacher enter a custom concentration for an exact registered aqueous material profile without adding a code fixture or quantity preset for every value, while keeping identity, units, supported ranges, safety, hashing, chemistry, and runtime truth deterministic.
+
+**Dependencies:** `LC2-501`, `LC2-408`.
+
+**Allowed areas:** versioned `LabWorkflowSpec` material-initialization contracts and migration, material/configuration/unit/safety registries, v2 validator, shared authoring commands, material inspector UI, generic model initialization adapters, focused tests/docs.
+
+**Do not touch:** arbitrary chemical identities or formulas, LLM chemistry, family dispatch, unrelated equipment mechanics, unbounded numeric input, legacy v1 material values/hashes, or a separate concentration-specific Lab IR.
+
+**Required changes:**
+
+1. Evolve the existing Lab IR through an explicit additive schema version (for example `2.1.0`) and provide deterministic migration from `2.0.0`; do not silently change the meaning of `2.0.0` or create another definition format.
+2. Separate registered chemical identity from authored initialization values. Add concentration-configurable profiles only for identities whose deterministic model and safety range are verified. Preserve existing concentration-encoded v1 profiles as legacy-readable compatibility entries.
+3. Add a strict material-initialization variant equivalent to:
+
+   ```ts
+   interface BoundedConcentrationInitialization {
+     kind: "bounded_concentration";
+     configurationSchemaId: RegistryId;
+     concentration: {
+       decimalValue: string;
+       unitId: RegistryId;
+     };
+   }
+   ```
+
+   Exact field names belong to the implementation, but the value must be canonical decimal data—not a formula, non-finite JavaScript number, free-form unit, serialized model state, or prose.
+4. Register exact code-owned unit, configuration-schema, material-profile, chemistry-capability, and safety-range metadata. Each supported material declares its bounds, decimal precision, allowed units, required model capability, and safety policy. Do not guess chemical safety limits; stop if verified ranges are unavailable.
+5. Canonicalize accepted decimal input deterministically for hashing and replay while preserving teacher-visible significant digits separately when pedagogically useful. Reject exponent tricks, locale-dependent commas, excess precision, negative or zero values where unsupported, overflow, `NaN`, and infinities.
+6. Extend hard validation to require an exact verified material profile, compatible initialization schema, supported concentration unit/range/precision, compatible container, resolved deterministic model provider, and all concentration-dependent safety policies. Validator, Judge, and agent output cannot widen the range.
+7. Add shared authoring commands to set, change, and clear concentration initialization. Every edit invalidates validation and Judge artifacts. Human and future agent authoring must use these same commands.
+8. Add an accessible teacher inspector control with explicit unit, permitted range, validation feedback, and normalized preview. Do not expose concentration controls for profiles that are not registered as authorable.
+9. Feed normalized concentration into the verified chemistry-model initialization path. UI, workflow rules, prompts, and evaluators must not calculate concentration, pH, equivalence point, or expected outcomes.
+10. Keep exact-preset workflows readable and executable. Migration must not rewrite legacy `0.100 M` definitions into editable custom values unless the teacher explicitly changes them.
+
+**Tests/manual:** schema `2.0.0` compatibility and migration to the new version; canonical decimal round trip; minimum/maximum and just-inside/just-outside values; precision/unit rejection; unknown/unverified material/schema/model/safety IDs; container mismatch; concentration edit changes hash and clears validation/Judge artifacts; save/load/replay equality; deterministic initialization and observables for at least two accepted concentrations; unsupported concentration remains non-runnable; teacher keyboard/error/units UX; static no-formula-in-UI and no-family-dispatch checks.
+
+**Acceptance:** A teacher can author at least two non-preset concentrations for each explicitly supported registered solution identity, validate them deterministically, save/load them, and execute them through the same generic model/runtime path without new experiment-family code or per-value registry entries.
+
+**Stop:** “Custom” means any canonical value inside an explicitly verified material/model/safety range. It does not mean arbitrary chemicals, arbitrary units, unsupported ranges, authored formulas, or bypassing exact registry and model resolution.
+
 ## LC2-502 — Serialized dilution definition and executable trace suite
 
 **Objective:** Author a complete v2 dilution/solution-preparation definition using the same commands/validator/runtime/evaluator, with multiple valid orders and meaningful mistakes.
 
-**Dependencies:** `LC2-501`.
+**Dependencies:** `LC2-501A`.
 
 **Allowed areas:** `src/lab-workflows/definitions/dilution/**` or selected neutral setup name, trace fixtures/tests, minimal registry entries required by exact setup/docs.
 

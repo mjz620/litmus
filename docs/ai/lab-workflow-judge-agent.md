@@ -1,10 +1,11 @@
 # Lab Workflow Judge Agent
 
-> **Target retained, sequencing changed:** No Judge route is currently
-> implemented. Its advisory authority remains correct, but implementation now
-> waits until the Level 2 human Composer and two-lab generic runtime pass. The
-> current input must also include capability and executed-trace summaries; see
-> [`LC2-701`](../lab-composer/tickets/phase-7-evaluation.md).
+> **Implemented in `LC2-701`:** the separately versioned Judge route now
+> requires current Preview eligibility, an exact matching validation artifact,
+> a core-derived capability summary, and all five hash-bound executed generic
+> trace summaries. Its output is explicitly `advisory_only`. `LC2-702` now
+> maps accepted feedback to shared commands and commits a candidate only after
+> revalidation, five fresh traces, and exact-hash rejudging within fixed limits.
 
 ## Purpose
 
@@ -19,21 +20,17 @@ The Judge Agent is not the product demo judge. “Judge Agent” here means the 
 ## Inputs
 
 ```ts
-interface JudgeRequest {
+interface JudgeRequestV2 {
+  contractVersion: "2.0.0";
   teacherRequest: string;
-  workflow: LabWorkflowSpec;
-  validation: ValidationResult;
-  capabilitySummary: {
-    targetSkillIds: string[];
-    familyId: string;
-    availableEventTypeIds: string[];
-    availableFlagIds: string[];
-    deviceProfileId: string;
-  };
+  workflow: ValidatedLabWorkflowSpecV2;
+  validation: ValidationResultV2;
+  capabilitySummary: ExactCapabilityAndCompatibilitySummary;
+  traces: [Valid, AlternateValid, Recoverable, Terminal, ToleranceBoundary];
 }
 ```
 
-The server verifies that `validation.canonicalSpecHash` matches the workflow before critique. A safety-rejected or schema-invalid draft does not need pedagogical approval; it may receive a limited explanation, but the UI must not confuse it with runtime eligibility.
+The server recomputes current Preview eligibility, derives the capability summary from registries, and verifies every trace's workflow ID, revision, hash, demonstrated status, registered diagnoses, observables, and real replay identifier before critique. Stale, safety-rejected, unsupported, or otherwise non-runnable workflows are rejected before model invocation.
 
 ## What it judges
 

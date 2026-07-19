@@ -1,13 +1,13 @@
 # Capability-Driven Lab Composer Architecture
 
-**Status:** Phase 1 contracts implemented through `LC2-106`; **Last audited:** 2026-07-17
-**Scope of this document:** characterize the current repository, preserve the original workflow intention, and define an incremental migration. Implemented-status statements are updated as tickets land; the generic Level 2 runtime is not yet implemented.
+**Status:** Phase 5 and the non-LLM Level 2 gate are complete; **Last audited:** 2026-07-18
+**Scope of this document:** characterize the current repository, preserve the original workflow intention, and define an incremental migration. Implemented-status statements are updated as tickets land; executable evidence for all ten Level 2 criteria is recorded in [`lab-composer/level-2-gate.md`](lab-composer/level-2-gate.md).
 
 ## Executive conclusion
 
 The repository already has a strong deterministic boundary: an `ExperimentDefinition` owns scientific truth, every simulation action enters through `step()`, semantic events feed the `StudentModel`, and checkpoints, replay, coaching, and evaluation consume the resulting records. Those contracts should be extended, not replaced.
 
-The current Lab Composer is nevertheless a **titration workflow assembler**, not yet a laboratory composer. `LabWorkflowSpec` v1 requires one family, one engine, one initialization preset, and a totally ordered list of steps. Hard validation, action compatibility, seed replay, runtime assembly, and state projection all resolve through `family.acid_base_titration.v1` and `engine.titration.v1`. The production student routes do not load Composer definitions; the titration and precipitation interfaces each select a fixed workspace.
+The repository began with a **titration workflow assembler** whose v1 definition required one family, one engine, one initialization preset, and a totally ordered list of steps. That compatibility layer remains readable, but the current human Composer edits strict v2 drafts through shared commands, validates exact capability/adapter/model/rule authority, previews migrated titration and native solution preparation through the same generic coordinator, and arranges the real 3D apparatus through registered code-owned poses. Production student defaults remain legacy, and immutable assignment is still a future gate.
 
 The correction is a versioned evolution of the existing Lab IR and registries:
 
@@ -81,14 +81,11 @@ The implemented Composer surface currently includes:
 
 It does **not** yet include:
 
-- A v2 hard validator. Migration output is always structurally parsed but unvalidated and non-runnable; exact reference resolution, graph validation, and eligibility remain `LC2-107` work.
-- A v2 constraint-based workflow evaluator or runtime-produced diagnoses.
-- A setup-driven production student runtime/scene.
-- A teacher visual composer or shared editing command layer.
-- Composer draft/version persistence, preview, approval, or assignment.
-- A Lab Workflow Judge implementation.
-- A second lab using a shared generic Composer runtime.
-- An agent command loop that edits the same domain model as the human composer and executes trace suites.
+- immutable server-persisted Composer definition versions, approval, or assignment pins;
+- a production-default promotion away from the explicit setup-driven preview/flag paths;
+- a capability-driven migration of the static precipitation lab;
+- Phase 8 end-to-end release, operations, retention, and legacy-removal gates;
+- the independently reviewable non-blocking `LC2-415`/`LC2-416` QA refinements.
 
 ### LabWorkflowSpec v1
 
@@ -117,7 +114,8 @@ Hard validation correctly rejects unknown IDs, registry incompatibilities, unsup
 | Engines | Deterministic definition identity and exact supported IDs | Only `engine.titration.v1`; a family is the compatibility authority and assembly boundary |
 | Skills | Exact learning-objective/evidence metadata and support visibility | Runtime support is inferred through family/engine availability; precipitation skill remains planned in Composer despite a standalone engine |
 | Events/flags | Exact mapping from workflow IDs to engine semantic values | Mappings are titration-engine-specific; events lack stable runtime event IDs and sequences |
-| Configurations | Exact presets for engine, seed, components, actions, observations, policies, placement, device, units, schemas, and quantities | Schema metadata is deliberately declared until v2 hard validation consumes it; legacy entries remain readable |
+| Configurations | Exact presets for engine, seed, components, actions, observations, policies, placement, device, units, schemas, and quantities | V2 hard validation consumes verified entries; legacy snapshots remain readable as explicit provenance |
+| Scene placements | Exact code-owned 3D poses, registered yaw, footprints, assembly anchors, equipment definitions, and visual adapters | Drafts store only placement IDs; pointer coordinates, room, lighting, and camera state never enter the workflow spec |
 | Chemistry models | Framework-free module/metadata/implementation contracts plus exact verified-provider/dependency resolution | Production provider metadata and executable registrations are empty until the authorized compatibility/model tickets |
 | Safety | Exact allow-list and deterministic validation hooks | Current entries cover the virtual titration setup, not capability/material/action policies generally |
 
@@ -135,16 +133,16 @@ This adapter is explicit and safe, but it is not generic. A direct titration eng
 
 ### Equipment and 3D scene
 
-The titration scene is composed in code from fixed apparatus:
+The titration scene is composed in code from verified apparatus:
 
 - burette and stand;
 - Erlenmeyer flask;
 - indicator shelf;
 - wash station;
-- fixed poses and bench layout;
+- exact registered equipment poses over a fixed room and bench;
 - titration-specific controls, prompts, measurement displays, and camera interactions.
 
-These visual and interaction implementations are valuable adapter candidates. The current `LabScene`, `TitrationScene`, `labUiStore`, equipment IDs, and procedure staging assume their topology rather than loading instances and layout from serialized setup data. The precipitation experiment uses a different static interface. `ClassroomEnvironment` can remain shared room infrastructure while the active bench becomes setup-driven.
+`LC2-409` adds a versioned scene-placement registry without changing the strict workflow shape: each authored layout still contains only an equipment instance ID and a placement ID. Code-owned poses resolve equipment transforms, registered yaw, collision footprints, linked-assembly anchors, focus cameras, streams, and indicator paths. The same resolved poses drive the teacher 3D arrangement editor and locked student Preview. `ClassroomEnvironment`, room geometry, lighting, and base cameras remain shared automatic infrastructure. The precipitation experiment still uses a different static interface and does not prove a second Composer runtime.
 
 ### Semantic events, StudentModel, replay, checkpoints, and persistence
 
@@ -154,23 +152,23 @@ Checkpoint envelopes add a client event ID and monotonic sequence around events,
 
 ### Student coach
 
-The deterministic trigger policy calls the coach for questions, retries, flags, or repeated negative evidence and deliberately stays silent on routine success. Model output is structured and forbidden from determining chemistry. The coach currently receives experiment state, recent events, and StudentModel context. It does not receive typed workflow diagnoses, the active authored rule, or a generalized equipment/action context.
+The deterministic trigger policy calls the coach for explicit questions/retries, meaningful flags, repeated negative evidence, or current violated workflow diagnoses and deliberately stays silent on routine success. Legacy sessions retain the original structured request/response adapter. Setup-driven sessions use a separate `2.0.0` context containing the exact current Preview-eligible definition, hash, active objectives, instructions, rules, diagnoses, evidence envelopes, and deterministically available actions. Core code rejects stale definitions, mismatched projections, and unknown rule/action/evidence references before any provider call.
 
-The trigger policy and stay-silent semantics are reusable. The request context requires a backward-compatible extension after diagnoses exist; the model must remain advisory and asynchronous.
+V2 output distinguishes required procedure, safety, optional context, and AI guidance in both schema and student UI. It is explicitly advisory and cannot mutate simulation state, reset a checkpoint, or change rules. Unsolicited guidance must resolve to a current deterministic violation or exact authored flag trigger; direct questions are explicit; alternate-valid and routine-success paths stay silent without a model call. Timeout, provider failure, invalid identifiers, excessive hint levels, chemistry claims, or workflow/state-control language fall back to bounded deterministic authored guidance.
 
 ### Student report evaluator
 
-The evaluator consumes the assigned experiment, final state, events, StudentModel, and student report. Its response is structured and has a deterministic fallback. The current rubric dimensions and retry recommendation types are fixed around the shipped experience; they are not yet derived from an authored Composer rubric, constraint diagnoses, or evidence mappings.
+The evaluator retains the legacy assigned-experiment/report adapter and adds a separately versioned authored-rubric path. V2 verifies the exact current definition and generic runtime provenance, then scores only authored criteria using supplied event, diagnosis, observable, response, and report evidence IDs. Deterministic ceilings credit unusual valid approaches, limit recoverable violations, and cap terminal failures; unavailable or invalid model output uses an explicit deterministic fallback with uncertainty and version metadata.
 
-The evaluator remains distinct from deterministic truth. It may later judge coherence, mastery, misconceptions, and unusual valid approaches from authored objectives, rubric, event evidence, diagnoses, final observables, and responses. It must never reconstruct chemistry from prose.
+The evaluator remains distinct from deterministic truth. A semantic model may judge coherence, mastery, and misconceptions, but it cannot exceed deterministic evidence, invent identifiers, inspect hidden chemistry ground truth, or reconstruct chemistry from prose.
 
 ### Lab Workflow Judge
 
-The product, prompt, schema, and evaluation documents define an independent advisory Judge for the authored lab. The workflow schema already has a place for a hash-bound critique. No executable Judge route currently exists. Judge approval cannot override hard validation, and this missing service is not a Level 2 blocker.
+The independently versioned Judge route reviews only a current Preview-eligible exact workflow with its matching validation, core-derived capability/compatibility summary, rubric, and five executed trace summaries. It returns bounded ten-dimension scores, exact path/evidence citations, issues, strengths, recommendation, and uncertainty. Live output is rejected if it invents IDs/evidence, attempts chemistry reconstruction, or escapes its schema; deterministic fallback remains explicit. Judge approval cannot override hard validation or change Preview/assignment eligibility. The Composer shows this authority separately, maps only bounded advice to shared commands, and commits a teacher-accepted candidate only after revalidation, five fresh runtime traces, and exact-hash rejudging within three calls and two revisions.
 
 ### Lab Authoring Agent
 
-The prototype author route has strict structured output, rate limits, registry inspection, a deterministic mock, and hard validation. Its tools search by supported family and return existing components, reagents, and one engine. It cannot yet use shared human-authoring domain commands, assemble capabilities, execute generic traces, or revise a draft through a bounded loop. It should remain described as a prototype—not completed Level 3—until the Level 2 gate passes.
+The legacy prototype author route retains its family-oriented structured contract for compatibility. Separately, the Phase 6 capability author uses fixed server-only exact-discovery and shared-command tools, validates and executes five real generic-runtime traces within fixed budgets, and presents a normal editable draft only after explicit teacher acceptance. The legacy route must remain frozen rather than being mistaken for the completed capability path.
 
 ### Saved-state and assignment compatibility
 
@@ -207,16 +205,16 @@ Existing persisted sessions and demo traces identify static experiment versions 
 | Configuration registry | Reusable through an adapter | Stage 1A added exact schema/quantity facets; v2 validation must enforce declared versus verified availability |
 | Safety registry | Reusable through an adapter | Resolve policies against exact material/action/equipment capabilities; validator retains veto authority |
 | Titration runtime assembler and adapters | Titration-specific but temporarily necessary | Explicit compatibility path behind a flag until serialized titration has action, event, replay, and visual parity |
-| Fixed titration equipment visuals | Reusable through an adapter | Register exact visual and mechanical adapters without importing React/Three into core contracts |
+| Titration equipment visuals | Reusable through registered adapters and poses | Keep React/Three out of core contracts; extend the exact pose/visual registry only with code-backed support |
 | Fixed `LabScene`, controls, and `labUiStore` topology | Obsolete only after replacement parity | Setup-driven scene and interaction state eventually replace them; preserve current route during comparison |
 | Precipitation static workspace | Titration-specific but temporarily necessary | Despite its name, this category means a fixed experiment UI; leave untouched until a scoped migration ticket |
-| Coach trigger policy and structured response | Reusable through an adapter | Add diagnoses/rule context without changing deterministic trigger authority or stay-silent behavior |
+| Coach trigger policy and structured response | Implemented through legacy/v2 adapters | Exact definition/rule/diagnosis/evidence/action context is additive; deterministic trigger authority, hint bounds, cooldown deduplication, stay-silent behavior, and nonblocking simulation are preserved |
 | Student report evaluator | Requiring a backward-compatible contract extension | Consume authored objectives/rubric/diagnoses/evidence and retain deterministic fallback |
 | Author Agent prototype | Requiring a backward-compatible contract extension | Move to the shared command service and executable trace loop only after Level 2 |
-| Workflow Judge route | Missing | Implement later as advisory, independently versioned, exact-hash-bound critique |
-| Teacher visual composer and domain commands | Missing | Build the non-LLM Level 2 authoring path first |
+| Workflow Judge route | Implemented, advisory-only | Exact-hash/current-validation/capability/five-trace checks; separately versioned prompt/schema/model; bounded deterministic fallback |
+| Teacher visual composer and domain commands | Implemented | Five-stage Composer, shared atomic commands/removal inspection, exact-pose 3D/List setup, graph/Outline workflow, Define/Assess relationships, local save/undo, validation, and Preview comprise the passing Level 2 path |
 | Immutable definition/version persistence and assignment approval | Missing | Add versioned storage and exact assignment pins in a persistence-owned ticket |
-| Generic runtime, constraint evaluator, diagnoses, and second reusable lab | Missing | Central Level 2 proof; no family dispatcher |
+| Generic runtime, constraint evaluator, diagnoses, and second reusable lab | Implemented | Compatibility titration and native solution preparation execute through one generic coordinator with five-path replay evidence and no family runtime dispatcher |
 
 ## Exact coupling points
 
@@ -231,20 +229,20 @@ The current system is coupled at several independent layers. Fixing only the run
 7. Ordered workflow steps act as exclusive runtime control flow, not presentation guidance.
 8. Seed replay knows the exact titration engine and initialization preset.
 9. The production route and store dispatch by static experiment ID, not a validated setup.
-10. The 3D scene imports a fixed equipment graph and fixed layout.
-11. Coach and evaluator context is experiment-oriented and has no structured workflow diagnosis.
+10. The setup-driven titration scene resolves exact registered poses, but only the current verified visual adapters exist; the static precipitation UI remains separate until Phase 5 proves reuse.
+11. Legacy Coach/evaluator context remains experiment-oriented for historical sessions; v2 evaluator and Coach adapters now consume exact authored workflow provenance and structured diagnoses without changing those old envelopes.
 12. Persistence stores session workflow provenance but not an immutable validated lab-definition version.
 13. Author Agent tools discover families and one engine, not capabilities and shared commands.
 
 ## Original Workflow Feature Intention
 
-The original workflow feature was intended to let teachers and a constrained AI author pedagogy over verified deterministic primitives. The intended lifecycle was: prompt or edit a structured draft, resolve exact registry IDs, validate locally, optionally obtain an advisory pedagogical critique, preview, explicitly approve, assign, run through deterministic simulation, and consume the same evidence in coaching and evaluation. The current implementation narrows that intention to titration, but it does not invalidate the lifecycle.
+The original workflow feature was intended to let teachers and a constrained AI author pedagogy over verified deterministic primitives. The intended lifecycle was: prompt or edit a structured draft, resolve exact registry IDs, validate locally, optionally obtain an advisory pedagogical critique, preview, explicitly approve, assign, run through deterministic simulation, and consume the same evidence in coaching and evaluation. The current implementation proves that lifecycle through compatibility titration and native solution preparation up to Preview/evaluation/coaching; immutable approval and assignment remain Phase 8 gates.
 
 ### Teacher perspective
 
 **Deliberate behavior:** A teacher describes a learning objective and constraints, receives an editable structured workflow with visible support status, previews only a current validated result, sees hard validation separately from advisory Judge critique, and explicitly approves assignment.
 
-**Current limitation:** There is no teacher Composer UI, preview, persisted draft/version, or assignment path. The author prototype can only assemble a family-oriented titration workflow.
+**Current limitation:** The teacher Composer, exact-hash local Preview, second shared-runtime lab, capability-author handoff, and bounded Judge loop exist, but immutable persisted definition versions and approval/assignment do not. The old family-oriented author route remains only as a compatibility prototype beside the shared-command capability path.
 
 **Semantics to preserve:** Exact IDs, visible assumptions and support limits, validation invalidation after edit, separate validator/Judge authority, explicit approval, and immutable assigned versions.
 
@@ -274,7 +272,7 @@ The original workflow feature was intended to let teachers and a constrained AI 
 
 **Deliberate behavior:** Deterministic evidence and final state support structured pedagogical evaluation and a deterministic fallback; the LLM can judge writing and mastery but not calculate hidden truth.
 
-**Current limitation:** Rubric dimensions and retry types are fixed and do not consume authored workflow criteria or diagnoses.
+**Current limitation:** Legacy report sessions retain their fixed rubric dimensions and retry types. The authored evaluator consumes exact objectives, criteria, diagnoses, events, observables, responses, and evidence IDs, but assignment-pinned request construction awaits immutable Phase 8 versions.
 
 **Semantics to preserve:** Evidence-grounded output, evaluator/model/prompt versioning, uncertainty, fallback behavior, and separation from chemistry calculation.
 
@@ -284,7 +282,7 @@ The original workflow feature was intended to let teachers and a constrained AI 
 
 **Deliberate behavior:** A deterministic trigger decides when coaching is warranted, routine success stays silent, and structured comments cannot mutate the simulation or claim chemistry authority.
 
-**Current limitation:** Coach context does not identify active rules, permitted alternatives, structured diagnoses, or authored presentation guidance.
+**Current limitation:** The diagnosis-aware contract is live for setup-driven sessions and Composer Preview, while production student routes still default to their legacy experiment adapter until immutable assignment pins and Phase 8 promotion exist.
 
 **Semantics to preserve:** Asynchronous calls, positive stay-silent cases, bounded responses, deterministic trigger authority, and evidence-grounded guidance.
 
@@ -294,7 +292,7 @@ The original workflow feature was intended to let teachers and a constrained AI 
 
 **Deliberate behavior:** An independent advisory service reviews the authored lab for alignment, clarity, flexibility, fairness, safety presentation, feasibility, and teacher usability. Its critique binds to the exact spec hash.
 
-**Current limitation:** Only documentation and schema support exist; the route is not implemented. The planned dimensions also predate explicit partial-order flexibility and generated trace evidence.
+**Current limitation:** The exact-hash advisory route and bounded teacher-controlled revision loop are implemented, but their review artifact is not yet persisted with an immutable approved definition version.
 
 **Semantics to preserve:** Separate prompt/model versioning, exact-hash critique, advisory authority, visible issues and strengths, and inability to override validator failure.
 
@@ -320,7 +318,7 @@ Every ticket that changes visible behavior must update this table or add an equi
 | Action availability | Fixed controls plus current v1 step gate | Capability-, state-, safety-, and rule-checked typed actions | Accept alternate valid orders and reusable mechanics | v1 migration emits strict precedence constraints that reproduce the old sequence | Current architecture characterization and v1/v2 trace equivalence tests |
 | Scene composition | Titration scene imports fixed equipment and positions | Scene resolves exact equipment/visual adapters and serialized layout | Make setup authorable without one page per lab | Reuse current visuals as adapters; compare screenshots and interaction traces | Titration visual parity and adapter-resolution tests |
 | Instructions | Ordered steps are presentation and runtime control | Instruction sections reference rule IDs; constraints own correctness | Separate guidance from executable truth | Preserve v1 text and order after migration | Fixture snapshot and accessibility tests |
-| Coach | Triggered from experiment events and StudentModel | Same trigger policy plus rule/diagnosis context | Give adaptable, evidence-grounded guidance | Add optional request fields and preserve legacy fallback | Trigger/stay-silent tests and diagnosis-context tests |
+| Coach | Triggered from experiment events, StudentModel, and deterministic diagnoses | Same trigger policy plus exact rule/instruction/evidence/action context | Give adaptable, evidence-grounded guidance | Implemented as a strict optional v2 request/response beside the legacy adapter | Trigger/stay-silent, exact-context, invalid-reference, fallback, store, UI, and browser tests |
 | Student evaluation | Fixed rubric/retry response for static experiment | Assigned objectives/rubric and diagnoses feed structured evaluation | Assess authored labs consistently | Version request/response and retain deterministic fallback | Legacy evaluator fixtures plus authored-rubric evidence tests |
 | Replay | Titration action replay and experiment-version checkpoints | Normalized actions replay against pinned definition/model/adapter versions | Historical reproducibility across authored labs | Keep legacy replay adapter indefinitely for existing records | Old fixture replay plus migrated definition replay equality |
 | Authoring | Family-oriented agent draft generation | Human and agent share bounded domain commands | Make Level 2 usable without LLM and constrain Level 3 | Feature-flag prototype; migrate after command service exists | Command reducer tests, trace-suite execution, injection tests |
@@ -538,7 +536,7 @@ Persistence changes belong to later persistence-owned tickets and should be addi
 | Demo mode uses production paths | demo trace/reset/seed/e2e tests | Composer version fixture using the same generic runtime and validator |
 | Invalid/stale drafts cannot run | schema/hash/validation/runtime tests | v2 capability/model/rule/stale-hash/Judge-nonauthority tests |
 | Multiple valid orders are accepted | Missing; v1 intentionally rejects alternate order | Partial-order evaluator and two valid executable traces |
-| No family-only runtime dispatch | Missing | Static contract test and two serialized labs through one coordinator |
+| No family-only runtime dispatch | Passing at Level 2 | Static contract checks and two serialized labs execute through one coordinator; production-default promotion remains Phase 8 |
 
 ## Level 2 gate
 
@@ -556,6 +554,8 @@ Level 3 must not be claimed until tests and a non-LLM teacher/fixture path demon
 10. No runtime branch is selected solely from a family ID.
 
 The existing author prototype remains behind its current limited surface and must not be presented as completed Level 3 before this gate.
+
+**Gate result:** Passed on 2026-07-18. See [`lab-composer/level-2-gate.md`](lab-composer/level-2-gate.md) for criterion-by-criterion executable evidence. Phase 6 may build agent tools on the same domain commands; this does not make advisory AI an authority over validation.
 
 ## Rejected alternatives
 
@@ -641,14 +641,27 @@ Each row is one reviewable ticket unless split further during planning. A ticket
 | `LC2-401` | Equipment/material libraries and structured 2D setup editor | `LC2-400` | Add/remove/configure/bind/layout interaction and accessibility tests |
 | `LC2-402` | Constraint/instruction/objective/rubric editor and inspector | `LC2-400` | Multiple-order authoring, dependency, tolerance, safety, undo/edit tests |
 | `LC2-403` | Validation panel, compatibility status, preview/test mode, save/load adapter | `LC2-401`, `LC2-402` | Stale invalidation, hard-vs-advisory authority, preview gate, reload equality |
+| `LC2-403A` | Enforce exact authored action bounds throughout preview interaction and contain typed runtime errors in-simulation | `LC2-403` | Physical/manual exact-boundary tests, strict over-bound rejection, unavailable-action and state/trace non-mutation tests, exact-hash preview e2e |
+| `LC2-404` | Guided task-based Composer information architecture over the existing command and validation authorities | `LC2-403A` | Five-stage authoring path, undo/redo invalidation, issue navigation, save/load/preview parity, keyboard/screen-reader/common-viewport tests |
+| `LC2-405` | Atomic authoring transactions and deterministic dependency-aware removal inspection/resolution | `LC2-404` | Atomicity/rollback, one revision/invalidation, stale-plan rejection, exact objective/equipment/rule/material/action/instruction/rubric cascades |
+| `LC2-406` | Full-width accessible setup workspace with verified-slot equipment/material drag-and-drop and keyboard parity | `LC2-405` | Add/move/bind/replace/remove parity, incompatible/canceled drop non-mutation, one-entry Undo, compatibility-removal Preview block, viewport containment |
+| `LC2-407` | Graph-first typed workflow editor with equivalent accessible Outline and hash-neutral view state | `LC2-406` | Node/edge edit parity, self/duplicate/cycle/stale rejection, independent valid orders, view-state hash neutrality, reduced-motion/a11y tests |
+| `LC2-408` | Command-editable Define/Assess relationship workspaces and integrated dialog, persistence, authority, and accessibility hardening | `LC2-407` | Objective reassignment/removal, rubric/evidence relationships, validator-owned issues, saved-view compatibility, preview-return, end-to-end/a11y/viewport gates |
+| `LC2-408A` | Correct manual editing, teacher language, drag feedback, direct graph connections, dialog spacing, and current-support explanations | `LC2-408` | Input/page-error regression, pointer overlay/movement, handle/form edge parity, plain-language/path-absence, dialog/a11y, viewport, full-suite gates |
+| `LC2-409` | Make the actual 3D bench authorable through exact code-owned poses, linked assemblies, hard collision/alignment validation, and an accessible List | `LC2-408A` | Pose registry/snapshot, validation, student projection, pointer snap/cancel, atomic assembly Undo, List parity, viewport/performance/full-suite gates |
+
+Phase 4 is complete through `LC2-409`. Atomic removals, the pose-driven 3D setup bench and equivalent List, rule Map/List, relationship-driven Define/Assess stages, and separately persisted view state all use the shared command service. Teacher pointer coordinates remain transient; only exact registered placement IDs enter the strict draft. The teacher surface hides implementation identifiers, and validation/Preview authority continues to come exclusively from an exact current deterministic validation artifact. Phases 5–7 subsequently complete the second lab, capability author, evaluator, Judge loop, and diagnosis-aware Coach.
+
+`LC2-500`, `LC2-501`, and `LC2-501A` are complete. The shared registries and liquid mechanics include a family-neutral 10 mL volumetric pipette, 100 mL volumetric flask, 250 mL wash bottle, exact stock/diluent bindings, verified preparation-bench poses and lightweight visuals, plus typed conditioning, transfer, fill-to-mark, and mixing actions. The bounded concentration model consumes those conserved executed transfers, depends on the generic liquid-ledger/volume/mixing provider, emits exact registered concentration and volume observables, and rejects unsupported identities or setup cardinality without a family branch. Additive schema 2.1 now carries canonical bounded concentration initialization for an exact registered solution identity; shared commands, validation, safety binding, hashing, persistence, and the teacher inspector all use that contract. `LC2-502` is next.
 
 ### Phase 5 — Second adaptable lab
 
 | Ticket | Outcome | Depends on | Evidence |
 | --- | --- | --- | --- |
-| `LC2-500` | Register volumetric pipette/flask, wash bottle, reusable containers, and required transfer/fill/rinse mechanics | Phase 4 | Capability, mechanical, material/container, visual adapter tests |
+| `LC2-500` | Register volumetric pipette/flask, wash bottle, reusable containers, and required transfer/fill/rinse mechanics | `LC2-409` | Capability, mechanical, material/container, visual adapter tests |
 | `LC2-501` | Add bounded concentration/dilution model capability over the shared ledger/volume modules | `LC2-500` | Conservation, concentration, deterministic observables, boundary tests |
-| `LC2-502` | Serialized dilution/solution-preparation setup, constraints, rubric, and trace suite through the same runtime | `LC2-501` | Valid alternate orders, recoverable error, conceptual/terminal error, tolerance boundary, replay |
+| `LC2-501A` | Add bounded teacher-authored concentrations for exact registered aqueous identities through versioned material initialization | `LC2-501`, `LC2-408` | Schema migration, decimal/range/unit/safety/model validation, hash invalidation, save/load/replay, and authoring tests |
+| `LC2-502` | Serialized dilution/solution-preparation setup, constraints, rubric, and trace suite through the same runtime | `LC2-501A` | Valid alternate orders, recoverable error, conceptual/terminal error, tolerance boundary, replay |
 | `LC2-503` | Render and author the second lab through the same student scene and human composer | `LC2-502` | No new family runtime/page; setup save/load/preview; Chromebook and a11y checks |
 
 ### Phase 6 — Agent command layer and generation loop
@@ -672,7 +685,7 @@ Each row is one reviewable ticket unless split further during planning. A ticket
 
 | Ticket | Outcome | Depends on | Evidence |
 | --- | --- | --- | --- |
-| `LC2-800` | Immutable draft/approved definition version persistence and migrations | Phase 4 | RLS, idempotency, old row compatibility, immutable approval tests |
+| `LC2-800` | Immutable draft/approved definition version persistence and migrations | `LC2-408` | RLS, idempotency, old row compatibility, immutable approval tests |
 | `LC2-801` | Assignment/session pins, explicit teacher approval, and historical replay resolution | `LC2-800` | Stale/non-runnable rejection, legacy assignment adapter, exact historical replay |
 | `LC2-802` | End-to-end Composer/agent/assignment/student/evaluation flow for titration and dilution | `LC2-801`, Phase 7 | Browser trace suite, common viewports, a11y, deterministic fallback |
 | `LC2-803` | Chromebook performance, storage/event compactness, version retention, and operational documentation | `LC2-802` | Benchmarks and runbooks |
@@ -690,12 +703,12 @@ Each row is one reviewable ticket unless split further during planning. A ticket
 
 ## Current known limitations
 
-Phase 1 through `LC2-106` now includes the strict v2 parser, thirteen condition kinds, pure v1 migration, and version-aware hashing. Runtime behavior remains unchanged: Composer is titration-specific, ordered-step-driven, headless, and separate from the production student scene. The unversioned aliases, hard validator, runtime, and author prototype remain v1-only. There is no v2 hard validator, generic runtime/evaluator, visual teacher composer, second shared-runtime lab, Workflow Judge route, or immutable Composer assignment persistence yet.
+The strict v2 schema, validator, generic coordinator/evaluator, setup-driven student scene, human Composer, exact registered 3D arrangement layer, validated Preview path, second adaptable solution-preparation lab, bounded capability Author, authored-rubric evaluator, authority-separated bounded Workflow Judge loop, and diagnosis-aware Coach are implemented through `LC2-703`. Immutable Composer definition persistence, approval, and assignment remain Phase 8 work. Production student defaults remain on the legacy path while those later gates are incomplete.
 
 ## Registry, schema, migration, and documentation follow-ups
 
-- Schema: the strict v2 union and golden v1 migration fixture are implemented; `LC2-107` must resolve and validate them before any v2 runtime consumer is eligible.
-- Registries: capability, material, action, schema, adapter, and chemistry-module IDs must be added only with code-backed support and exact-resolution tests.
-- Migration: production use requires immutable definition versions, legacy checkpoint/demo adapters, and historical runtime retention.
+- Schema: no schema shape change or migration was needed for `LC2-409`; the existing strict draft remains authoritative and free of XYZ/rotation values.
+- Registries: `LC2-409` added `scene-placements.1.0.0` and advanced configurations to `configurations.2.4.0`, retaining `2.3.0` as historical provenance. `LC2-500` may add second-lab equipment, mechanics, and poses only with code-backed support and exact-resolution tests.
+- Migration: production use still requires immutable definition versions, legacy checkpoint/demo adapters, and historical runtime retention.
 - Documentation: update the detailed schema, component/action/material registry, state/runtime, author-agent, Judge, evaluator, persistence, demo, and extension guides in the ticket that changes each contract.
 - Roadmap: the old fixed-family implementation roadmap remains useful historical evidence but is superseded by the phased ticket plan above for runtime architecture.

@@ -6,7 +6,7 @@ Persistence work is additive and must preserve old static assignments, sessions,
 
 **Objective:** Add RLS-protected persistence for mutable teacher drafts and immutable approved validated definition versions with exact provenance.
 
-**Dependencies:** `LC2-403`; ideally after schemas stabilize through Phase 7.
+**Dependencies:** `LC2-408`; ideally after schemas stabilize through Phase 7.
 
 **Read first:** current Supabase migrations/RLS, persistence repositories, checkpoint API/idempotency, class/assignment schema, migration section of the playbook.
 
