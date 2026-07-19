@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   AnalyticsCards,
   formatPercent
@@ -9,6 +11,9 @@ import {
 } from "../../../../components/ui/ProductShell";
 import { computeClassAnalytics } from "../../../../lib/analytics/classAnalytics";
 import { loadClassAnalyticsInput } from "../../../../lib/analytics/server";
+import { hasPublicSupabaseEnvironment } from "../../../../lib/env";
+import { createLabAssignmentService } from "../../../../lib/persistence/labDefinitionApi";
+import { createServerSupabaseClient } from "../../../../lib/supabase/server";
 
 import styles from "../../../../components/teacher/TeacherDashboard.module.css";
 
@@ -33,17 +38,71 @@ export default async function ClassDashboardPage({
         ? student.completedSessions > 0
         : true
   );
+  const assignments = hasPublicSupabaseEnvironment()
+    ? await createLabAssignmentService()
+        .listForClass(classId)
+        .catch(() => [])
+    : [];
+  const classMeta = hasPublicSupabaseEnvironment()
+    ? await loadClassMeta(classId)
+    : null;
 
   return (
     <ProductShell width="wide">
       <PageHeader
         eyebrow="Teacher readiness"
-        title="Class readiness"
+        title={classMeta?.name ?? "Class readiness"}
         description="All values below are deterministic aggregates of persisted session evidence."
         backHref="/teacher/classes"
         backLabel="Classes"
       />
+      {classMeta && (
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <span aria-hidden="true">⌘</span>
+            <h2>Student join</h2>
+          </div>
+          <p className={styles.emptyText}>
+            Share join code <strong>{classMeta.joinCode}</strong> or link{" "}
+            <Link href={`/join?code=${encodeURIComponent(classMeta.joinCode)}`}>
+              /join?code={classMeta.joinCode}
+            </Link>
+            . Students land on Assignments after joining.
+          </p>
+        </section>
+      )}
       <AnalyticsCards analytics={analytics} />
+      <section className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <span aria-hidden="true">✎</span>
+          <h2>Assigned labs</h2>
+        </div>
+        {assignments.length ? (
+          <ul className={styles.insightList}>
+            {assignments.map((assignment) => {
+              const hash = assignment.labDefinitionCanonicalHash;
+              const shortHash = hash ? `${hash.slice(0, 18)}…` : "legacy static";
+              return (
+                <li key={assignment.id}>
+                  <strong>{assignment.title}</strong>
+                  {" — "}
+                  pinned {shortHash}
+                  {" · "}
+                  <Link href={`/assignments/${assignment.id}`}>
+                    Student start link
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className={styles.emptyText}>
+            No assignments yet. Approve a runnable lab in{" "}
+            <Link href="/lab-composer">Lab Composer</Link> and assign it to this
+            class.
+          </p>
+        )}
+      </section>
       <div className={styles.grid}>
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
@@ -100,4 +159,17 @@ export default async function ClassDashboardPage({
       </section>
     </ProductShell>
   );
+}
+
+async function loadClassMeta(
+  classId: string
+): Promise<{ name: string; joinCode: string } | null> {
+  const client = await createServerSupabaseClient();
+  const { data } = await client
+    .from("classes")
+    .select("name,join_code")
+    .eq("id", classId)
+    .maybeSingle();
+  if (!data?.join_code || !data.name) return null;
+  return { name: data.name, joinCode: data.join_code };
 }

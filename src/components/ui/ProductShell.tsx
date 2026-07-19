@@ -48,8 +48,12 @@ export function ProductHeader() {
         </Link>
         <nav className={styles.primaryNav} aria-label="Primary navigation">
           <Link href="/experiments">Experiments</Link>
+          <Link href="/assignments">Assignments</Link>
+          <Link href="/join">Join</Link>
+          <Link href="/lab-composer">Composer</Link>
           <Link href="/demo">Demo</Link>
           <Link href="/teacher/classes">Teacher</Link>
+          <Link href="/auth/sign-in">Sign in</Link>
         </nav>
       </div>
     </header>

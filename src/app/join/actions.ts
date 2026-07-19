@@ -12,11 +12,13 @@ export async function joinClass(formData: FormData) {
 
   const client = await createServerSupabaseClient();
   const { data: authData } = await client.auth.getUser();
-  if (!authData.user) redirect("/auth/sign-in");
+  if (!authData.user) {
+    redirect(`/auth/sign-in?next=${encodeURIComponent(`/join?code=${joinCode}`)}`);
+  }
 
   const { error } = await client.rpc("join_class_by_code", {
     requested_code: joinCode
   });
   if (error) throw new Error("Could not join the class.");
-  redirect("/experiments");
+  redirect("/assignments");
 }
