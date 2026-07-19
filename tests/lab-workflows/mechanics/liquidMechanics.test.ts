@@ -502,7 +502,7 @@ describe("reusable liquid equipment mechanics", () => {
     expect(getLiquidMechanicalAdapter("mechanical-adapter.burette.v1")).toBe(
       BURETTE_MECHANICAL_ADAPTER
     );
-    expect(LIQUID_MECHANICAL_ADAPTERS).toHaveLength(7);
+    expect(LIQUID_MECHANICAL_ADAPTERS).toHaveLength(9);
     expectMechanicsError(
       () => getLiquidMechanicalAdapter("mechanical-adapter.burette.closest.v1"),
       ERROR.unknownAdapter
@@ -512,6 +512,7 @@ describe("reusable liquid equipment mechanics", () => {
   it("contains no family dispatch, chemistry formulas, framework, browser, or network imports", () => {
     const files = [
       "adapters.ts",
+      "calorimetryAdapters.ts",
       "errors.ts",
       "index.ts",
       "registry.ts",

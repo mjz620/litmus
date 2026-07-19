@@ -136,7 +136,7 @@ export function createSkillRegistry(
   }
 
   return Object.freeze({
-    snapshotId: "skills.2.0.0" as const,
+    snapshotId: "skills.2.1.0" as const,
     list: () => entries,
     get,
     resolve,

@@ -110,6 +110,54 @@ export const MIX_SOLUTION_ACTION_PARAMETERS = [
   }
 ] as const satisfies readonly ActionParameterDefinition[];
 
+export const POUR_LIQUID_ACTION_PARAMETERS = [
+  {
+    key: "volumeML",
+    valueType: "number",
+    required: true,
+    unitId: "unit.ml.v1",
+    minimum: 0.01,
+    maximum: 100,
+    authoredMaximumKey: "maxPourVolumeML"
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
+export const MIX_CALORIMETER_ACTION_PARAMETERS = [
+  {
+    key: "inversions",
+    valueType: "number",
+    required: true,
+    minimum: 1,
+    maximum: 20
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
+export const SET_CALORIMETER_LID_ACTION_PARAMETERS = [
+  {
+    key: "lidState",
+    valueType: "enum",
+    required: true,
+    allowedValues: ["open", "closed"]
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
+export const PLACE_THERMOMETER_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+
+export const REMOVE_THERMOMETER_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+
+export const READ_TEMPERATURE_ACTION_PARAMETERS = [
+  {
+    key: "reportedC",
+    valueType: "number",
+    required: true,
+    unitId: "unit.celsius.v1",
+    minimum: -20,
+    maximum: 120
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
 export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
   {
     id: "schema.action_parameters.rinse.v1",
@@ -196,11 +244,61 @@ export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
     additionalProperties: false,
     actionIds: ["action.mix_solution.v1"],
     parameters: MIX_SOLUTION_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.pour_liquid.v1",
+    version: "1.0.0",
+    description:
+      "Bounded positive pour volume from a registered liquid source into a calorimeter.",
+    additionalProperties: false,
+    actionIds: ["action.pour_liquid.v1"],
+    parameters: POUR_LIQUID_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.mix_calorimeter.v1",
+    version: "1.0.0",
+    description: "Bounded positive count of coffee-cup calorimeter mix strokes.",
+    additionalProperties: false,
+    actionIds: ["action.mix_calorimeter.v1"],
+    parameters: MIX_CALORIMETER_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.set_calorimeter_lid.v1",
+    version: "1.0.0",
+    description: "Exact open or closed lid state for a coffee-cup calorimeter.",
+    additionalProperties: false,
+    actionIds: ["action.set_calorimeter_lid.v1"],
+    parameters: SET_CALORIMETER_LID_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.place_thermometer.v1",
+    version: "1.0.0",
+    description: "No authored parameters; placement is exact equipment pairing.",
+    additionalProperties: false,
+    actionIds: ["action.place_thermometer.v1"],
+    parameters: PLACE_THERMOMETER_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.remove_thermometer.v1",
+    version: "1.0.0",
+    description: "No authored parameters; removal uses the current probe host.",
+    additionalProperties: false,
+    actionIds: ["action.remove_thermometer.v1"],
+    parameters: REMOVE_THERMOMETER_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.read_temperature.v1",
+    version: "1.0.0",
+    description:
+      "Bounded student-reported Celsius reading at the registered thermometer increment.",
+    additionalProperties: false,
+    actionIds: ["action.read_temperature.v1"],
+    parameters: READ_TEMPERATURE_ACTION_PARAMETERS
   }
 ] as const satisfies readonly ActionParameterSchemaEntry[];
 
 export const actionParameterSchemaRegistry = createSupportingRegistry(
   "action parameter schema",
-  "action-parameter-schemas.2.0.0",
+  "action-parameter-schemas.2.1.0",
   ACTION_PARAMETER_SCHEMA_ENTRIES
 );

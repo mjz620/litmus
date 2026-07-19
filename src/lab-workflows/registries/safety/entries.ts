@@ -36,5 +36,17 @@ export const SAFETY_REGISTRY_ENTRIES = [
       "Wear assigned eye protection and follow teacher instructions when preparing solutions in a physical lab.",
     teacherFacingText:
       "This verified virtual preparation uses registered aqueous materials only and does not replace local SDS review or laboratory safety instruction."
+  },
+  {
+    id: "safety.virtual_calorimetry_ppe_notice.v1",
+    version: "1.0.0",
+    severity: "required",
+    availability: "verified",
+    prohibited: false,
+    compatibleFamilyIds: [],
+    studentFacingText:
+      "Wear assigned eye protection and treat hot and cold water as real thermal hazards in a physical lab.",
+    teacherFacingText:
+      "This verified virtual coffee-cup calorimetry path uses registered aqueous materials only and does not replace local laboratory safety instruction."
   }
 ] as const satisfies readonly SafetyRegistryEntry[];

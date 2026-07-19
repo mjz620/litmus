@@ -195,5 +195,63 @@ export const EVENT_TYPE_REGISTRY_ENTRIES = [
     observationKeys: ["inversions", "mixCount"],
     emittedSemanticFlags: [],
     compatibleEngineIds: []
+  },
+  {
+    id: "event.pour_liquid.v1",
+    version: "1.0.0",
+    semanticEventType: "pour_liquid",
+    workflowReferenceId: "event.pour_liquid.v1",
+    observationKeys: [
+      "volumeML",
+      "sourceEquipmentInstanceId",
+      "targetEquipmentInstanceId"
+    ],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.mix_calorimeter.v1",
+    version: "1.0.0",
+    semanticEventType: "mix_calorimeter",
+    workflowReferenceId: "event.mix_calorimeter.v1",
+    observationKeys: ["inversions"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.set_calorimeter_lid.v1",
+    version: "1.0.0",
+    semanticEventType: "set_calorimeter_lid",
+    workflowReferenceId: "event.set_calorimeter_lid.v1",
+    observationKeys: ["lidClosed"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.place_thermometer.v1",
+    version: "1.0.0",
+    semanticEventType: "place_thermometer",
+    workflowReferenceId: "event.place_thermometer.v1",
+    observationKeys: ["thermometerInstanceId", "calorimeterInstanceId"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.remove_thermometer.v1",
+    version: "1.0.0",
+    semanticEventType: "remove_thermometer",
+    workflowReferenceId: "event.remove_thermometer.v1",
+    observationKeys: ["thermometerInstanceId", "calorimeterInstanceId"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.read_temperature.v1",
+    version: "1.0.0",
+    semanticEventType: "read_temperature",
+    workflowReferenceId: "event.read_temperature.v1",
+    observationKeys: ["reportedC"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
   }
 ] as const satisfies readonly EventTypeRegistryEntry[];

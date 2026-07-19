@@ -1,5 +1,6 @@
 export type SafetyRegistryId =
   | "safety.no_open_flame_mvp.v1"
+  | "safety.virtual_calorimetry_ppe_notice.v1"
   | "safety.virtual_titration_ppe_notice.v1"
   | "safety.virtual_solution_preparation_ppe_notice.v1";
 

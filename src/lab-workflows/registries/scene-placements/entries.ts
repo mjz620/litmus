@@ -196,5 +196,61 @@ export const VERIFIED_SCENE_PLACEMENT_ENTRIES = [
     footprintCenterXZ: [-0.3, -0.08],
     footprintHalfExtentsXZ: [0.11, 0.11],
     rotationOrder: 0
+  },
+  {
+    id: "placement.calorimeter_center.v1",
+    version: "1.0.0",
+    displayName: "Center coffee-cup calorimeter",
+    equipmentDefinitionId: "component.calorimeter.v1",
+    visualAdapterDefinitionId: "visual-adapter.calorimeter.v1",
+    anchorId: "anchor.calorimetry.center.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0, 0.18],
+    footprintHalfExtentsXZ: [0.12, 0.12],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.calorimetry_thermometer.v1",
+    version: "1.0.0",
+    displayName: "Calorimetry thermometer station",
+    equipmentDefinitionId: "component.thermometer.v1",
+    visualAdapterDefinitionId: "visual-adapter.thermometer.v1",
+    anchorId: "anchor.calorimetry.thermometer.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0.22, 0.1],
+    footprintHalfExtentsXZ: [0.04, 0.04],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.calorimetry_wash_left.v1",
+    version: "1.0.0",
+    displayName: "Calorimetry distilled-water station",
+    equipmentDefinitionId: "component.wash_bottle.v1",
+    visualAdapterDefinitionId: "visual-adapter.wash_bottle.v1",
+    anchorId: "anchor.calorimetry.wash.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [-0.35, -0.05],
+    footprintHalfExtentsXZ: [0.11, 0.11],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.calorimetry_stock_right.v1",
+    version: "1.0.0",
+    displayName: "Calorimetry aqueous-stock station",
+    equipmentDefinitionId: "component.reagent_bottle.v1",
+    visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
+    anchorId: "anchor.calorimetry.stock.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0.45, 0.12],
+    footprintHalfExtentsXZ: [0.1, 0.1],
+    rotationOrder: 0
   }
 ] as const satisfies readonly VerifiedScenePlacement[];

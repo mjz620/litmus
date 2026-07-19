@@ -24,7 +24,10 @@ describe("capability registry", () => {
       "capability.mix.v1",
       "capability.mount.v1",
       "capability.observe_color.v1",
-      "capability.fill_to_mark.v1"
+      "capability.fill_to_mark.v1",
+      "capability.measure_temperature.v1",
+      "capability.seal_lid.v1",
+      "capability.accept_probe.v1"
     ]);
     expect(CHEMISTRY_CAPABILITY_IDS).toEqual([
       "chemistry.material_ledger.v1",
@@ -33,9 +36,10 @@ describe("capability registry", () => {
       "chemistry.concentration_dilution.v1",
       "chemistry.acid_base_equilibrium.v1",
       "chemistry.indicator_response.v1",
-      "chemistry.instrument_observables.v1"
+      "chemistry.instrument_observables.v1",
+      "chemistry.thermal_energy.v1"
     ]);
-    expect(capabilityRegistry.snapshotId).toBe("capabilities.2.0.0");
+    expect(capabilityRegistry.snapshotId).toBe("capabilities.2.2.0");
     expect(capabilityRegistrySnapshot.entries).toBe(capabilityRegistry.list());
     expectTypeOf<EquipmentCapabilityId>().not.toEqualTypeOf<ChemistryCapabilityId>();
   });

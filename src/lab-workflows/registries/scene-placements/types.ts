@@ -17,7 +17,11 @@ export type ScenePlacementId =
   | "placement.solution_pipette_stand.v1"
   | "placement.solution_flask_center.v1"
   | "placement.solution_stock_right.v1"
-  | "placement.solution_wash_left.v1";
+  | "placement.solution_wash_left.v1"
+  | "placement.calorimeter_center.v1"
+  | "placement.calorimetry_thermometer.v1"
+  | "placement.calorimetry_wash_left.v1"
+  | "placement.calorimetry_stock_right.v1";
 
 export type SceneAssemblyId = "assembly.dispense_station.v1";
 export type SceneAnchorId =
@@ -30,7 +34,11 @@ export type SceneAnchorId =
   | "anchor.solution.pipette.v1"
   | "anchor.solution.flask.v1"
   | "anchor.solution.stock.v1"
-  | "anchor.solution.wash.v1";
+  | "anchor.solution.wash.v1"
+  | "anchor.calorimetry.center.v1"
+  | "anchor.calorimetry.thermometer.v1"
+  | "anchor.calorimetry.wash.v1"
+  | "anchor.calorimetry.stock.v1";
 
 export type SceneVector3 = readonly [number, number, number];
 export type SceneVector2 = readonly [number, number];
@@ -62,4 +70,6 @@ export interface ResolvedEquipmentPose {
   readonly assemblyId: SceneAssemblyId | null;
   readonly translation: SceneVector3;
   readonly yawRadians: number;
+  /** World-space footprint center used to seat local-origin native meshes. */
+  readonly footprintCenterXZ: SceneVector2;
 }

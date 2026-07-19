@@ -197,6 +197,28 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "component_config.calorimeter.coffee_cup_100ml.v1",
+    "component_configuration",
+    "Verified 100 mL coffee-cup calorimeter configuration.",
+    {
+      compatibleComponentIds: ["component.calorimeter.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.calorimeter.v1"
+    }
+  ),
+  entry(
+    "component_config.thermometer.digital_0_1c.v1",
+    "component_configuration",
+    "Verified digital thermometer configuration with 0.1 °C reporting.",
+    {
+      compatibleComponentIds: ["component.thermometer.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.thermometer.v1"
+    }
+  ),
+  entry(
     "placement.bench_center_stand.v1",
     "placement",
     "Burette stand placement backed by the current titration bench.",
@@ -343,6 +365,50 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "placement.calorimeter_center.v1",
+    "placement",
+    "Coffee-cup calorimeter at the verified calorimetry bench center.",
+    {
+      compatibleComponentIds: ["component.calorimeter.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
+    "placement.calorimetry_thermometer.v1",
+    "placement",
+    "Digital thermometer beside the verified coffee-cup calorimeter.",
+    {
+      compatibleComponentIds: ["component.thermometer.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
+    "placement.calorimetry_wash_left.v1",
+    "placement",
+    "Distilled-water supply on the verified calorimetry bench.",
+    {
+      compatibleComponentIds: ["component.wash_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
+    "placement.calorimetry_stock_right.v1",
+    "placement",
+    "Registered aqueous stock bottle on the verified calorimetry bench.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
     "action_params.burette_reading.v1",
     "action_parameters",
     "Burette reading entry bounded to the registered capacity and precision.",
@@ -389,6 +455,33 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Conserved liquid volume in the bounded volumetric flask, reported to 0.000001 mL.",
     {
       adapterKey: "solutionVolumeML",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
+    "observable.calorimeter_temperature_c.v1",
+    "observable",
+    "Equilibrium coffee-cup calorimeter temperature in Celsius from conserved thermal energy.",
+    {
+      adapterKey: "calorimeterTemperatureC",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
+    "observable.calorimeter_heat_content_j.v1",
+    "observable",
+    "Heat content of calorimeter liquid relative to 0 °C using registered water c and density.",
+    {
+      adapterKey: "calorimeterHeatContentJ",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
+    "observable.calorimeter_volume_ml.v1",
+    "observable",
+    "Conserved liquid volume in the coffee-cup calorimeter.",
+    {
+      adapterKey: "calorimeterVolumeML",
       compatibleFamilyIds: []
     }
   ),
@@ -467,6 +560,12 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   ),
   entry("unit.ml.v1", "unit", "Milliliter volume unit."),
   entry("unit.drop.v1", "unit", "Bounded indicator drop-count unit."),
+  entry("unit.celsius.v1", "unit", "Celsius temperature unit.", {
+    compatibleFamilyIds: []
+  }),
+  entry("unit.joule.v1", "unit", "Joule energy unit.", {
+    compatibleFamilyIds: []
+  }),
   entry("unit.mol_per_l.v1", "unit", "Moles of solute per liter of solution.", {
     compatibleFamilyIds: []
   }),
@@ -474,6 +573,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "schema.equipment_configuration.burette.v1",
     "equipment",
     "Strict metadata contract for registered burette configurations."
+  ),
+  schema(
+    "schema.equipment_configuration.calorimeter.v1",
+    "equipment",
+    "Strict metadata contract for registered coffee-cup calorimeter configurations."
   ),
   schema(
     "schema.equipment_configuration.erlenmeyer_flask.v1",
@@ -489,6 +593,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "schema.equipment_configuration.reagent_bottle.v1",
     "equipment",
     "Strict metadata contract for registered reagent-bottle configurations."
+  ),
+  schema(
+    "schema.equipment_configuration.thermometer.v1",
+    "equipment",
+    "Strict metadata contract for registered digital-thermometer configurations."
   ),
   schema(
     "schema.equipment_configuration.volumetric_pipette.v1",
@@ -514,6 +623,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "schema.layout_configuration.solution_preparation_bench.v1",
     "layout",
     "Strict metadata contract for bounded solution-preparation placements."
+  ),
+  schema(
+    "schema.layout_configuration.calorimetry_bench.v1",
+    "layout",
+    "Strict metadata contract for bounded coffee-cup calorimetry placements."
   ),
   schema(
     "schema.material_initialization.aqueous_solution.v1",
@@ -558,6 +672,12 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     ["reagent.hydrochloric_acid_0_100m.v1"]
   ),
   quantity(
+    "quantity-preset.hydrochloric_acid_solution_25ml.v1",
+    25,
+    "unit.ml.v1",
+    ["reagent.hydrochloric_acid_aqueous.v1"]
+  ),
+  quantity(
     "quantity-preset.sodium_hydroxide_0_100m_25ml.v1",
     25,
     "unit.ml.v1",
@@ -569,6 +689,19 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "unit.ml.v1",
     ["reagent.sodium_hydroxide_0_100m.v1"]
   ),
+  quantity(
+    "quantity-preset.sodium_hydroxide_solution_25ml.v1",
+    25,
+    "unit.ml.v1",
+    ["reagent.sodium_hydroxide_aqueous.v1"]
+  ),
+  quantity(
+    "quantity-preset.sodium_hydroxide_solution_50ml.v1",
+    50,
+    "unit.ml.v1",
+    ["reagent.sodium_hydroxide_aqueous.v1"]
+  ),
+
   quantity("quantity-preset.phenolphthalein_1_drop.v1", 1, "unit.drop.v1", [
     "reagent.phenolphthalein.v1"
   ]),
@@ -593,6 +726,30 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   quantity("quantity-preset.distilled_water_250ml.v1", 250, "unit.ml.v1", [
     "reagent.distilled_water.v1"
   ]),
+  quantity(
+    "quantity-preset.distilled_water_cold_20c_50ml.v1",
+    50,
+    "unit.ml.v1",
+    ["reagent.distilled_water_cold_20c.v1"]
+  ),
+  quantity(
+    "quantity-preset.distilled_water_cold_20c_100ml.v1",
+    100,
+    "unit.ml.v1",
+    ["reagent.distilled_water_cold_20c.v1"]
+  ),
+  quantity(
+    "quantity-preset.distilled_water_hot_60c_50ml.v1",
+    50,
+    "unit.ml.v1",
+    ["reagent.distilled_water_hot_60c.v1"]
+  ),
+  quantity(
+    "quantity-preset.distilled_water_hot_60c_100ml.v1",
+    100,
+    "unit.ml.v1",
+    ["reagent.distilled_water_hot_60c.v1"]
+  ),
   quantity("quantity-preset.sodium_chloride_1_000m_50ml.v1", 50, "unit.ml.v1", [
     "reagent.sodium_chloride_1_000m.v1"
   ]),

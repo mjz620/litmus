@@ -9,6 +9,11 @@ export {
   currentProjectedVolumeML
 } from "./adapters";
 export {
+  CALORIMETER_MECHANICAL_ADAPTER,
+  THERMOMETER_MECHANICAL_ADAPTER,
+  currentCalorimeterVolumeML
+} from "./calorimetryAdapters";
+export {
   LIQUID_MECHANICS_ERROR_CODES,
   LiquidMechanicsError,
   type LiquidMechanicsErrorCode

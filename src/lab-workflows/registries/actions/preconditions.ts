@@ -78,11 +78,18 @@ export const EQUIPMENT_PRECONDITION_ENTRIES = [
     description: "The volumetric flask contains liquid before mixing.",
     equipmentRole: "source",
     stateSchemaId: "schema.equipment_state.volumetric_flask.v1"
+  },
+  {
+    id: "precondition.equipment.calorimeter_has_liquid.v1",
+    version: "1.0.0",
+    description: "The calorimeter contains liquid before mixing.",
+    equipmentRole: "source",
+    stateSchemaId: "schema.equipment_state.calorimeter.v1"
   }
 ] as const satisfies readonly EquipmentPreconditionEntry[];
 
 export const equipmentPreconditionRegistry = createSupportingRegistry(
   "equipment precondition",
-  "equipment-preconditions.2.0.0",
+  "equipment-preconditions.2.1.0",
   EQUIPMENT_PRECONDITION_ENTRIES
 );

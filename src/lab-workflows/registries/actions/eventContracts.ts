@@ -63,11 +63,47 @@ export const ACTION_EVENT_CONTRACT_ENTRIES = [
     version: "1.0.0",
     description: "Bounded mechanical solution-mixing event contract.",
     eventTypeIds: ["event.mix_solution.v1"]
+  },
+  {
+    id: "event-contract.pour_liquid.v1",
+    version: "1.0.0",
+    description: "Bounded pour into a coffee-cup calorimeter event contract.",
+    eventTypeIds: ["event.pour_liquid.v1"]
+  },
+  {
+    id: "event-contract.mix_calorimeter.v1",
+    version: "1.0.0",
+    description: "Bounded coffee-cup calorimeter mix event contract.",
+    eventTypeIds: ["event.mix_calorimeter.v1"]
+  },
+  {
+    id: "event-contract.set_calorimeter_lid.v1",
+    version: "1.0.0",
+    description: "Coffee-cup calorimeter lid open/close event contract.",
+    eventTypeIds: ["event.set_calorimeter_lid.v1"]
+  },
+  {
+    id: "event-contract.place_thermometer.v1",
+    version: "1.0.0",
+    description: "Thermometer placement into a calorimeter event contract.",
+    eventTypeIds: ["event.place_thermometer.v1"]
+  },
+  {
+    id: "event-contract.remove_thermometer.v1",
+    version: "1.0.0",
+    description: "Thermometer removal from a calorimeter event contract.",
+    eventTypeIds: ["event.remove_thermometer.v1"]
+  },
+  {
+    id: "event-contract.read_temperature.v1",
+    version: "1.0.0",
+    description: "Student-reported thermometer reading event contract.",
+    eventTypeIds: ["event.read_temperature.v1"]
   }
 ] as const satisfies readonly ActionEventContractEntry[];
 
 export const actionEventContractRegistry = createSupportingRegistry(
   "action event contract",
-  "event-contracts.2.0.0",
+  "event-contracts.2.1.0",
   ACTION_EVENT_CONTRACT_ENTRIES
 );

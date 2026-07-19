@@ -42,26 +42,66 @@ import { createSchemaValidWorkflowDraft } from "../../schema/fixtures";
 describe("LC2-102 material profiles", () => {
   it("evolves the exact reagent entries through one material facade", () => {
     expect(materialRegistry).toBe(reagentRegistry);
-    expect(reagentRegistry.snapshotId).toBe("reagents.4.0.0");
+    expect(reagentRegistry.snapshotId).toBe("reagents.5.1.0");
     expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual([
       "reagents.1.0.0",
       "reagents.2.0.0",
       "reagents.2.1.0",
       "reagents.2.2.0",
       "reagents.3.0.0",
-      "reagents.3.1.0"
+      "reagents.3.1.0",
+      "reagents.4.0.0",
+      "reagents.5.0.0"
     ]);
     expect(materialRegistry.list().map(({ id }) => id)).toEqual([
       "reagent.hydrochloric_acid_0_100m.v1",
       "reagent.sodium_hydroxide_0_100m.v1",
+      "reagent.hydrochloric_acid_aqueous.v1",
+      "reagent.sodium_hydroxide_aqueous.v1",
       "reagent.phenolphthalein.v1",
       "reagent.bromothymol_blue.v1",
       "reagent.methyl_orange.v1",
       "reagent.distilled_water.v1",
+      "reagent.distilled_water_cold_20c.v1",
+      "reagent.distilled_water_hot_60c.v1",
       "reagent.sodium_chloride_aqueous.v1",
       "reagent.sodium_chloride_1_000m.v1"
     ]);
     expect(materialRegistry.has("reagent.stock_solution.v1")).toBe(false);
+  });
+
+  it("separates authorable aqueous acid/base identity from fixed 0.100 M profiles", () => {
+    expect(
+      materialRegistry.get("reagent.hydrochloric_acid_aqueous.v1")
+    ).toMatchObject({
+      displayName: "Hydrochloric acid solution",
+      phase: "aqueous_solution",
+      concentrationM: null,
+      availability: "verified",
+      concentrationAuthoring: {
+        configurationSchemaId:
+          "schema.material_initialization.bounded_concentration.v1",
+        unitId: "unit.mol_per_l.v1",
+        minimumDecimalValue: "0.05",
+        maximumDecimalValue: "0.25",
+        maximumDecimalPlaces: 4,
+        requiredChemistryCapabilityId: "chemistry.acid_base_equilibrium.v1",
+        safetyPolicyIds: ["safety.virtual_titration_ppe_notice.v1"]
+      }
+    });
+    expect(
+      materialRegistry.get("reagent.sodium_hydroxide_aqueous.v1")
+    ).toMatchObject({
+      concentrationM: null,
+      concentrationAuthoring: {
+        minimumDecimalValue: "0.05",
+        maximumDecimalValue: "0.25",
+        requiredChemistryCapabilityId: "chemistry.acid_base_equilibrium.v1"
+      }
+    });
+    expect(
+      materialRegistry.get("reagent.hydrochloric_acid_0_100m.v1")
+    ).not.toHaveProperty("concentrationAuthoring");
   });
 
   it("separates authorable sodium chloride identity from its bounded initialization", () => {
@@ -113,10 +153,14 @@ describe("LC2-102 material profiles", () => {
   });
 
   it("preserves every v1 scientific, amount, role, container, and safety value", () => {
-    const legacyProjection = materialRegistry
-      .list()
-      .slice(0, 3)
-      .map((entry) => ({
+    const legacyIds = [
+      "reagent.hydrochloric_acid_0_100m.v1",
+      "reagent.sodium_hydroxide_0_100m.v1",
+      "reagent.phenolphthalein.v1"
+    ] as const;
+    const legacyProjection = legacyIds.map((id) => {
+      const entry = materialRegistry.get(id);
+      return {
         id: entry.id,
         version: entry.version,
         displayName: entry.displayName,
@@ -129,7 +173,8 @@ describe("LC2-102 material profiles", () => {
         requestedAmountLimits: entry.requestedAmountLimits,
         safetyConstraintIds: entry.safetyConstraintIds,
         availability: entry.availability
-      }));
+      };
+    });
 
     expect(legacyProjection).toEqual([
       {
@@ -397,7 +442,7 @@ describe("LC2-102 material profiles", () => {
       ENDPOINT_CONTROL_PRELAB_EXPECTED_HASH
     );
     expect(outcome.validation.registrySnapshotIds.reagents).toBe(
-      "reagents.4.0.0"
+      "reagents.5.1.0"
     );
   });
 

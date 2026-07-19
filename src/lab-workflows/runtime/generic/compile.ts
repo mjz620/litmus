@@ -251,6 +251,7 @@ function compileMaterials(
       materialVersion: profile.version,
       materialPhase: profile.phase,
       initialConcentrationM,
+      initialTemperatureC: profile.initialTemperatureC,
       initializationPresetSchemaId: profile.initializationPresetSchemaId,
       providedChemistryCapabilityIds: [
         ...profile.providedChemistryCapabilityIds

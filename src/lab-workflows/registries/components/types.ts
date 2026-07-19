@@ -10,7 +10,9 @@ export type ComponentRegistryId =
   | "component.indicator_bottle.v1"
   | "component.volumetric_pipette.v1"
   | "component.volumetric_flask.v1"
-  | "component.wash_bottle.v1";
+  | "component.wash_bottle.v1"
+  | "component.calorimeter.v1"
+  | "component.thermometer.v1";
 
 export type EquipmentStateSchemaId =
   | "schema.equipment_state.burette.v1"
@@ -19,7 +21,9 @@ export type EquipmentStateSchemaId =
   | "schema.equipment_state.indicator_bottle.v1"
   | "schema.equipment_state.volumetric_pipette.v1"
   | "schema.equipment_state.volumetric_flask.v1"
-  | "schema.equipment_state.wash_bottle.v1";
+  | "schema.equipment_state.wash_bottle.v1"
+  | "schema.equipment_state.calorimeter.v1"
+  | "schema.equipment_state.thermometer.v1";
 
 export type ComponentConfigurationPresetId =
   | "component_config.burette.50ml.v1"
@@ -29,7 +33,9 @@ export type ComponentConfigurationPresetId =
   | "component_config.reagent_bottle.stock_solution.v1"
   | "component_config.volumetric_pipette.10ml.v1"
   | "component_config.volumetric_flask.100ml.v1"
-  | "component_config.wash_bottle.250ml.v1";
+  | "component_config.wash_bottle.250ml.v1"
+  | "component_config.calorimeter.coffee_cup_100ml.v1"
+  | "component_config.thermometer.digital_0_1c.v1";
 
 export type VisualAdapterDefinitionId =
   | "visual-adapter.burette.v1"
@@ -38,7 +44,9 @@ export type VisualAdapterDefinitionId =
   | "visual-adapter.indicator_bottle.v1"
   | "visual-adapter.volumetric_pipette.v1"
   | "visual-adapter.volumetric_flask.v1"
-  | "visual-adapter.wash_bottle.v1";
+  | "visual-adapter.wash_bottle.v1"
+  | "visual-adapter.calorimeter.v1"
+  | "visual-adapter.thermometer.v1";
 
 export type MechanicalAdapterId =
   | "mechanical-adapter.burette.v1"
@@ -47,7 +55,9 @@ export type MechanicalAdapterId =
   | "mechanical-adapter.indicator_bottle.v1"
   | "mechanical-adapter.volumetric_pipette.v1"
   | "mechanical-adapter.volumetric_flask.v1"
-  | "mechanical-adapter.wash_bottle.v1";
+  | "mechanical-adapter.wash_bottle.v1"
+  | "mechanical-adapter.calorimeter.v1"
+  | "mechanical-adapter.thermometer.v1";
 
 export type ComponentStateValueType =
   | "boolean"
@@ -80,8 +90,9 @@ export interface MeasurementCapability {
     | "approximate_volume"
     | "volumetric_delivery"
     | "volumetric_transfer"
-    | "volumetric_containment";
-  readonly unitId: "unit.ml.v1";
+    | "volumetric_containment"
+    | "temperature";
+  readonly unitId: "unit.ml.v1" | "unit.celsius.v1";
   readonly capacityML: number;
   readonly graduationIncrementML: number;
   readonly reportIncrementML: number;
@@ -117,8 +128,10 @@ export interface ComponentRegistryEntry {
    */
   readonly visualAdapterId:
     | "Burette"
+    | "Calorimeter"
     | "ErlenmeyerFlask"
     | "IndicatorShelf"
+    | "Thermometer"
     | "WashStation"
     | "VolumetricPipette"
     | "VolumetricFlask"
@@ -130,7 +143,7 @@ export interface ComponentRegistryEntry {
 }
 
 export interface ComponentRegistrySnapshot {
-  readonly snapshotId: "components.3.1.0";
+  readonly snapshotId: "components.3.3.0";
   readonly entries: readonly ComponentRegistryEntry[];
 }
 
@@ -138,7 +151,9 @@ export const LEGACY_COMPONENT_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "components.1.0.0",
   "components.2.0.0",
   "components.2.1.0",
-  "components.3.0.0"
+  "components.3.0.0",
+  "components.3.1.0",
+  "components.3.2.0"
 ] as const);
 
 export type ComponentRegistryErrorCode =

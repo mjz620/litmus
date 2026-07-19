@@ -10,11 +10,17 @@ export type ActionRegistryId =
   | "action.dispense.v1"
   | "action.fill.v1"
   | "action.fill_to_mark.v1"
+  | "action.mix_calorimeter.v1"
   | "action.mix_solution.v1"
+  | "action.place_thermometer.v1"
+  | "action.pour_liquid.v1"
+  | "action.read_temperature.v1"
   | "action.read_volume.v1"
+  | "action.remove_thermometer.v1"
   | "action.rinse.v1"
   | "action.rinse_transfer_device.v1"
   | "action.select_indicator.v1"
+  | "action.set_calorimeter_lid.v1"
   | "action.transfer_liquid.v1";
 
 export type ActionParameterSchemaId =
@@ -22,17 +28,24 @@ export type ActionParameterSchemaId =
   | "schema.action_parameters.dispense.v1"
   | "schema.action_parameters.fill.v1"
   | "schema.action_parameters.fill_to_mark.v1"
+  | "schema.action_parameters.mix_calorimeter.v1"
   | "schema.action_parameters.mix_solution.v1"
+  | "schema.action_parameters.place_thermometer.v1"
+  | "schema.action_parameters.pour_liquid.v1"
+  | "schema.action_parameters.read_temperature.v1"
   | "schema.action_parameters.read_volume.v1"
+  | "schema.action_parameters.remove_thermometer.v1"
   | "schema.action_parameters.rinse.v1"
   | "schema.action_parameters.rinse_transfer_device.v1"
   | "schema.action_parameters.select_indicator.v1"
+  | "schema.action_parameters.set_calorimeter_lid.v1"
   | "schema.action_parameters.transfer_liquid.v1";
 
 export type EquipmentPreconditionId =
   | "precondition.equipment.burette_capacity_available.v1"
   | "precondition.equipment.burette_empty_before_rinse.v1"
   | "precondition.equipment.burette_has_liquid.v1"
+  | "precondition.equipment.calorimeter_has_liquid.v1"
   | "precondition.equipment.dispense_within_available_volume.v1"
   | "precondition.equipment.indicator_added.v1"
   | "precondition.equipment.indicator_not_added.v1"
@@ -53,11 +66,17 @@ export type ActionEventContractId =
   | "event-contract.add_titrant.v1"
   | "event-contract.fill_burette.v1"
   | "event-contract.fill_to_mark.v1"
+  | "event-contract.mix_calorimeter.v1"
   | "event-contract.mix_solution.v1"
+  | "event-contract.place_thermometer.v1"
+  | "event-contract.pour_liquid.v1"
   | "event-contract.read_meniscus.v1"
+  | "event-contract.read_temperature.v1"
+  | "event-contract.remove_thermometer.v1"
   | "event-contract.rinse_burette.v1"
   | "event-contract.rinse_transfer_device.v1"
   | "event-contract.select_indicator.v1"
+  | "event-contract.set_calorimeter_lid.v1"
   | "event-contract.transfer_liquid.v1";
 
 export type ActionBehavior = "continuous" | "discrete";
@@ -66,7 +85,7 @@ export interface ActionParameterDefinition {
   readonly key: string;
   readonly valueType: "enum" | "number" | "string";
   readonly required: boolean;
-  readonly unitId?: "unit.ml.v1";
+  readonly unitId?: "unit.celsius.v1" | "unit.ml.v1";
   readonly minimum?: number;
   readonly maximum?: number;
   readonly allowedValues?: readonly string[];

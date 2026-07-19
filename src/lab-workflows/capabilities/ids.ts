@@ -12,7 +12,10 @@ export const EQUIPMENT_CAPABILITY_IDS = Object.freeze([
   "capability.mix.v1",
   "capability.mount.v1",
   "capability.observe_color.v1",
-  "capability.fill_to_mark.v1"
+  "capability.fill_to_mark.v1",
+  "capability.measure_temperature.v1",
+  "capability.seal_lid.v1",
+  "capability.accept_probe.v1"
 ] as const);
 
 export type EquipmentCapabilityId = (typeof EQUIPMENT_CAPABILITY_IDS)[number];
@@ -28,7 +31,8 @@ export const CHEMISTRY_CAPABILITY_IDS = Object.freeze([
   "chemistry.concentration_dilution.v1",
   "chemistry.acid_base_equilibrium.v1",
   "chemistry.indicator_response.v1",
-  "chemistry.instrument_observables.v1"
+  "chemistry.instrument_observables.v1",
+  "chemistry.thermal_energy.v1"
 ] as const);
 
 export type ChemistryCapabilityId = (typeof CHEMISTRY_CAPABILITY_IDS)[number];

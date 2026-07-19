@@ -12,10 +12,14 @@ import type { SafetyRegistryId } from "../safety/types";
 export type ReagentRegistryId =
   | "reagent.bromothymol_blue.v1"
   | "reagent.distilled_water.v1"
+  | "reagent.distilled_water_cold_20c.v1"
+  | "reagent.distilled_water_hot_60c.v1"
   | "reagent.hydrochloric_acid_0_100m.v1"
+  | "reagent.hydrochloric_acid_aqueous.v1"
   | "reagent.methyl_orange.v1"
   | "reagent.phenolphthalein.v1"
   | "reagent.sodium_hydroxide_0_100m.v1"
+  | "reagent.sodium_hydroxide_aqueous.v1"
   | "reagent.sodium_chloride_aqueous.v1"
   | "reagent.sodium_chloride_1_000m.v1";
 
@@ -48,7 +52,9 @@ export interface MaterialProfile {
     readonly minimumDecimalValue: string;
     readonly maximumDecimalValue: string;
     readonly maximumDecimalPlaces: number;
-    readonly requiredChemistryCapabilityId: "chemistry.concentration_dilution.v1";
+    readonly requiredChemistryCapabilityId:
+      | "chemistry.concentration_dilution.v1"
+      | "chemistry.acid_base_equilibrium.v1";
     readonly safetyPolicyIds: readonly SafetyRegistryId[];
   };
 }
@@ -60,6 +66,8 @@ export interface MaterialProfile {
 export interface ReagentRegistryEntry extends MaterialProfile {
   readonly profileKind: MaterialPhase;
   readonly concentrationM: number | null;
+  /** Registered Celsius temperature for thermal water sources; null otherwise. */
+  readonly initialTemperatureC: number | null;
   readonly compatibleContainerComponentIds: readonly ComponentRegistryId[];
   readonly compatibleEngineIds: readonly string[];
   readonly compatibleFamilyIds: readonly string[];

@@ -91,7 +91,8 @@ describe("verified component entry metadata", () => {
       "action.rinse.v1",
       "action.fill.v1",
       "action.rinse_transfer_device.v1",
-      "action.transfer_liquid.v1"
+      "action.transfer_liquid.v1",
+      "action.pour_liquid.v1"
     ]);
     expect(indicatorBottle.allowedActionIds).toEqual([
       "action.select_indicator.v1"
@@ -139,11 +140,33 @@ describe("verified component entry metadata", () => {
       "component.beaker.v1",
       "component.graduated_cylinder.v1",
       "component.balance.v1",
-      "component.thermometer.v1",
-      "component.calorimeter.v1",
       "component.heat_source_bunsen.v1"
     ]) {
       expect(componentRegistry.has(id)).toBe(false);
     }
+  });
+
+  it("registers coffee-cup calorimetry equipment with verified adapters", () => {
+    expect(componentRegistry.get("component.calorimeter.v1")).toMatchObject({
+      mechanicalAdapterAvailability: "verified",
+      visualAdapterDefinitionAvailability: "verified",
+      defaultConfigurationPresetId:
+        "component_config.calorimeter.coffee_cup_100ml.v1",
+      allowedActionIds: [
+        "action.pour_liquid.v1",
+        "action.mix_calorimeter.v1",
+        "action.set_calorimeter_lid.v1"
+      ]
+    });
+    expect(componentRegistry.get("component.thermometer.v1")).toMatchObject({
+      mechanicalAdapterAvailability: "verified",
+      visualAdapterDefinitionAvailability: "verified",
+      measurement: { kind: "temperature", unitId: "unit.celsius.v1" },
+      allowedActionIds: [
+        "action.place_thermometer.v1",
+        "action.remove_thermometer.v1",
+        "action.read_temperature.v1"
+      ]
+    });
   });
 });

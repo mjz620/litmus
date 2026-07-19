@@ -172,6 +172,7 @@ export interface CompiledMaterialBinding extends MaterialBindingV2_1 {
   readonly materialVersion: string;
   readonly materialPhase: MaterialPhase;
   readonly initialConcentrationM: number | null;
+  readonly initialTemperatureC: number | null;
   readonly initializationPresetSchemaId: string;
   readonly providedChemistryCapabilityIds: readonly string[];
   readonly requiredContainerCapabilityIds: readonly EquipmentCapabilityId[];

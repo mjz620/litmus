@@ -241,7 +241,8 @@ export const COMPONENT_REGISTRY_ENTRIES = [
       "action.rinse.v1",
       "action.fill.v1",
       "action.rinse_transfer_device.v1",
-      "action.transfer_liquid.v1"
+      "action.transfer_liquid.v1",
+      "action.pour_liquid.v1"
     ],
     allowedRoleIds: ["titrant_source", "stock_solution_source"],
     emittedEventTypes: ["rinse_burette", "fill_burette", "refill_burette"],
@@ -558,7 +559,7 @@ export const COMPONENT_REGISTRY_ENTRIES = [
         }
       ]
     },
-    allowedActionIds: ["action.fill_to_mark.v1"],
+    allowedActionIds: ["action.fill_to_mark.v1", "action.pour_liquid.v1"],
     allowedRoleIds: ["diluent_source"],
     emittedEventTypes: ["fill_to_mark"],
     measurement: {
@@ -579,6 +580,195 @@ export const COMPONENT_REGISTRY_ENTRIES = [
       "Do not present the bottle as a precision measuring device."
     ],
     safetyConstraintIds: [SOLUTION_PREPARATION_SAFETY_NOTICE_ID],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
+  },
+  {
+    id: "component.calorimeter.v1",
+    version: "1.0.0",
+    displayName: "Coffee-cup calorimeter",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.mix.v1",
+      "capability.seal_lid.v1",
+      "capability.accept_probe.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.calorimeter.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId:
+      "component_config.calorimeter.coffee_cup_100ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.calorimeter.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.calorimeter.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Receive poured aqueous samples, accept a temperature probe, seal with a lid, and mix for coffee-cup calorimetry.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "capacityML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered calorimeter working volume."
+        },
+        {
+          key: "totalVolumeML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Total liquid volume in the calorimeter."
+        },
+        {
+          key: "lidClosed",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether the calorimeter lid is closed."
+        },
+        {
+          key: "probeInserted",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether a registered thermometer probe is inserted."
+        },
+        {
+          key: "insertedThermometerInstanceId",
+          valueType: "string",
+          nullable: true,
+          runtimeOwned: true,
+          description: "Exact thermometer instance currently inserted, if any."
+        },
+        {
+          key: "mixed",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether the calorimeter contents have been mixed."
+        },
+        {
+          key: "mixCount",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Number of completed mix actions."
+        }
+      ]
+    },
+    allowedActionIds: [
+      "action.pour_liquid.v1",
+      "action.mix_calorimeter.v1",
+      "action.set_calorimeter_lid.v1"
+    ],
+    allowedRoleIds: ["calorimetry_vessel"],
+    emittedEventTypes: [
+      "pour_liquid",
+      "mix_calorimeter",
+      "set_calorimeter_lid"
+    ],
+    measurement: {
+      kind: "approximate_volume",
+      unitId: "unit.ml.v1",
+      capacityML: 100,
+      graduationIncrementML: 10,
+      reportIncrementML: 1,
+      toleranceML: 1,
+      quantitative: false,
+      description:
+        "Coffee-cup working volume of 100 mL; temperature precision comes from the registered thermometer."
+    },
+    visualAdapterId: "Calorimeter",
+    accessibilityRequirements: [
+      "Expose lid, probe, volume, and mix state as text.",
+      "Provide keyboard pour, lid, and mix controls.",
+      "Do not rely on steam or color alone to communicate thermal state."
+    ],
+    safetyConstraintIds: ["safety.virtual_calorimetry_ppe_notice.v1"],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
+  },
+  {
+    id: "component.thermometer.v1",
+    version: "1.0.0",
+    displayName: "Digital thermometer",
+    capabilityIds: ["capability.measure_temperature.v1"],
+    stateSchemaId: "schema.equipment_state.thermometer.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.thermometer.digital_0_1c.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.thermometer.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.thermometer.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Place into a calorimeter, remove, and report temperature readings to registered precision.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "placed",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether the probe is inserted in a calorimeter."
+        },
+        {
+          key: "hostCalorimeterInstanceId",
+          valueType: "string",
+          nullable: true,
+          runtimeOwned: true,
+          description: "Exact calorimeter instance currently hosting the probe."
+        },
+        {
+          key: "reportIncrementC",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered temperature reporting increment in Celsius."
+        },
+        {
+          key: "lastReportedC",
+          valueType: "number",
+          nullable: true,
+          runtimeOwned: true,
+          description: "Most recent student-reported temperature reading."
+        }
+      ]
+    },
+    allowedActionIds: [
+      "action.place_thermometer.v1",
+      "action.remove_thermometer.v1",
+      "action.read_temperature.v1"
+    ],
+    allowedRoleIds: ["temperature_probe"],
+    emittedEventTypes: [
+      "place_thermometer",
+      "remove_thermometer",
+      "read_temperature"
+    ],
+    measurement: {
+      kind: "temperature",
+      unitId: "unit.celsius.v1",
+      capacityML: 0,
+      graduationIncrementML: 0,
+      reportIncrementML: 0.1,
+      toleranceML: 0.1,
+      quantitative: true,
+      description: "Digital thermometer with 0.1 °C report increment."
+    },
+    visualAdapterId: "Thermometer",
+    accessibilityRequirements: [
+      "Expose placement and last reported temperature as text.",
+      "Provide keyboard place, remove, and read controls.",
+      "Pair every reading with an explicit unit label."
+    ],
+    safetyConstraintIds: ["safety.virtual_calorimetry_ppe_notice.v1"],
     compatibleFamilyIds: [],
     performanceTier: "core"
   }

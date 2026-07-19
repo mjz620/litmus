@@ -7,7 +7,7 @@ import type {
 } from "./types";
 
 export const SCENE_PLACEMENT_REGISTRY_SNAPSHOT_ID =
-  "scene-placements.2.0.0" as const;
+  "scene-placements.2.1.0" as const;
 
 export const scenePlacementRegistry = createSupportingRegistry(
   "scene placement",
@@ -73,7 +73,8 @@ export function resolveEquipmentPose(input: {
     anchorId: placement.anchorId,
     assemblyId: placement.assemblyId,
     translation: placement.translation,
-    yawRadians: placement.yawRadians
+    yawRadians: placement.yawRadians,
+    footprintCenterXZ: placement.footprintCenterXZ
   });
 }
 

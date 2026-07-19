@@ -30,6 +30,18 @@ export const CHEMISTRY_MODEL_REGISTRY_ENTRIES = Object.freeze([
     availability: "verified"
   },
   {
+    id: "chemistry-model.thermal_energy.v1",
+    version: "1.0.0",
+    displayName: "Coffee-cup thermal energy balance",
+    providedCapabilityIds: ["chemistry.thermal_energy.v1"],
+    requiredCapabilityIds: [
+      "chemistry.material_ledger.v1",
+      "chemistry.volume_conservation.v1",
+      "chemistry.solution_mixing.v1"
+    ],
+    availability: "verified"
+  },
+  {
     id: LEGACY_TITRATION_CHEMISTRY_MODEL.id,
     version: LEGACY_TITRATION_CHEMISTRY_MODEL.version,
     displayName: "Legacy deterministic titration truth adapter",

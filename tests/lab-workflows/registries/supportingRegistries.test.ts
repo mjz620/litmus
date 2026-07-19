@@ -124,8 +124,11 @@ describe("Lab Composer supporting registries", () => {
       configurationRegistry.get(id);
     }
     for (const id of engine.workflowEventTypeIds) eventTypeRegistry.get(id);
-    expect(engineRegistry.snapshotId).toBe("engines.1.1.0");
-    expect(LEGACY_ENGINE_REGISTRY_SNAPSHOT_IDS).toEqual(["engines.1.0.0"]);
+    expect(engineRegistry.snapshotId).toBe("engines.1.2.0");
+    expect(LEGACY_ENGINE_REGISTRY_SNAPSHOT_IDS).toEqual([
+      "engines.1.0.0",
+      "engines.1.1.0"
+    ]);
 
     for (const flag of eventFlagRegistry.list()) {
       for (const semanticEventType of flag.emittedBySemanticEventTypes) {

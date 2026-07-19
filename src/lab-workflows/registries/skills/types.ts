@@ -92,7 +92,7 @@ export class SkillRegistryError extends Error {
 }
 
 export interface SkillRegistry {
-  readonly snapshotId: "skills.2.0.0";
+  readonly snapshotId: "skills.2.1.0";
   list(): readonly SkillRegistryEntry[];
   get(id: CanonicalSkillId): SkillRegistryEntry;
   resolve(id: string): SkillResolution;

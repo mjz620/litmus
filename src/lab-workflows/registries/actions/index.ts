@@ -5,10 +5,11 @@ import {
 } from "./supportingRegistry";
 import type { ActionRegistryEntry } from "./types";
 
-export const ACTION_REGISTRY_SNAPSHOT_ID = "actions.3.0.0" as const;
+export const ACTION_REGISTRY_SNAPSHOT_ID = "actions.3.1.0" as const;
 export const LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "actions.1.0.0",
-  "actions.2.0.0"
+  "actions.2.0.0",
+  "actions.3.0.0"
 ] as const);
 
 export const actionRegistry: SupportingRegistry<ActionRegistryEntry> =

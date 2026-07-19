@@ -100,6 +100,24 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "Supports filling a volumetric vessel to its registered calibration mark.",
     "verified"
   ),
+  equipment(
+    "capability.measure_temperature.v1",
+    "Measure temperature",
+    "Exposes a verified temperature reading through a registered probe.",
+    "verified"
+  ),
+  equipment(
+    "capability.seal_lid.v1",
+    "Seal lid",
+    "Supports opening and closing a registered vessel lid.",
+    "verified"
+  ),
+  equipment(
+    "capability.accept_probe.v1",
+    "Accept probe",
+    "Accepts placement of a registered temperature probe.",
+    "verified"
+  ),
   chemistry(
     "chemistry.material_ledger.v1",
     "Material ledger",
@@ -140,6 +158,12 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "chemistry.instrument_observables.v1",
     "Instrument observables",
     "Projects deterministic model state into registered instrument readings.",
+    "verified"
+  ),
+  chemistry(
+    "chemistry.thermal_energy.v1",
+    "Thermal energy",
+    "Provides verified coffee-cup thermal-balance observables for registered water mixes.",
     "verified"
   )
 ] as const satisfies readonly CapabilityDefinition[];

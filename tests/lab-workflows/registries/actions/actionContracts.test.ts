@@ -127,16 +127,71 @@ const EXPECTED_ACTION_CONTRACTS = {
     mechanicalAdapterId: "mechanical-adapter.volumetric_flask.v1",
     eventContractId: "event-contract.mix_solution.v1",
     behavior: "discrete"
+  },
+  "action.pour_liquid.v1": {
+    source: ["capability.contain_liquid.v1", "capability.dispense_liquid.v1"],
+    target: ["capability.contain_liquid.v1", "capability.receive_liquid.v1"],
+    parameterSchemaId: "schema.action_parameters.pour_liquid.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.calorimeter.v1",
+    eventContractId: "event-contract.pour_liquid.v1",
+    behavior: "discrete"
+  },
+  "action.mix_calorimeter.v1": {
+    source: ["capability.contain_liquid.v1", "capability.mix.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.mix_calorimeter.v1",
+    preconditionIds: ["precondition.equipment.calorimeter_has_liquid.v1"],
+    mechanicalAdapterId: "mechanical-adapter.calorimeter.v1",
+    eventContractId: "event-contract.mix_calorimeter.v1",
+    behavior: "discrete"
+  },
+  "action.set_calorimeter_lid.v1": {
+    source: ["capability.seal_lid.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.set_calorimeter_lid.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.calorimeter.v1",
+    eventContractId: "event-contract.set_calorimeter_lid.v1",
+    behavior: "discrete"
+  },
+  "action.place_thermometer.v1": {
+    source: ["capability.measure_temperature.v1"],
+    target: ["capability.accept_probe.v1"],
+    parameterSchemaId: "schema.action_parameters.place_thermometer.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.thermometer.v1",
+    eventContractId: "event-contract.place_thermometer.v1",
+    behavior: "discrete"
+  },
+  "action.remove_thermometer.v1": {
+    source: ["capability.measure_temperature.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.remove_thermometer.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.thermometer.v1",
+    eventContractId: "event-contract.remove_thermometer.v1",
+    behavior: "discrete"
+  },
+  "action.read_temperature.v1": {
+    source: ["capability.measure_temperature.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.read_temperature.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.thermometer.v1",
+    eventContractId: "event-contract.read_temperature.v1",
+    behavior: "discrete"
   }
 } as const;
 
 describe("LC2-101 capability-based action contracts", () => {
   it("pins the new snapshot while retaining the legacy snapshot reference", () => {
-    expect(ACTION_REGISTRY_SNAPSHOT_ID).toBe("actions.3.0.0");
+    expect(ACTION_REGISTRY_SNAPSHOT_ID).toBe("actions.3.1.0");
     expect(actionRegistry.snapshotId).toBe(ACTION_REGISTRY_SNAPSHOT_ID);
     expect(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS).toEqual([
       "actions.1.0.0",
-      "actions.2.0.0"
+      "actions.2.0.0",
+      "actions.3.0.0"
     ]);
     expect(Object.isFrozen(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS)).toBe(true);
   });

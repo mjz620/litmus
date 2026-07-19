@@ -25,6 +25,7 @@ describe("canonical Lab Composer skill registry", () => {
       "burette_conditioning",
       "stoichiometry",
       "significant_figures",
+      "heat_transfer",
       "volumetric_transfer",
       "solution_dilution",
       "procedural_safety",
@@ -33,13 +34,12 @@ describe("canonical Lab Composer skill registry", () => {
     expect(planned).toEqual([
       "net_ionic_equations",
       "precipitate_observation",
-      "heat_transfer",
       "calorimetry_sign_convention"
     ]);
   });
 
   it("publishes a versioned snapshot for family-neutral verified skills", () => {
-    expect(skillRegistry.snapshotId).toBe("skills.2.0.0");
+    expect(skillRegistry.snapshotId).toBe("skills.2.1.0");
     expect(skillRegistry.get("volumetric_transfer")).toMatchObject({
       supportedFamilyIds: [],
       availability: "verified"
@@ -47,6 +47,11 @@ describe("canonical Lab Composer skill registry", () => {
     expect(skillRegistry.get("solution_dilution")).toMatchObject({
       supportedFamilyIds: [],
       availability: "verified"
+    });
+    expect(skillRegistry.get("heat_transfer")).toMatchObject({
+      supportedFamilyIds: [],
+      availability: "verified",
+      assessmentModeIds: ["assessment.event_performance.v1"]
     });
   });
 

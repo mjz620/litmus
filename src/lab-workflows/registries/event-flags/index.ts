@@ -12,7 +12,7 @@ export const eventFlagRegistry = createSupportingRegistry(
 
 export const eventTypeRegistry = createSupportingRegistry(
   "event type",
-  "event-types.2.0.0",
+  "event-types.2.1.0",
   EVENT_TYPE_REGISTRY_ENTRIES
 );
 

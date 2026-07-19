@@ -228,6 +228,24 @@ export function initializeLiquidEquipmentState(
         reagentInstanceId: exactMaterialAt(materialLedger, binding.instanceId),
         availableML: containedVolumeML
       });
+    case "component.calorimeter.v1": {
+      const capacityML = capacity(binding);
+      if (containedVolumeML > capacityML) {
+        fail(
+          `Initial volume exceeds ${binding.instanceId} capacity.`,
+          binding.instanceId
+        );
+      }
+      return createState(binding, {
+        capacityML,
+        totalVolumeML: containedVolumeML,
+        lidClosed: false,
+        probeInserted: false,
+        insertedThermometerInstanceId: null,
+        mixed: false,
+        mixCount: 0
+      });
+    }
     default:
       fail(
         `Equipment ${binding.equipmentDefinitionId} has no liquid initializer.`,

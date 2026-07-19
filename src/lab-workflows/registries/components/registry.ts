@@ -7,7 +7,7 @@ import {
   type ComponentRegistrySnapshot
 } from "./types";
 
-const SNAPSHOT_ID: ComponentRegistrySnapshot["snapshotId"] = "components.3.1.0";
+const SNAPSHOT_ID: ComponentRegistrySnapshot["snapshotId"] = "components.3.3.0";
 
 function deepFreeze<T>(value: T): Readonly<T> {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {

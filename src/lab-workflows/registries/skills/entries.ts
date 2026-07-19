@@ -161,15 +161,15 @@ export const SKILL_REGISTRY_DEFINITIONS = [
     description:
       "Tracks energy transfer between system and surroundings using deterministic calorimetry state.",
     aliases: [],
-    supportedFamilyIds: [CALORIMETRY],
+    supportedFamilyIds: [],
     requiredComponentIds: [
       "component.calorimeter.v1",
       "component.thermometer.v1"
     ],
-    recommendedComponentIds: ["component.graduated_cylinder.v1"],
+    recommendedComponentIds: [],
     relevantEventFlagIds: [],
     positiveEvidenceReasonIds: [],
-    assessmentModeIds: ["assessment.explanation.v1"],
+    assessmentModeIds: ["assessment.event_performance.v1"],
     coachTriggerTypeIds: [],
     adaptiveRetryPatternIds: [],
     examplePrompts: ["Create a calorimetry workflow focused on heat transfer."],
@@ -181,6 +181,7 @@ export const SKILL_REGISTRY_DEFINITIONS = [
     description:
       "Applies consistent signs for system and surroundings heat in a verified calorimetry model.",
     aliases: ["sign_convention"],
+    // Remains planned until explanation assessment + sign-convention evidence land.
     supportedFamilyIds: [CALORIMETRY],
     requiredComponentIds: [
       "component.calorimeter.v1",

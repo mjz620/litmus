@@ -35,11 +35,10 @@ describe("verified skill compatibility", () => {
     }
   });
 
-  it("keeps planned precipitation and calorimetry skills non-authorable", () => {
+  it("keeps planned precipitation and sign-convention skills non-authorable", () => {
     for (const id of [
       "net_ionic_equations",
       "precipitate_observation",
-      "heat_transfer",
       "calorimetry_sign_convention"
     ] as const) {
       const skill = skillRegistry.get(id);
