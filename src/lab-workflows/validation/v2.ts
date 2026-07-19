@@ -5,8 +5,11 @@ import { capabilityRegistry, type CapabilityRegistry } from "../capabilities";
 import { hashLabWorkflowSpec, labWorkflowHashMatches } from "../hash";
 import {
   BoundedConcentrationError,
-  canonicalizeBoundedConcentrationDecimal
+  canonicalizeBoundedConcentrationDecimal,
+  canonicalBoundedDecimalToNumber
 } from "../material-initialization";
+import { isNearEndpointSeedSupported } from "../../experiments/titration/retry";
+import { EXAMPLE_STRONG } from "../../experiments/titration/titration";
 import {
   actionEventContractRegistry,
   actionParameterSchemaRegistry,
@@ -79,7 +82,7 @@ import {
   type ValidationResultV2
 } from "../schema/v2";
 
-export const LAB_WORKFLOW_VALIDATOR_VERSION_V2 = "2.2.0" as const;
+export const LAB_WORKFLOW_VALIDATOR_VERSION_V2 = "2.3.0" as const;
 
 export const WORKFLOW_VALIDATION_CHECK_IDS_V2 = Object.freeze({
   schema: "check.schema.v2",
@@ -136,6 +139,8 @@ export const WORKFLOW_VALIDATION_ISSUE_CODES_V2 = Object.freeze({
     "validation.chemistry_model_resolution_failed.v2",
   legacyAdapterUnavailable: "validation.legacy_adapter_unavailable.v2",
   legacyCompatibilityInvalid: "validation.legacy_compatibility_invalid.v2",
+  titrationNearEndpointSeedUnsupported:
+    "validation.titration_near_endpoint_seed_unsupported.v2",
   ruleReferenceInvalid: "validation.rule_reference_invalid.v2",
   ruleConditionInvalid: "validation.rule_condition_invalid.v2",
   ruleKindIncompatible: "validation.rule_kind_incompatible.v2",
@@ -1660,10 +1665,96 @@ function validateChemistry(context: ValidationContext): void {
         `No exact executable legacy adapter matches ${compatibility.runtimeAdapterId}@${compatibility.runtimeAdapterVersion}.`,
         { registryId: compatibility.runtimeAdapterId }
       );
+    } else {
+      validateTitrationNearEndpointSeed(context);
     }
   }
 }
 
+function resolveTitrationMaterialConcentrationM(
+  context: ValidationContext,
+  materialInstanceId: string
+): number | null {
+  const profile = context.materialById.get(materialInstanceId);
+  const binding = context.spec.materials.find(
+    (candidate) => candidate.instanceId === materialInstanceId
+  );
+  if (!profile || !binding) return null;
+  const initialization =
+    context.spec.schemaVersion === "2.1.0" && "initialization" in binding
+      ? binding.initialization
+      : undefined;
+  if (initialization) {
+    const contract = profile.concentrationAuthoring;
+    if (
+      !contract ||
+      initialization.configurationSchemaId !== contract.configurationSchemaId ||
+      initialization.concentration.unitId !== contract.unitId
+    ) {
+      return null;
+    }
+    try {
+      return canonicalBoundedDecimalToNumber(
+        initialization.concentration.decimalValue,
+        contract
+      );
+    } catch {
+      return null;
+    }
+  }
+  if (typeof profile.concentrationM === "number" && profile.concentrationM > 0) {
+    return profile.concentrationM;
+  }
+  return null;
+}
+
+function validateTitrationNearEndpointSeed(context: ValidationContext): void {
+  const compatibility = context.spec.compatibility;
+  if (!compatibility) return;
+  if (
+    compatibility.initializationPresetId !==
+    "seed.titration.near_endpoint_22ml.v1"
+  ) {
+    return;
+  }
+  const analyteId = compatibility.materialRoleBindings.find(
+    ({ legacyRoleId }) => legacyRoleId === "analyte"
+  )?.materialInstanceId;
+  const titrantId = compatibility.materialRoleBindings.find(
+    ({ legacyRoleId }) => legacyRoleId === "titrant"
+  )?.materialInstanceId;
+  if (!analyteId || !titrantId) return;
+  const analyteConcentrationM = resolveTitrationMaterialConcentrationM(
+    context,
+    analyteId
+  );
+  const titrantConcentrationM = resolveTitrationMaterialConcentrationM(
+    context,
+    titrantId
+  );
+  if (analyteConcentrationM === null || titrantConcentrationM === null) return;
+  const config = {
+    ...EXAMPLE_STRONG,
+    analyte: {
+      ...EXAMPLE_STRONG.analyte,
+      concentrationM: analyteConcentrationM
+    },
+    titrant: {
+      ...EXAMPLE_STRONG.titrant,
+      concentrationM: titrantConcentrationM
+    }
+  };
+  if (isNearEndpointSeedSupported(config)) return;
+  addIssue(
+    context,
+    6,
+    CHECK.chemistryModels,
+    ISSUE.titrationNearEndpointSeedUnsupported,
+    "materials",
+    "These acid and base concentrations cannot support the near-endpoint seed: equivalence must fall within the burette capacity and leave a controlled addition window of at most 5.00 mL.",
+    { safetyRelated: false }
+  );
+}
 function emittedEventIds(context: ValidationContext): Set<string> {
   const result = new Set<string>();
   const eventTypes = context.registries.eventTypes.list();

@@ -3,11 +3,13 @@ import { z } from "zod";
 import type { SemanticEvent } from "../../../experiments/shared";
 import { createTitrationRetryScenario } from "../../../experiments/titration/retry";
 import {
+  EXAMPLE_STRONG,
   observedColor,
   INDICATOR_SPECIFICATIONS,
   titration,
   type IndicatorId,
   type TitrationAction,
+  type TitrationConfig,
   type TitrationState
 } from "../../../experiments/titration/titration";
 import {
@@ -20,6 +22,8 @@ import {
   validateMaterialLedger,
   type MaterialLedger
 } from "../../chemistry-models/material-ledger";
+import { canonicalBoundedDecimalToNumber } from "../../material-initialization";
+import { materialRegistry } from "../../registries/reagents";
 import type { ValidatedLabWorkflowSpecV2 } from "../../schema/v2";
 import type {
   CompiledGenericLabProgram,
@@ -298,17 +302,25 @@ function exactBindings(
     }
     materialByRole.set(binding.legacyRoleId, binding.materialInstanceId);
   }
-  const expectedMaterials: Readonly<Record<MaterialRole, string>> = {
-    analyte: "reagent.hydrochloric_acid_0_100m.v1",
-    titrant: "reagent.sodium_hydroxide_0_100m.v1",
-    indicator: "reagent.phenolphthalein.v1"
+  const expectedMaterials: Readonly<
+    Record<MaterialRole, readonly string[]>
+  > = {
+    analyte: [
+      "reagent.hydrochloric_acid_0_100m.v1",
+      "reagent.hydrochloric_acid_aqueous.v1"
+    ],
+    titrant: [
+      "reagent.sodium_hydroxide_0_100m.v1",
+      "reagent.sodium_hydroxide_aqueous.v1"
+    ],
+    indicator: ["reagent.phenolphthalein.v1"]
   };
-  for (const [role, profileId] of Object.entries(expectedMaterials)) {
+  for (const [role, profileIds] of Object.entries(expectedMaterials)) {
     const instanceId = materialByRole.get(role as MaterialRole);
     const binding = workflow.materials.find(
       (candidate) => candidate.instanceId === instanceId
     );
-    if (!binding || binding.materialProfileId !== profileId) {
+    if (!binding || !profileIds.includes(binding.materialProfileId)) {
       fail(
         ERROR.contractMismatch,
         `Legacy material role ${role} does not resolve exactly.`
@@ -316,6 +328,76 @@ function exactBindings(
     }
   }
   return { equipmentByRole, materialByRole };
+}
+
+function resolveMaterialConcentrationM(
+  workflow: Readonly<ValidatedLabWorkflowSpecV2>,
+  materialInstanceId: string
+): number {
+  const binding = workflow.materials.find(
+    (candidate) => candidate.instanceId === materialInstanceId
+  );
+  if (!binding) {
+    fail(
+      ERROR.contractMismatch,
+      `Missing material binding ${materialInstanceId}.`
+    );
+  }
+  const profile = materialRegistry.get(binding.materialProfileId);
+  const initialization =
+    "initialization" in binding ? binding.initialization : undefined;
+  if (initialization) {
+    const contract = profile.concentrationAuthoring;
+    if (
+      !contract ||
+      initialization.configurationSchemaId !== contract.configurationSchemaId ||
+      initialization.concentration.unitId !== contract.unitId
+    ) {
+      fail(
+        ERROR.contractMismatch,
+        `Material ${materialInstanceId} initialization does not match its concentration authoring contract.`
+      );
+    }
+    return canonicalBoundedDecimalToNumber(
+      initialization.concentration.decimalValue,
+      contract
+    );
+  }
+  if (
+    typeof profile.concentrationM !== "number" ||
+    profile.concentrationM <= 0
+  ) {
+    fail(
+      ERROR.contractMismatch,
+      `Material ${materialInstanceId} has no exact concentration.`
+    );
+  }
+  return profile.concentrationM;
+}
+
+function resolveTitrationConfigFromWorkflow(
+  workflow: Readonly<ValidatedLabWorkflowSpecV2>,
+  bindings: ExactCompatibilityBindings
+): TitrationConfig {
+  const analyteId = bindings.materialByRole.get("analyte");
+  const titrantId = bindings.materialByRole.get("titrant");
+  if (!analyteId || !titrantId) {
+    fail(
+      ERROR.contractMismatch,
+      "Legacy analyte/titrant bindings are missing."
+    );
+  }
+  return {
+    ...EXAMPLE_STRONG,
+    analyte: {
+      ...EXAMPLE_STRONG.analyte,
+      concentrationM: resolveMaterialConcentrationM(workflow, analyteId)
+    },
+    titrant: {
+      ...EXAMPLE_STRONG.titrant,
+      concentrationM: resolveMaterialConcentrationM(workflow, titrantId)
+    }
+  };
 }
 
 function parseState(serialized: string): TitrationState {
@@ -767,9 +849,11 @@ export function createLegacyTitrationRuntimePorts(
           "Legacy seeded initialization requires sessionSeed."
         );
       }
+      const config = resolveTitrationConfigFromWorkflow(workflow, bindings);
       const scenario = createTitrationRetryScenario(
         "endpoint_control",
-        context.config.sessionSeed
+        context.config.sessionSeed,
+        config
       );
       const state = titration.createInitialState(
         scenario.config,

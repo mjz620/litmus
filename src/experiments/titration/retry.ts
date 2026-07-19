@@ -16,42 +16,85 @@ export interface TitrationRetryScenario {
   seed: Partial<TitrationState>;
 }
 
+/** Near-endpoint seed volume: three milliliters before equivalence, two-decimal mL. */
+export function nearEndpointTitrantAddedML(
+  config: TitrationConfig,
+  dilutionFactor = 1
+): number {
+  const equivalence = equivalenceVolumeML(config, dilutionFactor);
+  const candidate = Math.round((equivalence - 3) * 100) / 100;
+  if (
+    !Number.isFinite(candidate) ||
+    candidate <= 0 ||
+    candidate >= config.buretteCapacityML ||
+    equivalence <= candidate ||
+    equivalence - candidate > 5
+  ) {
+    throw new Error(
+      "Authored titration concentrations do not support a near-endpoint seed within five milliliters of equivalence."
+    );
+  }
+  return candidate;
+}
+
+/** Same predicate the hard validator and runtime seed builder share. */
+export function isNearEndpointSeedSupported(
+  config: TitrationConfig,
+  dilutionFactor = 1
+): boolean {
+  try {
+    nearEndpointTitrantAddedML(config, dilutionFactor);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function createEndpointControlSeed(
+  config: TitrationConfig,
+  sessionSeed: string
+): Partial<TitrationState> {
+  const titrantAddedML = nearEndpointTitrantAddedML(config);
+  return {
+    sessionSeed,
+    titrantAddedML,
+    buretteAvailableML: config.buretteCapacityML - titrantAddedML,
+    buretteReadingML: titrantAddedML,
+    fillCount: 1,
+    fillHistory: [
+      {
+        requestedML: config.buretteCapacityML,
+        resultingAvailableML: config.buretteCapacityML,
+        currentReadingML: 0,
+        kind: "initial",
+        tSim: 0
+      }
+    ],
+    buretteConditioned: true,
+    titrantDilutionFactor: 1,
+    tSim: 30
+  };
+}
+
 export function createTitrationRetryScenario(
   skillId: TitrationRetrySkillId,
-  sessionSeed: string
+  sessionSeed: string,
+  config: TitrationConfig = EXAMPLE_STRONG
 ): TitrationRetryScenario {
   const scenario: TitrationRetryScenario =
     skillId === "endpoint_control"
       ? {
           skillId,
           title: "Endpoint-control retry",
-          goal: "Use controlled additions from 22.00 mL and avoid overshooting the endpoint region.",
-          config: EXAMPLE_STRONG,
-          seed: {
-            sessionSeed,
-            titrantAddedML: 22,
-            buretteAvailableML: EXAMPLE_STRONG.buretteCapacityML - 22,
-            buretteReadingML: 22,
-            fillCount: 1,
-            fillHistory: [
-              {
-                requestedML: EXAMPLE_STRONG.buretteCapacityML,
-                resultingAvailableML: EXAMPLE_STRONG.buretteCapacityML,
-                currentReadingML: 0,
-                kind: "initial",
-                tSim: 0
-              }
-            ],
-            buretteConditioned: true,
-            titrantDilutionFactor: 1,
-            tSim: 30
-          }
+          goal: "Use controlled additions from near the equivalence region and avoid overshooting the endpoint.",
+          config,
+          seed: createEndpointControlSeed(config, sessionSeed)
         }
       : {
           skillId,
           title: "Burette-conditioning retry",
           goal: "Choose the correct conditioning liquid, then fill the burette.",
-          config: EXAMPLE_STRONG,
+          config,
           seed: { sessionSeed }
         };
 
@@ -80,7 +123,7 @@ export function validateTitrationRetryScenario(
 
     if (scenario.skillId === "endpoint_control") {
       return (
-        state.titrantAddedML === 22 &&
+        state.titrantAddedML > 0 &&
         equivalence > state.titrantAddedML &&
         equivalence - state.titrantAddedML <= 5
       );

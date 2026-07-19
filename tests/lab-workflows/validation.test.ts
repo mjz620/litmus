@@ -448,8 +448,8 @@ describe("hard LabWorkflowSpec validation", () => {
 
   it("marks a mixed verified/planned skill request partially supported", () => {
     const draft = createSchemaValidWorkflowDraft();
-    draft.skillIds.push("heat_transfer");
-    draft.steps[0]!.skillIds.push("heat_transfer");
+    draft.skillIds.push("calorimetry_sign_convention");
+    draft.steps[0]!.skillIds.push("calorimetry_sign_convention");
 
     const outcome = expectSchemaValid(draft);
 
@@ -459,7 +459,7 @@ describe("hard LabWorkflowSpec validation", () => {
       expect.arrayContaining([
         expect.objectContaining({
           code: CODES.skillUnavailable,
-          registryId: "heat_transfer"
+          registryId: "calorimetry_sign_convention"
         }),
         expect.objectContaining({
           code: CODES.skillRequiredComponentMissing,

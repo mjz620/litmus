@@ -1,3 +1,4 @@
+import { THERMAL_ENERGY_MODEL_ID, THERMAL_ENERGY_MODULE } from "../thermal-energy";
 import type { ExecutedMaterialAction } from "../material-ledger";
 import {
   integerUnitsToQuantity,
@@ -43,10 +44,9 @@ export class ConcentrationDilutionModelError extends Error {
   }
 }
 
-const STOCK_PROFILE_ID = "reagent.sodium_chloride_1_000m.v1";
-const AUTHORABLE_STOCK_PROFILE_ID = "reagent.sodium_chloride_aqueous.v1";
 const WATER_PROFILE_ID = "reagent.distilled_water.v1";
 const FLASK_COMPONENT_ID = "component.volumetric_flask.v1";
+const DILUTION_CAPABILITY_ID = "chemistry.concentration_dilution.v1";
 const CONCENTRATION_SCALE = 1_000_000;
 
 const FIELD = Object.freeze({
@@ -143,9 +143,9 @@ function initialState(
   }
   const targetEquipmentInstanceId = flasks[0]!.instanceId;
   const stockBindings = context.materialBindings.filter(
-    ({ materialProfileId }) =>
-      materialProfileId === STOCK_PROFILE_ID ||
-      materialProfileId === AUTHORABLE_STOCK_PROFILE_ID
+    ({ providedChemistryCapabilityIds, initialConcentrationM }) =>
+      providedChemistryCapabilityIds.includes(DILUTION_CAPABILITY_ID) &&
+      initialConcentrationM !== null
   );
   const waterBindings = context.materialBindings.filter(
     ({ materialProfileId }) => materialProfileId === WATER_PROFILE_ID
@@ -158,7 +158,7 @@ function initialState(
   ) {
     fail(
       CONCENTRATION_DILUTION_ERROR_CODES.unsupportedMaterial,
-      "This model supports one registered sodium-chloride stock and distilled water only."
+      "This model supports exactly one registered aqueous stock with concentration/dilution capability and distilled water only."
     );
   }
   const stock = stockBindings[0]!;
@@ -420,5 +420,9 @@ export const PRODUCTION_GENERIC_CHEMISTRY_MODEL_REGISTRATIONS = Object.freeze([
   {
     metadataId: CONCENTRATION_DILUTION_MODEL_ID,
     module: CONCENTRATION_DILUTION_MODULE
+  },
+  {
+    metadataId: THERMAL_ENERGY_MODEL_ID,
+    module: THERMAL_ENERGY_MODULE
   }
 ] as const satisfies readonly GenericChemistryModuleRegistration[]);

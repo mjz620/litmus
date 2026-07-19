@@ -6,7 +6,7 @@ import {
 } from "../../src/experiments/titration/retry";
 
 describe("titration retry seeds", () => {
-  it("creates a validated 22 mL endpoint-control seed", () => {
+  it("creates a validated near-endpoint seed three milliliters before equivalence", () => {
     const scenario = createTitrationRetryScenario(
       "endpoint_control",
       "retry-seed"
