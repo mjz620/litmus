@@ -39,12 +39,31 @@
 }
 
 .message {
+  display: grid;
+  gap: 0.35rem;
   padding: 0.7rem 0.8rem;
   border-radius: var(--radius-md);
   background: var(--lab-primary-soft, var(--color-primary-soft));
   line-height: 1.45;
   font-family: var(--font-ui);
   font-weight: var(--type-ui-regular);
+}
+
+.guidanceKind {
+  width: fit-content;
+  padding: 0.16rem 0.45rem;
+  border: 1px solid
+    color-mix(in srgb, var(--lab-coach, var(--color-coach)) 38%, white);
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--lab-coach, var(--color-coach)) 9%,
+    white
+  );
+  color: var(--lab-coach, var(--color-coach));
+  font-size: 0.7rem;
+  font-weight: var(--type-ui-semibold);
+  letter-spacing: 0.025em;
 }
 
 .student {

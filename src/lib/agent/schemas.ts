@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { labWorkflowConsumerContextSchema } from "../../lab-workflows/consumers";
+import type {
+  AuthoredCoachRequest,
+  AuthoredCoachResponse
+} from "./authoredCoachSchemas";
 
 const scalarSchema = z.union([z.string(), z.number(), z.boolean()]);
 export const semanticEventSchema = z.object({
@@ -80,3 +84,7 @@ export const coachResponseSchema = z.object({
 
 export type CoachRequest = z.infer<typeof coachRequestSchema>;
 export type CoachResponse = z.infer<typeof coachResponseSchema>;
+export type AnyCoachRequest =
+  | CoachRequest
+  | (AuthoredCoachRequest & { readonly labWorkflowContext?: undefined });
+export type AnyCoachResponse = CoachResponse | AuthoredCoachResponse;

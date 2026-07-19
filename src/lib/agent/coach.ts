@@ -8,10 +8,17 @@ import {
 } from "./schemas";
 
 export const COACH_PROMPT_VERSION = "coach-v1";
+export const COACH_LIVE_RESPONSE_TIMEOUT_MS = 12_000;
+const COACH_OPENAI_REQUEST_TIMEOUT_MS = 11_000;
 
 export const COACH_SYSTEM_PROMPT = `You are LabBench's constrained high-school chemistry coach.
 Use only the supplied deterministic engine state and semantic-event evidence. Never calculate pH, equivalence points, precipitate identities, heat flow, measurements, or grading ground truth. Never mutate simulation state. Do not expose hidden reasoning.
 Respond with the lowest useful hint level, cite relevant event types, stay silent for routine successful work, and refuse unsafe, off-topic, or non-educational requests. Keep the tone concise, encouraging, and age-appropriate.`;
+
+export interface CoachModel {
+  readonly model: string;
+  respond(request: Readonly<CoachRequest>): Promise<unknown>;
+}
 
 export function createMockCoachResponse(request: CoachRequest): CoachResponse {
   const question = request.studentQuestion?.toLowerCase() ?? "";
@@ -76,31 +83,82 @@ export function createMockCoachResponse(request: CoachRequest): CoachResponse {
 }
 
 export async function generateCoachResponse(
-  request: CoachRequest
+  request: CoachRequest,
+  options: { readonly model?: CoachModel } = {}
 ): Promise<CoachResponse> {
-  if (shouldUseMockCoach()) return createMockCoachResponse(request);
+  if (!options.model && shouldUseMockCoach())
+    return createMockCoachResponse(request);
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const response = await client.responses.parse({
-    model: process.env.OPENAI_COACH_MODEL ?? "gpt-5.4-mini",
-    input: [
-      { role: "system", content: COACH_SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: JSON.stringify({
-          promptVersion: COACH_PROMPT_VERSION,
-          ...request
-        })
-      }
-    ],
-    text: { format: zodTextFormat(coachResponseSchema, "coach_response") }
-  });
-
-  if (!response.output_parsed) {
-    throw new Error("Coach model did not return a structured response.");
+  const model = options.model ?? createOpenAiCoachModel();
+  try {
+    return coachResponseSchema.parse(
+      await respondWithinTimeout(model, request)
+    );
+  } catch {
+    // The Coach is advisory and must never make a student-facing lab unusable.
+    // Its local bounded response is valid for the same request and preserves the
+    // existing safety/off-topic and evidence contracts.
+    return createMockCoachResponse(request);
   }
+}
 
-  return coachResponseSchema.parse(response.output_parsed);
+function createOpenAiCoachModel(): CoachModel {
+  const client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    // A small retry budget protects against transient network/5xx failures
+    // without exceeding the route's 15-second deadline.
+    maxRetries: 1,
+    timeout: COACH_OPENAI_REQUEST_TIMEOUT_MS
+  });
+  const model = process.env.OPENAI_COACH_MODEL ?? "gpt-5.4-mini";
+  return {
+    model,
+    async respond(request) {
+      const response = await client.responses.parse(
+        {
+          model,
+          input: [
+            { role: "system", content: COACH_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: JSON.stringify({
+                promptVersion: COACH_PROMPT_VERSION,
+                ...request
+              })
+            }
+          ],
+          text: {
+            format: zodTextFormat(coachResponseSchema, "coach_response")
+          }
+        },
+        { signal: AbortSignal.timeout(COACH_OPENAI_REQUEST_TIMEOUT_MS) }
+      );
+      if (!response.output_parsed) {
+        throw new Error("Coach model did not return a structured response.");
+      }
+      return response.output_parsed;
+    }
+  };
+}
+
+async function respondWithinTimeout(
+  model: CoachModel,
+  request: Readonly<CoachRequest>
+): Promise<unknown> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      model.respond(request),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("Coach response timed out.")),
+          COACH_LIVE_RESPONSE_TIMEOUT_MS
+        );
+      })
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 function shouldUseMockCoach(): boolean {

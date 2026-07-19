@@ -37,10 +37,20 @@ import {
   NoopCoachClient,
   type CoachClient
 } from "../lib/agent/client";
-import type { CoachRequest, CoachResponse } from "../lib/agent/schemas";
+import { createAuthoredCoachWorkflowContext } from "../lib/agent/authoredCoach";
+import { AUTHORED_COACH_CONTRACT_VERSION } from "../lib/agent/authoredCoachSchemas";
+import type {
+  AnyCoachRequest,
+  AnyCoachResponse,
+  CoachResponse
+} from "../lib/agent/schemas";
 import { decideCoachTrigger } from "../lib/agent/triggerPolicy";
 import type { LabWorkflowConsumerContext } from "../lab-workflows/consumers";
 import type { GenericLabActionTrace } from "../lab-workflows/replay";
+import {
+  GenericLabRuntimeError,
+  type GenericLabRuntimeErrorDetail
+} from "../lab-workflows/runtime";
 import type { ValidatedLabWorkflowSpecV2 } from "../lab-workflows/schema/v2";
 import {
   createSetupDrivenTitrationSession,
@@ -49,6 +59,7 @@ import {
   type SetupDrivenLabProjection,
   type SetupDrivenLabSelection,
   type SetupDrivenRuntimeInspection,
+  SetupDrivenSessionError,
   type SetupDrivenTitrationSession
 } from "./setupDrivenLabSession";
 
@@ -59,11 +70,19 @@ export type LabExperimentAction = TitrationAction | PrecipitationAction;
 export type LabStoreStatus = "idle" | "loading" | "ready" | "error";
 export type CoachStatus = "idle" | "loading" | "error";
 
+export interface LabActionErrorState {
+  readonly code: string;
+  readonly actionType: LabExperimentAction["type"];
+  readonly message: string;
+  readonly technicalMessage: string;
+  readonly details: Readonly<Record<string, GenericLabRuntimeErrorDetail>>;
+}
+
 export interface CoachMessage {
   id: string;
   role: "student" | "coach";
   text: string;
-  response?: CoachResponse;
+  response?: AnyCoachResponse;
 }
 
 interface LoadExperimentRequestBase {
@@ -109,11 +128,13 @@ export interface LabStore {
   coachMessages: CoachMessage[];
   coachStatus: CoachStatus;
   coachError: string | null;
-  lastCoachRequest: CoachRequest | null;
+  lastCoachRequest: AnyCoachRequest | null;
   lastCheckpoint: CheckpointRequest | null;
+  actionError: LabActionErrorState | null;
   error: string | null;
   loadExperiment: (request: LoadExperimentRequest) => Promise<void>;
-  dispatch: (action: LabExperimentAction) => void;
+  dispatch: (action: LabExperimentAction) => boolean;
+  clearActionError: () => void;
   checkpoint: (completed?: boolean) => void;
   retryCheckpoint: () => void;
   askCoach: (question: string) => Promise<void>;
@@ -142,6 +163,11 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
   let nextEventSequence = 0;
   let nextCoachMessageSequence = 0;
   let setupDrivenTitrationSession: SetupDrivenTitrationSession | null = null;
+  // Reasons that have already auto-triggered the coach and are still active in
+  // the recent-event window. Prevents repeated GPT calls for the same ongoing
+  // mistake; a reason that clears from the window and later recurs triggers
+  // again. Explicit questions and retries are never deduped here.
+  let servedCoachEventReasons = new Set<string>();
 
   const store = create<LabStore>((set, get) => ({
     status: "idle",
@@ -166,9 +192,11 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
     coachError: null,
     lastCoachRequest: null,
     lastCheckpoint: null,
+    actionError: null,
     error: null,
 
     async loadExperiment(request) {
+      servedCoachEventReasons = new Set<string>();
       set({
         status: "loading",
         experimentId: request.experimentId,
@@ -194,6 +222,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         coachError: null,
         lastCoachRequest: null,
         lastCheckpoint: null,
+        actionError: null,
         error: null
       });
 
@@ -247,21 +276,31 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         throw new LabStoreNotReadyError();
       }
 
-      const setupTransition = setupDrivenTitrationSession
-        ? dispatchSetupDrivenTitration(
+      let setupTransition;
+      let result;
+      try {
+        setupTransition = setupDrivenTitrationSession
+          ? dispatchSetupDrivenTitration(
+              current.experimentId,
+              action,
+              setupDrivenTitrationSession
+            )
+          : null;
+        result =
+          setupTransition ??
+          stepRegisteredExperiment(
             current.experimentId,
-            action,
-            setupDrivenTitrationSession
-          )
-        : null;
-      const result =
-        setupTransition ??
-        stepRegisteredExperiment(
-          current.experimentId,
-          current.definition,
-          current.state,
-          action
-        );
+            current.definition,
+            current.state,
+            action
+          );
+      } catch (error) {
+        if (setupDrivenTitrationSession && isContainedSetupActionError(error)) {
+          set({ actionError: toLabActionErrorState(action, error) });
+          return false;
+        }
+        throw error;
+      }
       const resultEvents: readonly SemanticEvent[] = result.events;
       const studentModel = resultEvents.reduce(
         (model, event) => applyEvidence(model, event),
@@ -281,17 +320,42 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           current.runtimeConsumerContext,
         runtimeActionTrace:
           setupDrivenTitrationSession?.getActionTrace() ??
-          current.runtimeActionTrace
+          current.runtimeActionTrace,
+        actionError: null
       });
 
       queueCheckpoint(resultEvents, result.state, studentModel);
 
       const decision = decideCoachTrigger({
-        recentEvents: [...current.eventQueue, ...resultEvents].slice(-12)
+        recentEvents: [...current.eventQueue, ...resultEvents].slice(-12),
+        diagnoses:
+          setupDrivenTitrationSession?.getGenericState().diagnoses ?? []
       });
-      if (decision.shouldTrigger) {
-        void requestCoach(undefined, decision.source, decision.maxHintLevel);
+      // Deduplicate automatic (event-driven) coaching: only call the coach when
+      // an error reason appears that has not already been served while it is
+      // still active. Drop served reasons that are no longer active so a genuine
+      // recurrence coaches again.
+      const activeReasons = new Set(decision.reasons);
+      for (const reason of [...servedCoachEventReasons]) {
+        if (!activeReasons.has(reason)) servedCoachEventReasons.delete(reason);
       }
+      const freshReasons = decision.reasons.filter(
+        (reason) => !servedCoachEventReasons.has(reason)
+      );
+      if (decision.shouldTrigger && freshReasons.length > 0) {
+        freshReasons.forEach((reason) => servedCoachEventReasons.add(reason));
+        void requestCoach(
+          undefined,
+          decision.source,
+          decision.maxHintLevel,
+          freshReasons
+        );
+      }
+      return true;
+    },
+
+    clearActionError() {
+      set({ actionError: null });
     },
 
     checkpoint(completed = false) {
@@ -317,7 +381,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           }
         ]
       }));
-      await requestCoach(normalized, "question", 3);
+      await requestCoach(normalized, "question", 3, ["student_question"]);
     }
   }));
 
@@ -336,6 +400,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
   ): void {
     const current = store.getState();
     if (!current.sessionId || !current.experimentId) return;
+    // Teacher preview is explicitly not saved: never persist a checkpoint.
+    if (current.mode === "preview") return;
 
     const manifest = getExperimentManifest(current.experimentId);
     const checkpointEvents = events.map((payload) => {
@@ -376,7 +442,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
   async function requestCoach(
     studentQuestion: string | undefined,
     source: "event" | "question" | "retry",
-    maxHintLevel: 0 | 1 | 2 | 3
+    maxHintLevel: 0 | 1 | 2 | 3,
+    reasons: readonly string[]
   ): Promise<void> {
     const current = store.getState();
     if (
@@ -391,16 +458,48 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
 
     store.setState({ coachStatus: "loading", coachError: null });
     try {
-      const coachRequest: CoachRequest = {
-        sessionId: current.sessionId,
-        experimentId: current.experimentId,
-        currentState: current.state,
-        recentEvents: current.eventQueue.slice(-12),
-        studentModel: current.studentModel,
-        labWorkflowContext: current.runtimeConsumerContext ?? undefined,
-        studentQuestion,
-        triggerPolicy: { source, maxHintLevel }
-      };
+      const authoredContext = setupDrivenTitrationSession
+        ? createAuthoredCoachWorkflowContext(
+            setupDrivenTitrationSession.getWorkflow(),
+            setupDrivenTitrationSession.getGenericState()
+          )
+        : null;
+      const hasCurrentViolation = authoredContext?.diagnoses.some(
+        ({ status }) => status === "violated"
+      );
+      const hasGroundedAuthoredReason = reasons.some((reason) =>
+        authoredContext?.evidence.some(({ payload }) =>
+          payload.flags.includes(reason)
+        )
+      );
+      const useAuthoredContext =
+        authoredContext !== null &&
+        (source === "question" ||
+          hasCurrentViolation === true ||
+          hasGroundedAuthoredReason);
+      const coachRequest: AnyCoachRequest = useAuthoredContext
+        ? {
+            contractVersion: AUTHORED_COACH_CONTRACT_VERSION,
+            sessionId: current.sessionId,
+            experimentId: current.experimentId,
+            workflowContext: authoredContext,
+            studentQuestion,
+            triggerPolicy: {
+              source,
+              reasons: [...new Set(reasons)],
+              maxHintLevel
+            }
+          }
+        : {
+            sessionId: current.sessionId,
+            experimentId: current.experimentId,
+            currentState: current.state,
+            recentEvents: current.eventQueue.slice(-12),
+            studentModel: current.studentModel,
+            labWorkflowContext: current.runtimeConsumerContext ?? undefined,
+            studentQuestion,
+            triggerPolicy: { source, maxHintLevel }
+          };
       store.setState({ lastCoachRequest: coachRequest });
       const response = await coachClient.request(coachRequest);
 
@@ -420,11 +519,24 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
               ]
             : latest.coachMessages
       }));
-    } catch (error) {
-      store.setState({
-        coachStatus: "error",
-        coachError: getErrorMessage(error)
-      });
+    } catch {
+      const fallback = localCoachFallback(studentQuestion);
+      store.setState((latest) => ({
+        coachStatus: "idle",
+        coachError: null,
+        coachMessages:
+          fallback.shouldRespond && fallback.message
+            ? [
+                ...latest.coachMessages,
+                {
+                  id: `coach-message-${nextCoachMessageSequence++}`,
+                  role: "coach" as const,
+                  text: fallback.message,
+                  response: fallback
+                }
+              ]
+            : latest.coachMessages
+      }));
     }
   }
 
@@ -564,4 +676,81 @@ export const useLabStore = createLabStore({
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Failed to load experiment.";
+}
+
+export function localCoachFallback(
+  studentQuestion: string | undefined
+): Readonly<CoachResponse> {
+  if (!studentQuestion) {
+    return {
+      shouldRespond: false,
+      interventionType: "none",
+      skillIds: [],
+      hintLevel: 0,
+      message: "",
+      evidenceEventTypes: [],
+      safety: { refused: false }
+    };
+  }
+  return {
+    shouldRespond: true,
+    interventionType: "hint",
+    skillIds: [],
+    hintLevel: 1,
+    message:
+      "Start with the next available lab step. Identify its equipment, the stated amount or observation, and the change you should see before moving on.",
+    evidenceEventTypes: [],
+    safety: { refused: false }
+  };
+}
+
+function isContainedSetupActionError(
+  error: unknown
+): error is GenericLabRuntimeError | SetupDrivenSessionError {
+  return (
+    error instanceof GenericLabRuntimeError ||
+    error instanceof SetupDrivenSessionError
+  );
+}
+
+function toLabActionErrorState(
+  action: LabExperimentAction,
+  error: GenericLabRuntimeError | SetupDrivenSessionError
+): LabActionErrorState {
+  const details =
+    error instanceof GenericLabRuntimeError ? error.details : Object.freeze({});
+  return Object.freeze({
+    code: error.code,
+    actionType: action.type,
+    message: actionErrorMessage(error, details),
+    technicalMessage: error.message,
+    details
+  });
+}
+
+function actionErrorMessage(
+  error: GenericLabRuntimeError | SetupDrivenSessionError,
+  details: Readonly<Record<string, GenericLabRuntimeErrorDetail>>
+): string {
+  switch (error.code) {
+    case "generic-runtime.parameter_invalid.v1": {
+      const minimum = details.effectiveMinimum;
+      const maximum = details.effectiveMaximum;
+      const range =
+        typeof minimum === "number" && typeof maximum === "number"
+          ? ` Use a value from ${minimum} to ${maximum}.`
+          : " Check the permitted range and try again.";
+      return `That amount is outside this workflow's permitted range.${range}`;
+    }
+    case "generic-runtime.permission_unavailable.v1":
+    case "generic-runtime.attempt_limit_exceeded.v1":
+      return "That action is not available at this point in the workflow.";
+    case "generic-runtime.workflow_terminal.v1":
+      return "This workflow is already complete. No additional material was added.";
+    case "generic-runtime.precondition_failed.v1":
+    case "generic-runtime.safety_rejected.v1":
+      return "The lab could not apply that action in its current state. Review the active equipment and workflow guidance.";
+    default:
+      return "The action was not applied. The lab remains at its last valid state; review the workflow guidance and try again.";
+  }
 }

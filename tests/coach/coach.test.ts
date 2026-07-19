@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   COACH_SYSTEM_PROMPT,
-  createMockCoachResponse
+  COACH_LIVE_RESPONSE_TIMEOUT_MS,
+  createMockCoachResponse,
+  generateCoachResponse
 } from "../../src/lib/agent/coach";
 import type { CoachRequest } from "../../src/lib/agent/schemas";
 
@@ -59,5 +61,56 @@ describe("coach orchestration", () => {
     );
     expect(response.safety.refused).toBe(true);
     expect(COACH_SYSTEM_PROMPT.toLowerCase()).not.toContain("chain of thought");
+  });
+
+  it("uses bounded local guidance when a live Coach model is unavailable", async () => {
+    const response = await generateCoachResponse(
+      request({
+        studentQuestion: "Why should I slow down near the endpoint?",
+        triggerPolicy: { source: "question", maxHintLevel: 2 }
+      }),
+      {
+        model: {
+          model: "unavailable-test-model",
+          respond: async () => {
+            throw new Error("provider unavailable");
+          }
+        }
+      }
+    );
+
+    expect(response).toMatchObject({
+      shouldRespond: true,
+      interventionType: "hint",
+      safety: { refused: false }
+    });
+    expect(response.message).not.toMatch(/provider|503|unavailable/i);
+  });
+
+  it("uses bounded local guidance before a slow live Coach request reaches the route limit", async () => {
+    vi.useFakeTimers();
+    try {
+      const response = generateCoachResponse(
+        request({
+          studentQuestion: "What should I observe next?",
+          triggerPolicy: { source: "question", maxHintLevel: 2 }
+        }),
+        {
+          model: {
+            model: "slow-test-model",
+            respond: async () => new Promise(() => undefined)
+          }
+        }
+      );
+
+      await vi.advanceTimersByTimeAsync(COACH_LIVE_RESPONSE_TIMEOUT_MS);
+      await expect(response).resolves.toMatchObject({
+        shouldRespond: true,
+        interventionType: "hint",
+        safety: { refused: false }
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

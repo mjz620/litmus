@@ -11,6 +11,8 @@ import {
   LabStoreNotReadyError,
   type LabExperimentAction
 } from "../../src/stores/labStore";
+import type { CoachClient } from "../../src/lib/agent/client";
+import { generateAuthoredCoachResponse } from "../../src/lib/agent/authoredCoach";
 import {
   CheckpointQueue,
   type CheckpointRequest
@@ -377,12 +379,35 @@ describe("lab store", () => {
       actions: [
         {
           permissionId: "migration.permission.s1.a1",
-          available: true
+          available: true,
+          numericParameterBounds: [
+            {
+              parameterKey: "reportedML",
+              effectiveMinimum: 0,
+              effectiveMaximum: 50
+            }
+          ]
         },
         {
           permissionId: "migration.permission.s2.a1",
           available: false,
-          authoredLimits: { maxVolumeMLPerAction: 0.5 }
+          authoredLimits: { maxVolumeMLPerAction: 0.5 },
+          numericParameterBounds: [
+            {
+              parameterKey: "volumeML",
+              registeredMinimum: 0.01,
+              registeredMaximum: 50,
+              authoredMinimum: null,
+              authoredMaximum: 0.5,
+              effectiveMinimum: 0.01,
+              effectiveMaximum: 0.5
+            },
+            {
+              parameterKey: "durationS",
+              effectiveMinimum: 0.01,
+              effectiveMaximum: 600
+            }
+          ]
         }
       ],
       availablePermissionIds: ["migration.permission.s1.a1"]
@@ -440,6 +465,135 @@ describe("lab store", () => {
     ]);
     expect(step).toHaveBeenCalledTimes(2);
     step.mockRestore();
+  });
+
+  it("contains typed setup action errors without mutating state, events, or replay", async () => {
+    const store = createLabStore();
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "setup-driven-contained-error",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+    expect(
+      store.getState().dispatch({ type: "read_meniscus", reportedML: 22 })
+    ).toBe(true);
+    const before = store.getState();
+
+    expect(
+      store.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.500001,
+        durationS: 25
+      })
+    ).toBe(false);
+    expect(store.getState().actionError).toMatchObject({
+      code: "generic-runtime.parameter_invalid.v1",
+      details: {
+        submittedValue: 0.500001,
+        authoredMaximum: 0.5,
+        effectiveMaximum: 0.5
+      }
+    });
+
+    expect(
+      store.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.005,
+        durationS: 0.1
+      })
+    ).toBe(false);
+
+    const rejected = store.getState();
+    expect(rejected.state).toBe(before.state);
+    expect(rejected.eventQueue).toBe(before.eventQueue);
+    expect(rejected.runtimeActionTrace).toBe(before.runtimeActionTrace);
+    expect(rejected.lastCheckpoint).toBe(before.lastCheckpoint);
+    expect(rejected.actionError).toMatchObject({
+      code: "generic-runtime.parameter_invalid.v1",
+      actionType: "add_titrant",
+      details: {
+        submittedValue: 0.005,
+        registeredMinimum: 0.01,
+        registeredMaximum: 50,
+        authoredMaximum: 0.5,
+        effectiveMinimum: 0.01,
+        effectiveMaximum: 0.5
+      }
+    });
+    expect(rejected.actionError?.message).toContain("0.01 to 0.5");
+
+    store.getState().clearActionError();
+    expect(store.getState().actionError).toBeNull();
+    expect(
+      store.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.5,
+        durationS: 25
+      })
+    ).toBe(true);
+    expect(store.getState().actionError).toBeNull();
+  });
+
+  it("contains a stale terminal setup action but still surfaces unknown legacy errors", async () => {
+    const setupStore = createLabStore();
+    await setupStore.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "setup-driven-terminal-error",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+    setupStore.getState().dispatch({ type: "read_meniscus", reportedML: 22 });
+    for (let index = 0; index < 6; index += 1) {
+      expect(
+        setupStore.getState().dispatch({
+          type: "add_titrant",
+          volumeML: 0.5,
+          durationS: 25
+        })
+      ).toBe(true);
+    }
+    expect(
+      setupStore.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.1,
+        durationS: 5
+      })
+    ).toBe(true);
+    const completed = setupStore.getState();
+    expect(completed.runtimeProjection?.availablePermissionIds).toEqual([]);
+    expect(
+      setupStore.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.01,
+        durationS: 1
+      })
+    ).toBe(false);
+    expect(setupStore.getState().state).toBe(completed.state);
+    expect(setupStore.getState().eventQueue).toBe(completed.eventQueue);
+    expect(setupStore.getState().runtimeActionTrace).toBe(
+      completed.runtimeActionTrace
+    );
+    expect(setupStore.getState().actionError).toMatchObject({
+      code: "generic-runtime.workflow_terminal.v1"
+    });
+
+    const legacyStore = createLabStore();
+    await legacyStore.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "legacy-unknown-error",
+      config: EXAMPLE_STRONG
+    });
+    expect(() =>
+      legacyStore.getState().dispatch({
+        type: "add_titrant",
+        volumeML: -1,
+        durationS: 1
+      })
+    ).toThrow(RangeError);
+    expect(legacyStore.getState().actionError).toBeNull();
   });
 
   it("previews an exact teacher-validated definition through the same generic coordinator", async () => {
@@ -608,16 +762,101 @@ describe("lab store", () => {
     );
     expect(coachRequested).toBe(true);
     expect(store.getState().coachStatus).toBe("loading");
-    expect(
-      store.getState().lastCoachRequest?.labWorkflowContext?.workflow
-    ).toMatchObject({
-      id: STRICT_TITRATION_SETUP_SELECTION.workflowId,
-      canonicalSpecHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash
+    const coachRequest = store.getState().lastCoachRequest;
+    expect(coachRequest).toMatchObject({
+      contractVersion: "2.0.0",
+      workflowContext: {
+        definitionHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash,
+        runtime: {
+          workflowId: STRICT_TITRATION_SETUP_SELECTION.workflowId,
+          workflowHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash
+        }
+      }
     });
 
     releaseCheckpoint();
     releaseCoach();
     await queue.whenIdle();
+  });
+
+  it("uses exact authored Coach context for direct questions without mutating the lab", async () => {
+    const coachClient: CoachClient = {
+      async request(input) {
+        if (!("contractVersion" in input)) {
+          throw new Error("Expected authored Coach context.");
+        }
+        return generateAuthoredCoachResponse(input);
+      }
+    };
+    const store = createLabStore({ coachClient });
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "authored-coach-question",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+    const before = JSON.stringify(store.getState().state);
+
+    await store.getState().askCoach("What should I focus on first?");
+
+    expect(JSON.stringify(store.getState().state)).toBe(before);
+    expect(store.getState().lastCoachRequest).toMatchObject({
+      contractVersion: "2.0.0",
+      workflowContext: {
+        definitionHash: STRICT_TITRATION_SETUP_SELECTION.workflowHash,
+        activeObjectiveIds: ["endpoint_control", "meniscus_reading"]
+      },
+      triggerPolicy: {
+        source: "question",
+        reasons: ["student_question"],
+        maxHintLevel: 3
+      }
+    });
+    expect(store.getState().coachMessages.at(-1)?.response).toMatchObject({
+      contractVersion: "2.0.0",
+      shouldRespond: true,
+      guidance: { kind: "ai_guidance" },
+      authority: { simulationStateChanged: false }
+    });
+    expect(store.getState().coachStatus).toBe("idle");
+  });
+
+  it("keeps setup-driven controls usable and returns local guidance when coaching is unavailable", async () => {
+    const store = createLabStore({
+      coachClient: {
+        async request() {
+          throw new Error("Coach service offline");
+        }
+      }
+    });
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "authored-coach-offline",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "setup_driven_v2",
+      setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
+    });
+
+    await store.getState().askCoach("What should I do?");
+    const dispatched = store.getState().dispatch({
+      type: "read_meniscus",
+      reportedML: 22
+    });
+
+    expect(store.getState()).toMatchObject({
+      coachStatus: "idle",
+      coachError: null
+    });
+    expect(store.getState().coachMessages.at(-1)).toMatchObject({
+      role: "coach",
+      text: expect.stringContaining("next available lab step")
+    });
+    expect(store.getState().coachMessages.at(-1)?.text).not.toMatch(
+      /offline|503|service/i
+    );
+    expect(dispatched).toBe(true);
+    expect(store.getState().eventQueue.at(-1)?.type).toBe("read_meniscus");
   });
 
   it("fails closed for a missing or stale setup-driven selection", async () => {
@@ -666,7 +905,94 @@ describe("lab store", () => {
       resolveLabSessionRuntimeMode("acid_base_titration", "setup-v2")
     ).toBe("setup_driven_v2");
   });
+
+  it("does not persist checkpoints in teacher preview mode", async () => {
+    const sent: CheckpointRequest[] = [];
+    const queue = new CheckpointQueue({
+      async send(checkpoint) {
+        sent.push(checkpoint);
+      }
+    });
+    const store = createLabStore({ checkpointQueue: queue });
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "00000000-0000-4000-8000-000000000001",
+      mode: "preview",
+      config: EXAMPLE_STRONG,
+      seed: {
+        titrantAddedML: 24.5,
+        buretteAvailableML: 25.5,
+        buretteConditioned: true
+      }
+    });
+
+    store
+      .getState()
+      .dispatch({ type: "add_titrant", volumeML: 0.1, durationS: 4 });
+    store.getState().checkpoint(true);
+    await queue.whenIdle();
+
+    expect(sent).toEqual([]);
+    expect(store.getState().lastCheckpoint).toBeNull();
+  });
+
+  it("auto-triggers the coach once per ongoing error, but again for a distinct error", async () => {
+    let coachCalls = 0;
+    const coachClient: CoachClient = {
+      async request() {
+        coachCalls += 1;
+        return {
+          shouldRespond: false,
+          interventionType: "none",
+          skillIds: [],
+          hintLevel: 0,
+          message: "",
+          evidenceEventTypes: [],
+          safety: { refused: false }
+        };
+      }
+    };
+    const store = createLabStore({ coachClient });
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "coach-dedupe",
+      config: EXAMPLE_STRONG,
+      seed: {
+        titrantAddedML: 23,
+        buretteAvailableML: 27,
+        buretteConditioned: true
+      }
+    });
+
+    // Three fast additions near the endpoint raise the same flag each time. The
+    // coach must fire once for that ongoing error, not once per action.
+    for (let i = 0; i < 3; i += 1) {
+      store.getState().dispatch({
+        type: "add_titrant",
+        volumeML: 0.2,
+        durationS: 0.05
+      });
+    }
+    await flushMicrotasks();
+    expect(store.getState().lastCoachRequest?.triggerPolicy.source).toBe(
+      "event"
+    );
+    expect(coachCalls).toBe(1);
+
+    // A distinct error (endpoint overshoot) is a new reason and coaches again.
+    store.getState().dispatch({
+      type: "add_titrant",
+      volumeML: 2,
+      durationS: 0.05
+    });
+    await flushMicrotasks();
+    expect(coachCalls).toBe(2);
+  });
 });
+
+async function flushMicrotasks() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 function requireTitrationState(
   state: ReturnType<ReturnType<typeof createLabStore>["getState"]>["state"]

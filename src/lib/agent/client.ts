@@ -1,7 +1,11 @@
-import type { CoachRequest, CoachResponse } from "./schemas";
+import type {
+  AnyCoachRequest,
+  AnyCoachResponse,
+  CoachResponse
+} from "./schemas";
 
 export interface CoachClient {
-  request(request: CoachRequest): Promise<CoachResponse>;
+  request(request: AnyCoachRequest): Promise<AnyCoachResponse>;
 }
 
 export class NoopCoachClient implements CoachClient {
@@ -19,7 +23,7 @@ export class NoopCoachClient implements CoachClient {
 }
 
 export class HttpCoachClient implements CoachClient {
-  async request(request: CoachRequest): Promise<CoachResponse> {
+  async request(request: AnyCoachRequest): Promise<AnyCoachResponse> {
     const response = await fetch("/api/coach", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -30,6 +34,6 @@ export class HttpCoachClient implements CoachClient {
       throw new Error(`Coach request failed (${response.status}).`);
     }
 
-    return (await response.json()) as CoachResponse;
+    return (await response.json()) as AnyCoachResponse;
   }
 }

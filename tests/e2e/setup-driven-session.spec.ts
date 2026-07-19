@@ -70,6 +70,57 @@ test("explicit setup-v2 flag loads exact local runtime and dispatches its strict
   expect(browserErrors).toEqual([]);
 });
 
+test("setup-driven Coach labels authored guidance without exposing technical IDs", async ({
+  page
+}) => {
+  await page.goto(
+    "/dev/lab/titration?runtime=setup-v2&seed=authored-coach-browser"
+  );
+  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
+    timeout: 30_000
+  });
+  await page.getByRole("button", { name: /Ask lab coach/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Lab coach" });
+  await dialog
+    .getByLabel("Ask about this lab")
+    .fill("What should I focus on first?");
+  await dialog.getByRole("button", { name: "Ask coach" }).click();
+
+  await expect(dialog.getByText("AI guidance", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/Coach: Use this lab guidance:/)).toBeVisible();
+  await expect(dialog).not.toContainText("sha256:");
+  await expect(dialog).not.toContainText("migration.rule");
+});
+
+test("student Coach keeps a question useful when the Coach route is unavailable", async ({
+  page
+}) => {
+  await page.route("**/api/coach", async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "unavailable" })
+    });
+  });
+  await page.goto(
+    "/dev/lab/titration?runtime=setup-v2&seed=authored-coach-offline-browser"
+  );
+  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
+    timeout: 30_000
+  });
+  await page.getByRole("button", { name: /Ask lab coach/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Lab coach" });
+  await dialog.getByLabel("Ask about this lab").fill("What should I do first?");
+  await dialog.getByRole("button", { name: "Ask coach" }).click();
+
+  await expect(dialog).toContainText("next available lab step");
+  await expect(dialog).not.toContainText(/503|unavailable|request failed/i);
+  await dialog
+    .getByLabel("Ask about this lab")
+    .fill("Can I ask another question?");
+  await expect(dialog.getByRole("button", { name: "Ask coach" })).toBeEnabled();
+});
+
 test("runtime query defaults invalid and precipitation requests to legacy", async ({
   page
 }) => {

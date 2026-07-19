@@ -1,4 +1,5 @@
 import type { SemanticEvent } from "../../experiments/shared";
+import type { WorkflowDiagnosis } from "../../lab-workflows/schema/conditions";
 
 export type CoachTriggerSource = "event" | "question" | "retry";
 
@@ -11,6 +12,7 @@ export interface CoachTriggerDecision {
 
 export interface CoachTriggerInput {
   recentEvents: readonly SemanticEvent[];
+  diagnoses?: readonly WorkflowDiagnosis[];
   studentQuestion?: string;
   retryRequested?: boolean;
   repeatedFailureThreshold?: number;
@@ -19,6 +21,7 @@ export interface CoachTriggerInput {
 /** Deterministic trigger policy. Routine successful work is deliberately quiet. */
 export function decideCoachTrigger({
   recentEvents,
+  diagnoses = [],
   studentQuestion,
   retryRequested = false,
   repeatedFailureThreshold = 2
@@ -44,11 +47,17 @@ export function decideCoachTrigger({
   const flaggedReasons = Array.from(
     new Set(recentEvents.flatMap((event) => event.flags))
   );
-  if (flaggedReasons.length > 0) {
+  const diagnosisReasons = diagnoses
+    .filter(({ status }) => status === "violated")
+    .map(({ ruleId }) => `diagnosis:${ruleId}`);
+  const deterministicReasons = Array.from(
+    new Set([...flaggedReasons, ...diagnosisReasons])
+  );
+  if (deterministicReasons.length > 0) {
     return {
       shouldTrigger: true,
       source: "event",
-      reasons: flaggedReasons,
+      reasons: deterministicReasons,
       maxHintLevel: 2
     };
   }

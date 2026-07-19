@@ -70,4 +70,29 @@ describe("decideCoachTrigger", () => {
       decideCoachTrigger({ recentEvents: [failure, failure] }).reasons
     ).toContain("repeated_failure:endpoint_control");
   });
+
+  it("uses deterministic workflow diagnoses without disturbing stay-silent cases", () => {
+    const diagnosis = {
+      ruleId: "rule.required_step",
+      status: "violated" as const,
+      severity: "procedural" as const,
+      recoverable: true,
+      objectiveIds: ["objective.procedure"],
+      evidenceEventIds: []
+    };
+    expect(
+      decideCoachTrigger({ recentEvents: [], diagnoses: [diagnosis] })
+    ).toMatchObject({
+      shouldTrigger: true,
+      source: "event",
+      reasons: ["diagnosis:rule.required_step"],
+      maxHintLevel: 2
+    });
+    expect(
+      decideCoachTrigger({
+        recentEvents: [event()],
+        diagnoses: [{ ...diagnosis, status: "satisfied" }]
+      }).shouldTrigger
+    ).toBe(false);
+  });
 });

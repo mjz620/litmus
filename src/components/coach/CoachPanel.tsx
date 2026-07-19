@@ -2,17 +2,47 @@
 
 import { type FormEvent, useState } from "react";
 
+import type { AnyCoachResponse } from "../../lib/agent/schemas";
+import type { CoachMessage, CoachStatus } from "../../stores/labStore";
 import { useLabStore } from "../../stores/labStore";
 import { VoiceInput } from "./VoiceInput";
 
 import styles from "./CoachPanel.module.css";
 
-export function CoachPanel() {
-  const messages = useLabStore((store) => store.coachMessages);
-  const status = useLabStore((store) => store.coachStatus);
-  const error = useLabStore((store) => store.coachError);
-  const askCoach = useLabStore((store) => store.askCoach);
-  const sessionId = useLabStore((store) => store.sessionId);
+export function coachGuidanceLabel(
+  response: AnyCoachResponse | undefined
+): string | null {
+  if (!response || !("contractVersion" in response) || !response.guidance)
+    return null;
+  switch (response.guidance.kind) {
+    case "mandatory_procedure":
+      return "Required procedure";
+    case "safety":
+      return "Safety";
+    case "optional_context":
+      return "Optional context";
+    case "ai_guidance":
+      return "AI guidance";
+  }
+}
+
+export interface CoachPanelViewProps {
+  readonly messages: readonly CoachMessage[];
+  readonly status: CoachStatus;
+  readonly error: string | null;
+  readonly sessionId: string | null;
+  readonly askCoach: (question: string) => Promise<void>;
+}
+
+/** Presentation-only Lab coach surface, shared by the legacy store-backed
+ * experiment shell and any workspace that keeps its own coach state. */
+export function CoachPanelView({
+  messages,
+  status,
+  error,
+  sessionId,
+  askCoach
+}: CoachPanelViewProps) {
   const [question, setQuestion] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -37,15 +67,23 @@ export function CoachPanel() {
         </p>
       ) : (
         <ol className={styles.messages} aria-live="polite">
-          {messages.map((message) => (
-            <li
-              className={`${styles.message} ${message.role === "student" ? styles.student : ""}`}
-              key={message.id}
-            >
-              <strong>{message.role === "student" ? "You" : "Coach"}:</strong>{" "}
-              {message.text}
-            </li>
-          ))}
+          {messages.map((message) => {
+            const label = coachGuidanceLabel(message.response);
+            return (
+              <li
+                className={`${styles.message} ${message.role === "student" ? styles.student : ""}`}
+                key={message.id}
+              >
+                {label && <span className={styles.guidanceKind}>{label}</span>}
+                <span>
+                  <strong>
+                    {message.role === "student" ? "You" : "Coach"}:
+                  </strong>{" "}
+                  {message.text}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
 
@@ -73,5 +111,23 @@ export function CoachPanel() {
         </p>
       )}
     </section>
+  );
+}
+
+export function CoachPanel() {
+  const messages = useLabStore((store) => store.coachMessages);
+  const status = useLabStore((store) => store.coachStatus);
+  const error = useLabStore((store) => store.coachError);
+  const askCoach = useLabStore((store) => store.askCoach);
+  const sessionId = useLabStore((store) => store.sessionId);
+
+  return (
+    <CoachPanelView
+      messages={messages}
+      status={status}
+      error={error}
+      sessionId={sessionId}
+      askCoach={askCoach}
+    />
   );
 }
