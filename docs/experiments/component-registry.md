@@ -16,6 +16,9 @@ The current titration IDs are code-backed only where matching entries and tests 
 
 Components own apparatus interaction and presentation contracts. They must not contain experiment-specific chemistry formulas, choose precipitates, calculate pH, compute heat flow, or grade answers. A component dispatches a registered typed action; an experiment engine determines the consequence and emits semantic events.
 
+For immersive bench visuals — local-origin meshes, `Interactable` hover/selection glow, hitbox alignment, shared silhouettes, and reusable pour/mix/lid/probe gestures — follow the normative
+[`equipment visual contract`](../lab/equipment-visual-contract.md). A registry entry is not complete until that visual path exists.
+
 ## Entry contract
 
 Every implemented entry must declare:

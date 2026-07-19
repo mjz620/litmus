@@ -31,9 +31,9 @@
 | version-aware canonical hash | Implemented | [`src/lab-workflows/hash.ts`](../../src/lab-workflows/hash.ts) | v1 bytes remain frozen; v2 uses a frozen schema domain and rejects non-JSON input; only support/validation/Judge artifacts are excluded |
 | pure v1-to-v2 migration | Implemented, non-authoritative | [`src/lab-workflows/schema/migration.ts`](../../src/lab-workflows/schema/migration.ts) | exact mappings only; stable IDs/provenance; always emits `draft_unvalidated` with null validation/Judge artifacts |
 | v1 hard validator and eligibility | Implemented | [`src/lab-workflows/validation.ts`](../../src/lab-workflows/validation.ts) | family/engine are compatibility authority; step order is exact; v2 is not accepted yet |
-| capability registry | Implemented | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | reusable transfer, rinse, fill-to-mark, mix, and bounded concentration/dilution capabilities are verified |
-| component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | titration plus family-neutral volumetric pipette/flask and wash bottle have exact state/config/visual/mechanical references; the v1 adapter still consumes deprecated concrete visual names only for legacy titration |
-| action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact native transfer/conditioning/fill-to-mark/mix contracts coexist with unchanged nullable legacy engine mappings |
+| capability registry | Implemented | [`src/lab-workflows/capabilities`](../../src/lab-workflows/capabilities) | reusable transfer, rinse, fill-to-mark, mix, temperature/lid/probe, bounded concentration/dilution, and verified `chemistry.thermal_energy.v1` |
+| component registry | Implemented, transitional | [`src/lab-workflows/registries/components`](../../src/lab-workflows/registries/components) | titration, volumetric prep, and coffee-cup calorimeter/thermometer with verified mechanical + visual adapters |
+| action registry | Implemented, transitional | [`src/lab-workflows/registries/actions`](../../src/lab-workflows/registries/actions) | exact native transfer/conditioning/fill-to-mark/mix plus pour/mix/lid/probe/temperature contracts coexist with unchanged nullable legacy engine mappings |
 | reagent/material registry | Implemented, transitional | [`src/lab-workflows/registries/reagents`](../../src/lab-workflows/registries/reagents) | exact titration profiles, distilled water, fixed sodium-chloride compatibility stock, and a separately registered sodium-chloride identity with bounded schema 2.1 concentration authoring |
 | engine registry | Implemented, transitional | [`src/lab-workflows/registries/engines`](../../src/lab-workflows/registries/engines) | only `engine.titration.v1`; must not be cloned for dilution |
 | skills | Implemented | [`src/lab-workflows/registries/skills`](../../src/lab-workflows/registries/skills) | availability currently derived from family/runtime support |
@@ -47,14 +47,14 @@ Focused evidence lives under [`tests/lab-workflows`](../../tests/lab-workflows).
 
 | Registry | Current snapshot | Historical snapshot retained |
 | --- | --- | --- |
-| capabilities | `capabilities.2.0.0` | `capabilities.1.0.0`, `capabilities.1.1.0` |
-| components | `components.3.0.0` | `components.1.0.0`, `components.2.0.0`, `components.2.1.0` |
-| actions | `actions.3.0.0` | `actions.1.0.0`, `actions.2.0.0` |
-| reagents/materials | `reagents.3.1.0` | `reagents.1.0.0`, `reagents.2.0.0`, `reagents.2.1.0`, `reagents.2.2.0`, `reagents.3.0.0` |
-| configurations | `configurations.3.1.0` | `configurations.1.0.0` through `configurations.3.0.0` |
-| scene placements | `scene-placements.2.0.0` | `scene-placements.1.0.0` |
-| engines | `engines.1.1.0` | `engines.1.0.0` |
-| chemistry-model metadata | `chemistry-models.2.0.0` | `chemistry-models.1.0.0`, `chemistry-models.1.1.0` |
+| capabilities | `capabilities.2.2.0` | `capabilities.1.0.0` through `capabilities.2.1.0` |
+| components | `components.3.3.0` | `components.1.0.0` through `components.3.2.0` |
+| actions | `actions.3.1.0` | `actions.1.0.0`, `actions.2.0.0`, `actions.3.0.0` |
+| reagents/materials | `reagents.5.1.0` | `reagents.1.0.0` through `reagents.5.0.0` |
+| configurations | `configurations.5.2.0` | `configurations.1.0.0` through `configurations.5.1.0` |
+| scene placements | `scene-placements.2.1.0` | `scene-placements.1.0.0`, `scene-placements.2.0.0` |
+| engines | `engines.1.2.0` | `engines.1.0.0`, `engines.1.1.0` |
+| chemistry-model metadata | `chemistry-models.2.1.0` | `chemistry-models.1.0.0`, `chemistry-models.1.1.0`, `chemistry-models.2.0.0` |
 
 The capability and chemistry-model snapshots are not added to v1 validation artifacts because the v1 validator does not consume them. Component/action/reagent/configuration snapshot bumps make artifacts carrying their old snapshots stale until revalidation, while canonical v1 workflow content hashes remain unchanged. The v2 validator now records every registry authority it consults, including capabilities, models, action subcontracts, and the engine registry used only by an explicit legacy compatibility descriptor.
 
@@ -73,10 +73,10 @@ The capability and chemistry-model snapshots are not added to v1 validation arti
 | titration adapter | Implemented, transitional | [`src/lab-workflows/adapters/titration`](../../src/lab-workflows/adapters/titration) | Make legacy dependency visible; retain through parity and historical replay |
 | titration workflow assembler | Implemented, transitional | [`src/lab-workflows/runtime/titrationRuntime.ts`](../../src/lab-workflows/runtime/titrationRuntime.ts) | Current steps are runtime control flow; do not generalize by adding family switches |
 | generic coordinator | Implemented and Composer Preview-enabled | [`src/lab-workflows/runtime/generic`](../../src/lab-workflows/runtime/generic) | Compiles current-hash runnable v2 definitions, coordinates exact mechanics/models/evaluation/events/replay, and selects atomic legacy compatibility only by validated adapter ID; Assign remains closed |
-| reusable liquid mechanics and material ledger | Implemented and native Preview-enabled | [`src/lab-workflows/mechanics`](../../src/lab-workflows/mechanics), [`src/lab-workflows/chemistry-models/material-ledger`](../../src/lab-workflows/chemistry-models/material-ledger) | Exact adapters and conserved transfer deltas support bounded solution-preparation actions through the generic coordinator; unsupported semantics fail closed |
+| reusable liquid mechanics and material ledger | Implemented and native Preview-enabled | [`src/lab-workflows/mechanics`](../../src/lab-workflows/mechanics), [`src/lab-workflows/chemistry-models/material-ledger`](../../src/lab-workflows/chemistry-models/material-ledger) | Exact adapters and conserved transfer deltas support bounded solution-preparation and coffee-cup pour/mix/lid/probe actions; unsupported semantics fail closed |
 | constraint contracts | Implemented, structural only | [`src/lab-workflows/schema/conditions.ts`](../../src/lab-workflows/schema/conditions.ts) | Closed bounded data; parsing does not resolve IDs or make a workflow runnable |
 | constraint evaluator/diagnoses | Implemented and Preview-enabled | [`src/lab-workflows/evaluation`](../../src/lab-workflows/evaluation) | Consumes registered observables and semantic evidence without calculating chemistry; shared student Preview exposes plain-language evidence and diagnoses |
-| chemistry model contracts/resolution | Implemented for legacy titration and bounded native dilution | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models), [`src/lab-workflows/chemistry-models/concentration-dilution`](../../src/lab-workflows/chemistry-models/concentration-dilution) | exact provider/dependency resolution selects either the scoped legacy titration adapter or the family-neutral shared-liquid plus concentration modules; unsupported identities fail closed |
+| chemistry model contracts/resolution | Implemented for legacy titration, bounded native dilution, and coffee-cup thermal energy | [`src/lab-workflows/registries/chemistry-models`](../../src/lab-workflows/registries/chemistry-models), [`src/lab-workflows/chemistry-models/concentration-dilution`](../../src/lab-workflows/chemistry-models/concentration-dilution), [`src/lab-workflows/chemistry-models/thermal-energy`](../../src/lab-workflows/chemistry-models/thermal-energy) | exact provider/dependency resolution selects legacy titration, dilution, or thermal (`q=mcΔT`, density=1 g/mL, c=4.184 J/(g·°C), C_cal=0 MVP) over shared liquid foundation; hot/cold water profiles `reagent.distilled_water_cold_20c.v1` / `*_hot_60c.v1`; calorimeter/thermometer LabScene visuals verified |
 
 ## Production student UI and state
 

@@ -12,13 +12,14 @@ Read these sources in order before implementing a Lab Composer ticket:
 6. [`docs/architecture/composable-lab-runtime.md`](architecture/composable-lab-runtime.md) — implemented fixed-family transitional architecture and its still-applicable trust constraints.
 7. [`docs/experiments/lab-workflow-schema.md`](experiments/lab-workflow-schema.md) — TypeScript-oriented workflow, validation, and critique contracts with examples.
 8. [`docs/experiments/component-registry.md`](experiments/component-registry.md) — verified apparatus primitive contracts and restrictions.
-9. [`docs/experiments/skill-registry.md`](experiments/skill-registry.md) — objective-to-family/evidence mapping and legacy skill aliases.
-10. [`docs/ai/lab-authoring-agent.md`](ai/lab-authoring-agent.md) — authoring role, tool contracts, structured output, and revision policy.
-11. [`docs/ai/lab-workflow-judge-agent.md`](ai/lab-workflow-judge-agent.md) — independent pedagogical critique contract and advisory authority.
-12. [`docs/ai/agent-boundaries.md`](ai/agent-boundaries.md) — allowed/forbidden behavior across agents, engines, validators, teachers, and UI.
-13. [`docs/project/implementation-roadmap-lab-composer.md`](project/implementation-roadmap-lab-composer.md) — historical fixed-family dependency plan and pre-deadline exclusions.
-14. [`docs/demo/lab-composer-judge-demo.md`](demo/lab-composer-judge-demo.md) — Build Week hero flow and three-minute script.
-15. [`docs/evaluation/lab-composer-evals.md`](evaluation/lab-composer-evals.md) — hard, authoring, judge, replay, safety, and unsupported-request evals.
+9. [`docs/lab/equipment-visual-contract.md`](lab/equipment-visual-contract.md) — normative 3D equipment contract: local-origin meshes, Interactable hover/selection glow, hitboxes, shared silhouettes, and reusable interaction gestures.
+10. [`docs/experiments/skill-registry.md`](experiments/skill-registry.md) — objective-to-family/evidence mapping and legacy skill aliases.
+11. [`docs/ai/lab-authoring-agent.md`](ai/lab-authoring-agent.md) — authoring role, tool contracts, structured output, and revision policy.
+12. [`docs/ai/lab-workflow-judge-agent.md`](ai/lab-workflow-judge-agent.md) — independent pedagogical critique contract and advisory authority.
+13. [`docs/ai/agent-boundaries.md`](ai/agent-boundaries.md) — allowed/forbidden behavior across agents, engines, validators, teachers, and UI.
+14. [`docs/project/implementation-roadmap-lab-composer.md`](project/implementation-roadmap-lab-composer.md) — historical fixed-family dependency plan and pre-deadline exclusions.
+15. [`docs/demo/lab-composer-judge-demo.md`](demo/lab-composer-judge-demo.md) — Build Week hero flow and three-minute script.
+16. [`docs/evaluation/lab-composer-evals.md`](evaluation/lab-composer-evals.md) — hard, authoring, judge, replay, safety, and unsupported-request evals.
 
 Then inspect [`docs/project/Repo_Current_State.md`](project/Repo_Current_State.md) for the pivot note and [`docs/Repo_Current_State.md`](Repo_Current_State.md) for current implementation reality. Existing product, architecture, experiment, AI, demo, and evaluation docs remain useful constraints; the Lab Composer docs extend rather than delete them.
 

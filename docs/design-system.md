@@ -254,6 +254,11 @@ Never increase the map above 512² to rescue appearance.
 The 3D object, equipment-bar button, cursor, hover label, and focused controls
 must represent one shared state.
 
+For the full implementation contract when authoring new apparatus (local-origin
+meshes, `Interactable` wiring, hitbox alignment, shared silhouettes, and
+reusable pour/mix/lid/probe gestures), see
+[`docs/lab/equipment-visual-contract.md`](lab/equipment-visual-contract.md).
+
 | State | 3D treatment | DOM treatment | Motion |
 | --- | --- | --- | --- |
 | Rest | Natural material | White secondary button | None |

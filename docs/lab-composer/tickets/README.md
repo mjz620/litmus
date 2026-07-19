@@ -58,6 +58,12 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | `LC2-806` | Ready (physical residual) | Automated dual-lab gates green; dated physical Chromebook pass still required before `LC2-808` |
 | `LC2-807` | Complete | Family Author v1 route returns 410; capability author is the sole production path |
 | `LC2-808` | Blocked by `LC2-806` physical sign-off | Remove titration `?runtime=legacy` student escape hatch after hardware verification |
+| `LC2-901` | Complete | Expanded `concentrationAuthoring` to aqueous HCl/NaOH; dilution model accepts any dilution-capable stock |
+| `LC2-902` | Complete | Setup-driven titration compatibility path consumes Composer-authored acid/base M; near-endpoint seed recomputed + static validator gate |
+| `LC2-903` | Complete | Three runnable NaCl dilution Composer templates/seeds (0.5000→0.0500, 1.000→0.1000, 0.2500→0.0250); glassware capacity presets deferred until config-driven capacity |
+| `LC2-910` | Complete | Coffee-cup calorimetry registries + pour/mix/lid/probe mechanics (ledger-only); thermal chemistry module and LabScene deferred to `LC2-911` |
+| `LC2-911` | Complete | Thermal `q=mcΔT` module + verified calorimeter/thermometer LabScene visual adapters |
+| `LC2-912` | Complete | Calorimetry seed, Composer template, practice route `/lab/calorimetry` |
 
 The corrective `LC2-410`–`LC2-416` pass (from [`../../qa/strict-product-judge-report.md`](../../qa/strict-product-judge-report.md)) precedes further feature work. The release-blocking `LC2-410`–`LC2-414` tickets are complete. Phases 5–8 core gates plus `LC2-805`/`LC2-807` are complete; `LC2-806` physical sign-off remains before `LC2-808`.
 
