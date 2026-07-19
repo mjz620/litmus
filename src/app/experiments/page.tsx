@@ -1,9 +1,13 @@
+import Link from "next/link";
+
 import { ExperimentCard } from "../../components/ui/ExperimentCard";
+import { getSolutionPreparationPracticePath } from "../../components/ui/experimentRoutes";
 import {
   listExperimentManifests,
   type ExperimentId
 } from "../../experiments/registry";
 import { PageHeader, ProductShell } from "../../components/ui/ProductShell";
+import cardStyles from "../../components/ui/ExperimentCard.module.css";
 
 import styles from "./page.module.css";
 
@@ -15,10 +19,15 @@ export default function ExperimentsPage() {
       <PageHeader
         eyebrow="Guest practice"
         title="Choose an experiment"
-        description="Rehearse a chemistry lab with deterministic science and learning evidence. No account is required."
+        description="Rehearse a chemistry lab with deterministic science and learning evidence. No account is required. Open Lab Composer anytime to author; teachers sign in only to save cloud drafts and assign."
         backHref="/"
         backLabel="Home"
       />
+      <p>
+        <Link className="ui-button-secondary" href="/lab-composer">
+          Open Lab Composer
+        </Link>
+      </p>
       <section className={styles.grid} aria-label="Available experiments">
         {experiments.map((manifest) => (
           <ExperimentCard
@@ -29,6 +38,38 @@ export default function ExperimentsPage() {
             metadata={manifest.metadata}
           />
         ))}
+        <article className={cardStyles.card}>
+          <div className={cardStyles.cardHeader}>
+            <span className={cardStyles.availability}>Available</span>
+            <span className={cardStyles.version}>setup-driven</span>
+          </div>
+          <h2>Prepare a sodium chloride dilution</h2>
+          <p className={cardStyles.description}>
+            Transfer a calibrated aliquot, dilute to the mark, and mix a
+            solution with deterministic concentration evidence. Uses the same
+            immersive 3D bench as titration with volumetric equipment.
+          </p>
+          <dl className={cardStyles.details}>
+            <div>
+              <dt>Estimated time</dt>
+              <dd>12 minutes</dd>
+            </div>
+            <div>
+              <dt>Difficulty</dt>
+              <dd>intermediate</dd>
+            </div>
+            <div>
+              <dt>Skills practiced</dt>
+              <dd>2</dd>
+            </div>
+          </dl>
+          <Link
+            className={cardStyles.cta}
+            href={getSolutionPreparationPracticePath()}
+          >
+            Start practice
+          </Link>
+        </article>
       </section>
     </ProductShell>
   );
