@@ -4,26 +4,34 @@ import {
   type ResolvedEquipmentPose
 } from "../../../lab-workflows/registries/scene-placements";
 import {
-  EQUIPMENT_IDS,
   getVisibleControlGroups,
   type ControlGroupId,
   type EquipmentId
 } from "./equipment";
 
-export type TitrationVisualAdapterKind =
+export type LabVisualAdapterKind =
   | "burette"
   | "flask"
   | "indicator_shelf"
-  | "wash_station";
+  | "wash_station"
+  | "volumetric_pipette"
+  | "volumetric_flask"
+  | "wash_bottle"
+  | "reagent_bottle";
 
-export interface TitrationVisualAdapterRegistration {
+export interface LabVisualAdapterRegistration {
   readonly visualAdapterDefinitionId: string;
-  readonly kind: TitrationVisualAdapterKind;
+  readonly kind: LabVisualAdapterKind;
   readonly selectableEquipmentIds: readonly EquipmentId[];
 }
 
-export const TITRATION_VISUAL_ADAPTERS: Readonly<
-  Record<string, TitrationVisualAdapterRegistration>
+/** @deprecated Prefer LAB_VISUAL_ADAPTERS; kept as an alias for titration-era imports. */
+export type TitrationVisualAdapterKind = LabVisualAdapterKind;
+/** @deprecated Prefer LabVisualAdapterRegistration. */
+export type TitrationVisualAdapterRegistration = LabVisualAdapterRegistration;
+
+export const LAB_VISUAL_ADAPTERS: Readonly<
+  Record<string, LabVisualAdapterRegistration>
 > = Object.freeze({
   "visual-adapter.burette.v1": Object.freeze({
     visualAdapterDefinitionId: "visual-adapter.burette.v1",
@@ -42,10 +50,30 @@ export const TITRATION_VISUAL_ADAPTERS: Readonly<
   }),
   "visual-adapter.reagent_bottle.v1": Object.freeze({
     visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
-    kind: "wash_station",
-    selectableEquipmentIds: Object.freeze(["washStation"] as const)
+    kind: "reagent_bottle",
+    // Selectable id is resolved from the rest of the projection: titration
+    // wash station vs dilution stock bottle share this adapter id.
+    selectableEquipmentIds: Object.freeze([] as const)
+  }),
+  "visual-adapter.volumetric_pipette.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.volumetric_pipette.v1",
+    kind: "volumetric_pipette",
+    selectableEquipmentIds: Object.freeze(["volumetricPipette"] as const)
+  }),
+  "visual-adapter.volumetric_flask.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.volumetric_flask.v1",
+    kind: "volumetric_flask",
+    selectableEquipmentIds: Object.freeze(["volumetricFlask"] as const)
+  }),
+  "visual-adapter.wash_bottle.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.wash_bottle.v1",
+    kind: "wash_bottle",
+    selectableEquipmentIds: Object.freeze(["washBottle"] as const)
   })
 });
+
+/** Titration-era alias; includes dilution adapters in the shared map. */
+export const TITRATION_VISUAL_ADAPTERS = LAB_VISUAL_ADAPTERS;
 
 const ACTION_CONTROL_GROUP: Readonly<Record<string, ControlGroupId>> =
   Object.freeze({
@@ -54,7 +82,11 @@ const ACTION_CONTROL_GROUP: Readonly<Record<string, ControlGroupId>> =
     "action.select_indicator.v1": "indicator",
     "action.add_indicator.v1": "indicator",
     "action.dispense.v1": "deliver",
-    "action.read_volume.v1": "reading"
+    "action.read_volume.v1": "reading",
+    "action.rinse_transfer_device.v1": "solution",
+    "action.transfer_liquid.v1": "solution",
+    "action.fill_to_mark.v1": "solution",
+    "action.mix_solution.v1": "solution"
   });
 
 export const SETUP_DRIVEN_SCENE_ERROR_CODES = Object.freeze({
@@ -95,17 +127,19 @@ export interface TitrationSceneConfiguration {
   readonly availableControlGroups: readonly ControlGroupId[];
   readonly minDispenseVolumeML: number | null;
   readonly maxDispenseVolumeML: number | null;
+  /** Fill fraction 0–1 keyed by visual adapter definition id. */
+  readonly equipmentFillFractions: Readonly<Record<string, number>>;
   readonly projectedState: {
     readonly burette: {
       readonly availableML: number;
       readonly capacityML: number;
       readonly deliveredML: number;
       readonly meniscusReadingML: number;
-    };
+    } | null;
     readonly flask: {
       readonly observableColor: string;
       readonly indicatorAdded: boolean;
-    };
+    } | null;
   } | null;
 }
 
@@ -115,8 +149,21 @@ const LEGACY_SCENE_CONFIGURATION: TitrationSceneConfiguration = Object.freeze({
   workflowHash: null,
   equipmentInstanceIds: Object.freeze([]),
   equipmentPoses: Object.freeze([]),
-  selectableEquipmentIds: EQUIPMENT_IDS,
-  availableActionIds: Object.freeze(Object.keys(ACTION_CONTROL_GROUP)),
+  selectableEquipmentIds: Object.freeze([
+    "burette",
+    "flask",
+    "meniscus",
+    "indicatorShelf",
+    "washStation"
+  ] as const),
+  availableActionIds: Object.freeze([
+    "action.rinse.v1",
+    "action.fill.v1",
+    "action.select_indicator.v1",
+    "action.add_indicator.v1",
+    "action.dispense.v1",
+    "action.read_volume.v1"
+  ]),
   availableControlGroups: Object.freeze([
     "prepare",
     "indicator",
@@ -125,6 +172,7 @@ const LEGACY_SCENE_CONFIGURATION: TitrationSceneConfiguration = Object.freeze({
   ] as const),
   minDispenseVolumeML: null,
   maxDispenseVolumeML: null,
+  equipmentFillFractions: Object.freeze({}),
   projectedState: null
 });
 
@@ -141,6 +189,15 @@ function numberField(
     );
   }
   return value;
+}
+
+function optionalNumberField(
+  equipment: SetupDrivenLabProjection["equipment"][number],
+  key: string,
+  fallback = 0
+): number {
+  const value = equipment.stateFields[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function stringField(
@@ -173,6 +230,23 @@ function booleanField(
   return value;
 }
 
+function fillFractionFor(
+  equipment: SetupDrivenLabProjection["equipment"][number]
+): number {
+  const capacity = optionalNumberField(equipment, "capacityML", 0);
+  const available = optionalNumberField(
+    equipment,
+    "availableML",
+    optionalNumberField(equipment, "totalVolumeML", 0)
+  );
+  return capacity > 0 ? available / capacity : available > 0 ? 0.7 : 0;
+}
+
+/**
+ * Resolve exact registered visual adapters and poses for the shared immersive
+ * lab scene. Titration requires burette+flask when those adapters are present;
+ * native solution-preparation labs may omit them.
+ */
 export function resolveTitrationSceneConfiguration(
   projection: Readonly<SetupDrivenLabProjection> | null
 ): Readonly<TitrationSceneConfiguration> {
@@ -180,24 +254,38 @@ export function resolveTitrationSceneConfiguration(
 
   const selectableEquipmentIds: EquipmentId[] = [];
   const equipmentPoses: ResolvedEquipmentPose[] = [];
+  const equipmentFillFractions: Record<string, number> = {};
   let buretteState:
-    | NonNullable<TitrationSceneConfiguration["projectedState"]>["burette"]
+    | NonNullable<
+        NonNullable<TitrationSceneConfiguration["projectedState"]>["burette"]
+      >
     | null = null;
   let flaskState:
-    | NonNullable<TitrationSceneConfiguration["projectedState"]>["flask"]
+    | NonNullable<
+        NonNullable<TitrationSceneConfiguration["projectedState"]>["flask"]
+      >
     | null = null;
+  let hasBuretteAdapter = false;
+  let hasFlaskAdapter = false;
+  let hasVolumetricAdapter = false;
   const equipmentIds = new Set(
     projection.equipment.map(({ instanceId }) => instanceId)
   );
   for (const equipment of projection.equipment) {
-    const adapter =
-      TITRATION_VISUAL_ADAPTERS[equipment.visualAdapterDefinitionId];
+    const adapter = LAB_VISUAL_ADAPTERS[equipment.visualAdapterDefinitionId];
     if (!adapter) {
       throw new SetupDrivenSceneError(
         SETUP_DRIVEN_SCENE_ERROR_CODES.visualAdapterUnknown,
         equipment.visualAdapterDefinitionId,
-        `No exact titration visual adapter is registered for ${equipment.visualAdapterDefinitionId}.`
+        `No exact lab visual adapter is registered for ${equipment.visualAdapterDefinitionId}.`
       );
+    }
+    if (
+      adapter.kind === "volumetric_pipette" ||
+      adapter.kind === "volumetric_flask" ||
+      adapter.kind === "wash_bottle"
+    ) {
+      hasVolumetricAdapter = true;
     }
     try {
       equipmentPoses.push(
@@ -215,12 +303,15 @@ export function resolveTitrationSceneConfiguration(
         `${equipment.placementSlotId} is not a verified pose for ${adapter.visualAdapterDefinitionId}.`
       );
     }
+    equipmentFillFractions[equipment.visualAdapterDefinitionId] =
+      fillFractionFor(equipment);
     for (const equipmentId of adapter.selectableEquipmentIds) {
       if (!selectableEquipmentIds.includes(equipmentId)) {
         selectableEquipmentIds.push(equipmentId);
       }
     }
     if (adapter.kind === "burette") {
+      hasBuretteAdapter = true;
       buretteState = Object.freeze({
         availableML: numberField(equipment, "availableML"),
         capacityML: numberField(equipment, "capacityML"),
@@ -229,17 +320,45 @@ export function resolveTitrationSceneConfiguration(
       });
     }
     if (adapter.kind === "flask") {
+      hasFlaskAdapter = true;
       flaskState = Object.freeze({
         observableColor: stringField(equipment, "observableColor"),
         indicatorAdded: booleanField(equipment, "indicatorAdded")
       });
     }
   }
-  if (!buretteState || !flaskState) {
+  for (const equipment of projection.equipment) {
+    if (
+      equipment.visualAdapterDefinitionId !== "visual-adapter.reagent_bottle.v1"
+    ) {
+      continue;
+    }
+    const selectableId: EquipmentId = hasVolumetricAdapter
+      ? "reagentBottle"
+      : "washStation";
+    if (!selectableEquipmentIds.includes(selectableId)) {
+      selectableEquipmentIds.push(selectableId);
+    }
+  }
+  if (hasBuretteAdapter !== Boolean(buretteState) || hasFlaskAdapter !== Boolean(flaskState)) {
     throw new SetupDrivenSceneError(
       SETUP_DRIVEN_SCENE_ERROR_CODES.equipmentStateInvalid,
       projection.workflowId,
-      "The titration scene requires exact burette and flask projections."
+      "Burette and flask adapters require exact projected state fields."
+    );
+  }
+  if (hasBuretteAdapter && !hasFlaskAdapter) {
+    throw new SetupDrivenSceneError(
+      SETUP_DRIVEN_SCENE_ERROR_CODES.equipmentStateInvalid,
+      projection.workflowId,
+      "The titration scene requires both burette and flask projections when either is present."
+    );
+  }
+  if (hasFlaskAdapter && !hasBuretteAdapter) {
+    throw new SetupDrivenSceneError(
+      SETUP_DRIVEN_SCENE_ERROR_CODES.equipmentStateInvalid,
+      projection.workflowId,
+      "The titration scene requires both burette and flask projections when either is present."
     );
   }
 
@@ -264,7 +383,7 @@ export function resolveTitrationSceneConfiguration(
       throw new SetupDrivenSceneError(
         SETUP_DRIVEN_SCENE_ERROR_CODES.actionAdapterUnknown,
         action.actionId,
-        `No exact titration control adapter is registered for ${action.actionId}.`
+        `No exact lab control adapter is registered for ${action.actionId}.`
       );
     }
     if (action.actionId === "action.dispense.v1") {
@@ -311,6 +430,7 @@ export function resolveTitrationSceneConfiguration(
     availableControlGroups: Object.freeze(availableControlGroups),
     minDispenseVolumeML,
     maxDispenseVolumeML,
+    equipmentFillFractions: Object.freeze(equipmentFillFractions),
     projectedState: Object.freeze({
       burette: buretteState,
       flask: flaskState

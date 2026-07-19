@@ -6,8 +6,10 @@ import {
   resolveTitrationSceneConfiguration,
   visibleControlGroupsForConfiguration
 } from "../../src/components/lab/titration/setupDrivenScene";
+import { validateSolutionPreparationV2 } from "../../src/lab-workflows/definitions/solution-preparation";
 import {
   STRICT_TITRATION_SETUP_SELECTION,
+  createSetupDrivenNativeSession,
   createSetupDrivenTitrationSession,
   normalizeSetupDrivenTitrationAction,
   type SetupDrivenLabProjection
@@ -64,6 +66,7 @@ describe("setup-driven titration scene projection", () => {
       availableControlGroups: ["reading"],
       minDispenseVolumeML: 0.01,
       maxDispenseVolumeML: 0.5,
+      equipmentFillFractions: expect.any(Object),
       projectedState: {
         burette: {
           availableML: 28,
@@ -153,7 +156,7 @@ describe("setup-driven titration scene projection", () => {
       })
     ]);
     expect(configuration.availableActionIds).toEqual(["action.read_volume.v1"]);
-    expect(configuration.projectedState?.burette.meniscusReadingML).toBe(22);
+    expect(configuration.projectedState?.burette?.meniscusReadingML).toBe(22);
   });
 
   it("keeps the legacy scene and controls unchanged without a setup projection", () => {
@@ -175,19 +178,49 @@ describe("setup-driven titration scene projection", () => {
     expect(configuration.projectedState).toBeNull();
   });
 
-  it("registers every current exact titration visual adapter including wash", () => {
+  it("registers shared lab visual adapters for titration and dilution", () => {
     expect(Object.keys(TITRATION_VISUAL_ADAPTERS).sort()).toEqual([
       "visual-adapter.burette.v1",
       "visual-adapter.erlenmeyer_flask.v1",
       "visual-adapter.indicator_bottle.v1",
-      "visual-adapter.reagent_bottle.v1"
+      "visual-adapter.reagent_bottle.v1",
+      "visual-adapter.volumetric_flask.v1",
+      "visual-adapter.volumetric_pipette.v1",
+      "visual-adapter.wash_bottle.v1"
     ]);
     expect(
-      TITRATION_VISUAL_ADAPTERS["visual-adapter.reagent_bottle.v1"]
+      TITRATION_VISUAL_ADAPTERS["visual-adapter.volumetric_pipette.v1"]
     ).toMatchObject({
-      kind: "wash_station",
-      selectableEquipmentIds: ["washStation"]
+      kind: "volumetric_pipette",
+      selectableEquipmentIds: ["volumetricPipette"]
     });
+  });
+
+  it("resolves the native solution-preparation projection without burette or flask", () => {
+    const workflow = validateSolutionPreparationV2("2026-07-18T15:00:00.000Z");
+    const session = createSetupDrivenNativeSession({
+      sessionId: "dilution-scene-test",
+      sessionSeed: "dilution-scene-seed",
+      selection: {
+        workflowId: workflow.id,
+        workflowHash: workflow.validation.canonicalSpecHash
+      },
+      workflow
+    });
+    const configuration = resolveTitrationSceneConfiguration(
+      session.getProjection()
+    );
+    expect(configuration.projectedState?.burette).toBeNull();
+    expect(configuration.projectedState?.flask).toBeNull();
+    expect(configuration.selectableEquipmentIds).toEqual(
+      expect.arrayContaining([
+        "volumetricPipette",
+        "volumetricFlask",
+        "washBottle",
+        "reagentBottle"
+      ])
+    );
+    expect(configuration.availableControlGroups).toContain("solution");
   });
 
   it.each([

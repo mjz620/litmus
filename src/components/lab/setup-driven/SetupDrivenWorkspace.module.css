@@ -86,6 +86,21 @@
   background: #e8f0ec;
 }
 
+.immersiveBench {
+  overflow: hidden;
+  min-height: clamp(28rem, 58vh, 48rem);
+  background: #e8f0ec;
+}
+
+.bench {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+}
+
 .equipmentList {
   padding: 0.85rem 1rem 1rem;
   border-top: 1px solid var(--color-border);

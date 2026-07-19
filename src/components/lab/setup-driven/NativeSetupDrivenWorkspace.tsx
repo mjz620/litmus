@@ -22,7 +22,7 @@ import {
   type SetupDrivenLabProjection,
   type SetupDrivenNativeSession
 } from "../../../stores/setupDrivenLabSession";
-import { SetupDrivenBench } from "./SetupDrivenBench";
+import { ImmersiveSetupDrivenBench } from "./ImmersiveSetupDrivenBench";
 
 import styles from "./SetupDrivenWorkspace.module.css";
 
@@ -40,10 +40,11 @@ const PARAMETER_LABELS: Readonly<Record<string, string>> = Object.freeze({
 function createSession(
   workflow: Readonly<ValidatedLabWorkflowSpecV2>,
   replaySeed: string,
-  run: number
+  run: number,
+  sessionIdPrefix = "teacher-preview"
 ): SetupDrivenNativeSession {
   return createSetupDrivenNativeSession({
-    sessionId: `teacher-preview-${run}`,
+    sessionId: `${sessionIdPrefix}-${run}`,
     sessionSeed: `${replaySeed}:${run}`,
     selection: {
       workflowId: workflow.id,
@@ -200,14 +201,34 @@ export function completedActionMessage(
 
 export function NativeSetupDrivenWorkspace({
   workflow,
-  replaySeed
+  replaySeed,
+  mode = "preview",
+  title,
+  sessionIdPrefix
 }: {
   readonly workflow: Readonly<ValidatedLabWorkflowSpecV2>;
   readonly replaySeed: string;
+  readonly mode?: "preview" | "assignment" | "practice";
+  readonly title?: string;
+  readonly sessionIdPrefix?: string;
 }) {
+  const prefix =
+    sessionIdPrefix ??
+    (mode === "assignment"
+      ? "assignment"
+      : mode === "practice"
+        ? "practice"
+        : "teacher-preview");
+  const heading =
+    title ??
+    (mode === "assignment"
+      ? "Assigned lab"
+      : mode === "practice"
+        ? "Practice lab"
+        : "Teacher preview");
   const [run, setRun] = useState(1);
   const [session, setSession] = useState(() =>
-    createSession(workflow, replaySeed, 1)
+    createSession(workflow, replaySeed, 1, prefix)
   );
   const [current, setCurrent] = useState(() => snapshot(session));
   const [values, setValues] = useState<Readonly<Record<string, string>>>({});
@@ -270,7 +291,7 @@ export function NativeSetupDrivenWorkspace({
       );
       const coachRequest: AnyCoachRequest = {
         contractVersion: AUTHORED_COACH_CONTRACT_VERSION,
-        sessionId: `teacher-preview-${run}`,
+        sessionId: `${prefix}-${run}`,
         experimentId: workflow.id,
         workflowContext: authoredContext,
         studentQuestion,
@@ -341,7 +362,7 @@ export function NativeSetupDrivenWorkspace({
 
   function restart() {
     const nextRun = run + 1;
-    const nextSession = createSession(workflow, replaySeed, nextRun);
+    const nextSession = createSession(workflow, replaySeed, nextRun, prefix);
     setRun(nextRun);
     setSession(nextSession);
     setCurrent(snapshot(nextSession));
@@ -360,10 +381,11 @@ export function NativeSetupDrivenWorkspace({
       aria-label="Interactive setup-driven lab"
       data-workflow-status={status}
       data-workflow-id={workflow.id}
+      data-session-mode={mode}
     >
       <header className={styles.workspaceHeader}>
         <div>
-          <p>Student workspace</p>
+          <p>{heading}</p>
           <h2>{workflow.metadata.title}</h2>
           <span>{workflow.metadata.studentSummary}</span>
         </div>
@@ -376,14 +398,14 @@ export function NativeSetupDrivenWorkspace({
                 : "Lab in progress"}
           </strong>
           <button type="button" onClick={restart}>
-            Restart preview
+            Restart attempt
           </button>
         </div>
       </header>
 
       <div className={styles.mainGrid}>
         <div>
-          <SetupDrivenBench projection={current.projection} />
+          <ImmersiveSetupDrivenBench projection={current.projection} />
           <section
             className={styles.equipmentList}
             aria-labelledby="equipment-heading"

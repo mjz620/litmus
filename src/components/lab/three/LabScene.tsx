@@ -14,6 +14,12 @@ import { IndicatorShelf } from "./IndicatorShelf";
 import { Interactable } from "./Interactable";
 import { SceneEnvironment } from "./SceneEnvironment";
 import { SkyDome } from "./SkyDome";
+import {
+  DistilledWaterWashBottle,
+  RegisteredReagentBottle,
+  VolumetricFlask,
+  VolumetricPipette
+} from "./SolutionPreparationEquipment";
 import { type WashLiquid, WashStation } from "./WashStation";
 import {
   BURETTE,
@@ -30,6 +36,7 @@ import { LAB_PALETTE } from "./labPalette";
 interface LabSceneProps {
   enabledEquipmentIds: readonly EquipmentId[];
   equipmentPoses?: readonly ResolvedEquipmentPose[];
+  equipmentFillFractions?: Readonly<Record<string, number>>;
   buretteAvailableML: number;
   buretteCapacityML: number;
   flaskLiquidColor: string;
@@ -100,6 +107,7 @@ function LabLighting({ quality }: { quality: GlassQuality }) {
 export function LabScene({
   enabledEquipmentIds,
   equipmentPoses = [],
+  equipmentFillFractions = {},
   buretteAvailableML,
   buretteCapacityML,
   flaskLiquidColor,
@@ -120,15 +128,36 @@ export function LabScene({
   onTitrantBottleClick,
   onFunnelClick
 }: LabSceneProps) {
+  const poseDriven = equipmentPoses.length > 0;
   const poseFor = (visualAdapterDefinitionId: string) =>
     equipmentPoses.find(
       (equipmentPose) =>
         equipmentPose.visualAdapterDefinitionId === visualAdapterDefinitionId
     );
+  const show = (equipmentId: EquipmentId, adapterId?: string) => {
+    if (!enabledEquipmentIds.includes(equipmentId)) return false;
+    if (!poseDriven) return true;
+    return adapterId ? poseFor(adapterId) != null : true;
+  };
   const burettePose = poseFor("visual-adapter.burette.v1");
   const flaskPose = poseFor("visual-adapter.erlenmeyer_flask.v1");
   const shelfPose = poseFor("visual-adapter.indicator_bottle.v1");
   const washPose = poseFor("visual-adapter.reagent_bottle.v1");
+  const pipettePose = poseFor("visual-adapter.volumetric_pipette.v1");
+  const volumetricFlaskPose = poseFor("visual-adapter.volumetric_flask.v1");
+  const washBottlePose = poseFor("visual-adapter.wash_bottle.v1");
+  const showBurette = show("burette", "visual-adapter.burette.v1");
+  const showFlask = show("flask", "visual-adapter.erlenmeyer_flask.v1");
+  const showMeniscus = showBurette && enabledEquipmentIds.includes("meniscus");
+  const showShelf = show("indicatorShelf", "visual-adapter.indicator_bottle.v1");
+  const showWashStation =
+    enabledEquipmentIds.includes("washStation") &&
+    (!poseDriven || washPose != null) &&
+    !pipettePose;
+  const showReagentBottle =
+    enabledEquipmentIds.includes("reagentBottle") && washPose != null;
+  const fillOf = (adapterId: string, fallback = 0.55) =>
+    equipmentFillFractions[adapterId] ?? fallback;
   const buretteTranslation = burettePose?.translation ?? ([0, 0, 0] as const);
   const flaskTranslation = flaskPose?.translation ?? ([0, 0, 0] as const);
   const shelfTranslation = shelfPose?.translation ?? ([0, 0, 0] as const);
@@ -153,7 +182,12 @@ export function LabScene({
             ? CAMERA_POSES.indicatorShelf
             : selected === "washStation"
               ? CAMERA_POSES.washStation
-              : CAMERA_POSES.overview;
+              : selected === "volumetricPipette" ||
+                  selected === "volumetricFlask" ||
+                  selected === "washBottle" ||
+                  selected === "reagentBottle"
+                ? CAMERA_POSES.overview
+                : CAMERA_POSES.overview;
   const selectedPose =
     selected === "burette" || selected === "meniscus"
       ? burettePose
@@ -161,9 +195,15 @@ export function LabScene({
         ? flaskPose
         : selected === "indicatorShelf"
           ? shelfPose
-          : selected === "washStation"
+          : selected === "washStation" || selected === "reagentBottle"
             ? washPose
-            : undefined;
+            : selected === "volumetricPipette"
+              ? pipettePose
+              : selected === "volumetricFlask"
+                ? volumetricFlaskPose
+                : selected === "washBottle"
+                  ? washBottlePose
+                  : undefined;
   const selectedPivot: readonly [number, number, number] =
     selected === "burette" || selected === "meniscus"
       ? [BURETTE.x, 0, BURETTE.z]
@@ -192,6 +232,7 @@ export function LabScene({
       {quality === "high" && <SkyDome />}
       <ClassroomEnvironment />
 
+      {showBurette && (
       <group
         position={[
           BURETTE.x + buretteTranslation[0],
@@ -225,7 +266,9 @@ export function LabScene({
           </group>
         </Interactable>
       </group>
+      )}
 
+      {showFlask && (
       <group
         position={[
           FLASK.x + flaskTranslation[0],
@@ -262,8 +305,10 @@ export function LabScene({
           </group>
         </Interactable>
       </group>
+      )}
 
       {/* Meniscus hotspot: an invisible hitbox at the liquid surface. */}
+      {showMeniscus && (
       <group
         position={[
           BURETTE.x + buretteTranslation[0],
@@ -304,7 +349,9 @@ export function LabScene({
           </mesh>
         )}
       </group>
+      )}
 
+      {showShelf && (
       <group
         position={[
           SHELF.x + shelfTranslation[0],
@@ -345,7 +392,9 @@ export function LabScene({
           />
         </Interactable>
       </group>
+      )}
 
+      {showWashStation && (
       <group
         position={[
           WASH.x + washTranslation[0],
@@ -386,8 +435,118 @@ export function LabScene({
           />
         </Interactable>
       </group>
+      )}
 
-      {indicatorAddition && (
+      {pipettePose && enabledEquipmentIds.includes("volumetricPipette") && (
+        <group
+          position={pipettePose.translation}
+          rotation={[0, pipettePose.yawRadians, 0]}
+        >
+          <Interactable
+            id="volumetricPipette"
+            enabled
+            label={EQUIPMENT.volumetricPipette.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry args={[0.03, 0.03, 0.55, 16, 1, true]} />
+              ),
+              labelPosition: [0, 0.32, 0]
+            }}
+            hovered={
+              hovered === "volumetricPipette" && selected !== "volumetricPipette"
+            }
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <VolumetricPipette
+              fillFraction={fillOf("visual-adapter.volumetric_pipette.v1")}
+            />
+          </Interactable>
+        </group>
+      )}
+
+      {volumetricFlaskPose &&
+        enabledEquipmentIds.includes("volumetricFlask") && (
+          <group
+            position={volumetricFlaskPose.translation}
+            rotation={[0, volumetricFlaskPose.yawRadians, 0]}
+          >
+            <Interactable
+              id="volumetricFlask"
+              enabled
+              label={EQUIPMENT.volumetricFlask.name}
+              highlightShape={{
+                geometry: (
+                  <cylinderGeometry args={[0.05, 0.05, 0.28, 18, 1, true]} />
+                ),
+                labelPosition: [0, 0.18, 0]
+              }}
+              hovered={
+                hovered === "volumetricFlask" && selected !== "volumetricFlask"
+              }
+              onHover={onHover}
+              onSelect={onSelect}
+            >
+              <VolumetricFlask
+                fillFraction={fillOf("visual-adapter.volumetric_flask.v1")}
+              />
+            </Interactable>
+          </group>
+        )}
+
+      {washBottlePose && enabledEquipmentIds.includes("washBottle") && (
+        <group
+          position={washBottlePose.translation}
+          rotation={[0, washBottlePose.yawRadians, 0]}
+        >
+          <Interactable
+            id="washBottle"
+            enabled
+            label={EQUIPMENT.washBottle.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry args={[0.035, 0.035, 0.22, 14, 1, true]} />
+              ),
+              labelPosition: [0, 0.14, 0]
+            }}
+            hovered={hovered === "washBottle" && selected !== "washBottle"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <DistilledWaterWashBottle
+              fillFraction={fillOf("visual-adapter.wash_bottle.v1", 0.75)}
+            />
+          </Interactable>
+        </group>
+      )}
+
+      {showReagentBottle && washPose && (
+        <group
+          position={washPose.translation}
+          rotation={[0, washPose.yawRadians, 0]}
+        >
+          <Interactable
+            id="reagentBottle"
+            enabled
+            label={EQUIPMENT.reagentBottle.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry args={[0.04, 0.04, 0.24, 14, 1, true]} />
+              ),
+              labelPosition: [0, 0.15, 0]
+            }}
+            hovered={hovered === "reagentBottle" && selected !== "reagentBottle"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <RegisteredReagentBottle
+              fillFraction={fillOf("visual-adapter.reagent_bottle.v1", 0.7)}
+            />
+          </Interactable>
+        </group>
+      )}
+
+      {indicatorAddition && showShelf && showFlask && (
         <IndicatorAddition
           indicator={indicatorAddition.indicator}
           sequence={indicatorAddition.sequence}

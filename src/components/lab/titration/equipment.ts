@@ -9,9 +9,18 @@ export type EquipmentId =
   | "flask"
   | "meniscus"
   | "indicatorShelf"
-  | "washStation";
+  | "washStation"
+  | "volumetricPipette"
+  | "volumetricFlask"
+  | "washBottle"
+  | "reagentBottle";
 
-export type ControlGroupId = "prepare" | "deliver" | "indicator" | "reading";
+export type ControlGroupId =
+  | "prepare"
+  | "deliver"
+  | "indicator"
+  | "reading"
+  | "solution";
 
 export interface EquipmentInfo {
   id: EquipmentId;
@@ -50,6 +59,30 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentInfo> = {
     name: "Wash station",
     purpose: "Rinse and fill the burette before delivering titrant.",
     controlGroups: ["prepare"]
+  },
+  volumetricPipette: {
+    id: "volumetricPipette",
+    name: "Volumetric pipette",
+    purpose: "Condition and transfer an exact aliquot of stock solution.",
+    controlGroups: ["solution"]
+  },
+  volumetricFlask: {
+    id: "volumetricFlask",
+    name: "Volumetric flask",
+    purpose: "Dilute to the mark and mix the prepared solution.",
+    controlGroups: ["solution"]
+  },
+  washBottle: {
+    id: "washBottle",
+    name: "Wash bottle",
+    purpose: "Rinse with distilled water during solution preparation.",
+    controlGroups: ["solution"]
+  },
+  reagentBottle: {
+    id: "reagentBottle",
+    name: "Stock bottle",
+    purpose: "Source bottle for the concentrated stock solution.",
+    controlGroups: ["solution"]
   }
 };
 
@@ -58,14 +91,19 @@ export const EQUIPMENT_IDS: readonly EquipmentId[] = [
   "flask",
   "meniscus",
   "indicatorShelf",
-  "washStation"
+  "washStation",
+  "volumetricPipette",
+  "volumetricFlask",
+  "washBottle",
+  "reagentBottle"
 ];
 
 const ALL_CONTROL_GROUPS: readonly ControlGroupId[] = [
   "prepare",
   "indicator",
   "deliver",
-  "reading"
+  "reading",
+  "solution"
 ];
 
 /**
