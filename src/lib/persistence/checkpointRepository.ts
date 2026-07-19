@@ -44,7 +44,9 @@ export class SupabaseCheckpointRepository implements CheckpointRepository {
   constructor(private readonly client: SupabaseClient) {}
 
   async persist(checkpoint: CheckpointRequest): Promise<CheckpointWriteResult> {
-    const { error: sessionError } = await this.client.from("sessions").upsert({
+    // Omit LC2-801 pin columns unless set so checkpoints still work against
+    // databases that have not applied the assignment-pin migration yet.
+    const sessionRow: Record<string, unknown> = {
       id: checkpoint.sessionId,
       experiment_id: checkpoint.experimentId,
       experiment_version: checkpoint.experimentVersion,
@@ -55,7 +57,18 @@ export class SupabaseCheckpointRepository implements CheckpointRepository {
       is_demo: checkpoint.mode === "demo",
       final_state: checkpoint.finalState ?? null,
       completed_at: checkpoint.completedAt ?? null
-    });
+    };
+    if (checkpoint.labDefinitionVersionId) {
+      sessionRow.lab_definition_version_id = checkpoint.labDefinitionVersionId;
+    }
+    if (checkpoint.labDefinitionCanonicalHash) {
+      sessionRow.lab_definition_canonical_hash =
+        checkpoint.labDefinitionCanonicalHash;
+    }
+
+    const { error: sessionError } = await this.client
+      .from("sessions")
+      .upsert(sessionRow);
     if (sessionError) throw new Error(sessionError.message);
 
     const events = (checkpoint.events ?? []).map((event) => ({

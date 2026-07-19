@@ -38,9 +38,12 @@ export interface CheckpointRequest {
   sessionSeed?: string;
   parentSessionId?: string;
   workflowVersionId?: string;
+  /** Exact approved definition pin when the session runs a Composer assignment. */
+  labDefinitionVersionId?: string;
+  labDefinitionCanonicalHash?: string;
   events?: CheckpointEvent[];
   skillEstimates?: CheckpointSkillEstimate[];
-  /** Local v2 provenance; immutable database version storage lands in Phase 8. */
+  /** Compact local v2 consumer provenance; DB sessions pin version UUID/hash. */
   labWorkflowContext?: LabWorkflowConsumerContext;
   /** Complete normalized action prefix for deterministic local replay. */
   normalizedActionTrace?: GenericLabActionTrace;
@@ -73,6 +76,11 @@ export const checkpointRequestSchema = z.object({
   sessionSeed: z.string().max(256).optional(),
   parentSessionId: z.string().uuid().optional(),
   workflowVersionId: z.string().max(160).optional(),
+  labDefinitionVersionId: z.string().uuid().optional(),
+  labDefinitionCanonicalHash: z
+    .string()
+    .regex(/^sha256:[a-f0-9]{64}$/)
+    .optional(),
   events: z
     .array(
       z.object({
