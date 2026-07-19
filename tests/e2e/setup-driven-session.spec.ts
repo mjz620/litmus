@@ -1,5 +1,19 @@
 import { expect, test } from "@playwright/test";
 
+test("default titration student route loads setup-driven runtime", async ({
+  page
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/lab/titration?seed=default-setup-driven");
+  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
+    timeout: 30_000
+  });
+  await expect(page.locator("[data-runtime-mode]")).toHaveAttribute(
+    "data-runtime-mode",
+    "setup_driven_v2"
+  );
+});
+
 test("explicit setup-v2 flag loads exact local runtime and dispatches its strict actions", async ({
   page
 }) => {
@@ -121,12 +135,12 @@ test("student Coach keeps a question useful when the Coach route is unavailable"
   await expect(dialog.getByRole("button", { name: "Ask coach" })).toBeEnabled();
 });
 
-test("runtime query defaults invalid and precipitation requests to legacy", async ({
+test("runtime query keeps titration on setup-driven and precipitation on legacy", async ({
   page
 }) => {
   await page.goto("/dev/lab/titration?runtime=invalid");
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  await expect(page.getByTestId("dev-workflow-definition")).toHaveText(
+  await expect(page.getByTestId("dev-workflow-definition")).not.toHaveText(
     "legacy route"
   );
 
@@ -140,7 +154,7 @@ test("runtime query defaults invalid and precipitation requests to legacy", asyn
 test("setup-driven demo records workflow, diagnosis, and replay provenance for technical inspection", async ({
   page
 }) => {
-  await page.goto("/demo/student?runtime=setup-v2");
+  await page.goto("/demo/student");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

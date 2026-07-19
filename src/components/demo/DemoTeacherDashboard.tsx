@@ -31,6 +31,11 @@ export function DemoTeacherDashboard() {
             <span aria-hidden="true" />
             Live demo view
           </span>
+          <p>
+            <a className="ui-button-secondary" href="/lab-composer">
+              Open Lab Composer
+            </a>
+          </p>
         </header>
         <AnalyticsCards analytics={analytics} />
         <section className={`${styles.panel} ${demoStyles.rosterPanel}`}>

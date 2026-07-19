@@ -34,7 +34,7 @@ export function validatedMechanicalWorkflow(
     status: "runnable",
     runnable: true,
     previewEligible: true,
-    assignmentEligible: false
+    assignmentEligible: true
   });
   return outcome.spec;
 }

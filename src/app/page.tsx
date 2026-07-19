@@ -21,14 +21,17 @@ export default function Home() {
             <Link className="ui-button" href="/experiments">
               Choose an experiment <span aria-hidden="true">→</span>
             </Link>
+            <Link className="ui-button-secondary" href="/lab-composer">
+              Open Lab Composer
+            </Link>
             <Link className="ui-button-secondary" href="/demo">
-              Explore the guided demo
+              Judge demo
             </Link>
           </div>
           <ul className={styles.trustList} aria-label="Access details">
-            <li>No account required</li>
-            <li>Deterministic chemistry</li>
-            <li>Keyboard-accessible controls</li>
+            <li>No account required for practice or Composer drafting</li>
+            <li>Teachers sign in to save cloud drafts and assign labs</li>
+            <li>Deterministic chemistry · keyboard-accessible controls</li>
           </ul>
         </div>
 

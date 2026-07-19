@@ -891,19 +891,19 @@ describe("lab store", () => {
     expect(store.getState().status).toBe("error");
   });
 
-  it("defaults invalid, absent, and non-titration runtime flags to legacy", () => {
+  it("defaults titration to setup-driven v2 and keeps an explicit legacy escape hatch", () => {
     expect(resolveLabSessionRuntimeMode("acid_base_titration", undefined)).toBe(
-      "legacy"
+      "setup_driven_v2"
     );
     expect(
-      resolveLabSessionRuntimeMode("acid_base_titration", "not-a-runtime")
+      resolveLabSessionRuntimeMode("acid_base_titration", "setup-v2")
+    ).toBe("setup_driven_v2");
+    expect(
+      resolveLabSessionRuntimeMode("acid_base_titration", "legacy")
     ).toBe("legacy");
     expect(
       resolveLabSessionRuntimeMode("precipitation_solubility", "setup-v2")
     ).toBe("legacy");
-    expect(
-      resolveLabSessionRuntimeMode("acid_base_titration", "setup-v2")
-    ).toBe("setup_driven_v2");
   });
 
   it("does not persist checkpoints in teacher preview mode", async () => {

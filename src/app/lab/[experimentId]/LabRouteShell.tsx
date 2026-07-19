@@ -29,6 +29,9 @@ interface LabRouteShellProps {
   runtimeMode?: LabSessionRuntimeMode;
   setupDrivenSelection?: SetupDrivenLabSelection;
   setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
+  labDefinitionVersionId?: string;
+  labDefinitionCanonicalHash?: string;
+  assignmentLabel?: string;
 }
 
 /**
@@ -45,7 +48,10 @@ export function LabRouteShell({
   mode,
   runtimeMode,
   setupDrivenSelection,
-  setupDrivenWorkflow
+  setupDrivenWorkflow,
+  labDefinitionVersionId,
+  labDefinitionCanonicalHash,
+  assignmentLabel
 }: LabRouteShellProps) {
   const { status, state, error, isCurrentExperiment, isPending, isReady } =
     useLabSession({
@@ -56,7 +62,9 @@ export function LabRouteShell({
       mode,
       runtimeMode,
       setupDrivenSelection,
-      setupDrivenWorkflow
+      setupDrivenWorkflow,
+      labDefinitionVersionId,
+      labDefinitionCanonicalHash
     });
   const titrationState = isTitrationState(state) ? state : null;
   const chartMaxVolumeML = titrationState
@@ -71,7 +79,7 @@ export function LabRouteShell({
 
   return (
     <main className={styles.page}>
-      <LabSessionBar title={title} />
+      <LabSessionBar title={assignmentLabel ?? title} />
       {retrySkillId && <RetryBanner skillId={retrySkillId} />}
 
       <div className={styles.workspace}>

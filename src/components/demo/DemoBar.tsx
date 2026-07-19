@@ -14,6 +14,7 @@ export function DemoBar() {
   const roles = [
     { href: "/demo/student", label: "Student", icon: "⚗" },
     { href: "/demo/teacher", label: "Teacher", icon: "✎" },
+    { href: "/lab-composer", label: "Composer", icon: "▤" },
     { href: "/demo/technical", label: "Technical", icon: "⌘" }
   ] as const;
   async function reset() {

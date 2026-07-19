@@ -2902,7 +2902,9 @@ export function validateLabWorkflowSpecV2(
     status,
     runnable,
     previewEligible: runnable && previewRuntimeAvailable,
-    assignmentEligible: false,
+    // LC2-801: assignment opens once the same current runnable/preview seam is met.
+    // Persistence still cannot confer runnability; Assign rechecks eligibility server-side.
+    assignmentEligible: runnable && previewRuntimeAvailable,
     issues,
     passedCheckIds: ALL_CHECK_IDS.filter((id) => !context.failedChecks.has(id))
   });

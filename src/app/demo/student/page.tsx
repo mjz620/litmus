@@ -20,6 +20,7 @@ export default async function DemoStudentPage({
     "acid_base_titration",
     requestedRuntime
   );
+  const useSetupDriven = runtimeMode === "setup_driven_v2";
   return (
     <>
       <aside className={styles.guide} role="note">
@@ -28,20 +29,19 @@ export default async function DemoStudentPage({
         </span>
         <p>
           <strong>Try this demo path</strong>
-          The burette begins at 22.00 mL. Add about 2–4 mL quickly to surface
-          endpoint-control evidence, then ask the coach why overshoot matters.
+          {useSetupDriven
+            ? " Follow the setup-driven procedure, then add titrant quickly near the endpoint and ask the coach why overshoot matters."
+            : " The burette begins at 22.00 mL. Add about 2–4 mL quickly to surface endpoint-control evidence, then ask the coach why overshoot matters."}
         </p>
       </aside>
       <LabRouteShell
         experimentId="acid_base_titration"
         title="Acid–Base Titration — Demo"
-        retrySkillId="endpoint_control"
+        retrySkillId={useSetupDriven ? undefined : "endpoint_control"}
         mode="demo"
         runtimeMode={runtimeMode}
         setupDrivenSelection={
-          runtimeMode === "setup_driven_v2"
-            ? STRICT_TITRATION_SETUP_SELECTION
-            : undefined
+          useSetupDriven ? STRICT_TITRATION_SETUP_SELECTION : undefined
         }
       />
       <DemoTraceRecorder />

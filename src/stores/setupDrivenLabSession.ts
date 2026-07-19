@@ -32,6 +32,8 @@ import type { ValidatedLabWorkflowSpecV2 } from "../lab-workflows/schema/v2";
 import { evaluateLabWorkflowEligibilityV2 } from "../lab-workflows/validation";
 
 export const SETUP_DRIVEN_TITRATION_RUNTIME_FLAG = "setup-v2" as const;
+/** Temporary escape hatch through LC2-803; removed from student entry in LC2-804. */
+export const LEGACY_TITRATION_RUNTIME_FLAG = "legacy" as const;
 export const SETUP_DRIVEN_TITRATION_WORKFLOW_ID =
   "workflow.endpoint_control_prelab.seed.v1" as const;
 export const SETUP_DRIVEN_TITRATION_VALIDATION_TIME =
@@ -207,10 +209,17 @@ export function resolveLabSessionRuntimeMode(
   experimentId: ExperimentId,
   requestedFlag: string | undefined
 ): LabSessionRuntimeMode {
-  return experimentId === "acid_base_titration" &&
+  if (experimentId !== "acid_base_titration") return "legacy";
+  // LC2-801: production/demo titration defaults to setup-driven v2.
+  // Explicit ?runtime=legacy retains the static engine for rollback/parity.
+  if (requestedFlag === LEGACY_TITRATION_RUNTIME_FLAG) return "legacy";
+  if (
+    requestedFlag === undefined ||
     requestedFlag === SETUP_DRIVEN_TITRATION_RUNTIME_FLAG
-    ? "setup_driven_v2"
-    : "legacy";
+  ) {
+    return "setup_driven_v2";
+  }
+  return "setup_driven_v2";
 }
 
 export function normalizeSetupDrivenTitrationAction(

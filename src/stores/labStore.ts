@@ -90,6 +90,8 @@ interface LoadExperimentRequestBase {
   mode?: "practice" | "assignment" | "demo" | "preview";
   parentSessionId?: string;
   workflowVersionId?: string;
+  labDefinitionVersionId?: string;
+  labDefinitionCanonicalHash?: string;
   runtimeMode?: LabSessionRuntimeMode;
 }
 
@@ -114,6 +116,8 @@ export interface LabStore {
   mode: "practice" | "assignment" | "demo" | "preview";
   parentSessionId: string | null;
   workflowVersionId: string | null;
+  labDefinitionVersionId: string | null;
+  labDefinitionCanonicalHash: string | null;
   runtimeMode: LabSessionRuntimeMode;
   runtimeInspection: SetupDrivenRuntimeInspection | null;
   runtimeProjection: SetupDrivenLabProjection | null;
@@ -145,6 +149,8 @@ export interface CreateLabStoreOptions {
   mode?: "practice" | "assignment" | "demo" | "preview";
   parentSessionId?: string;
   workflowVersionId?: string;
+  labDefinitionVersionId?: string;
+  labDefinitionCanonicalHash?: string;
   coachClient?: CoachClient;
 }
 
@@ -176,6 +182,8 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
     mode: options.mode ?? "practice",
     parentSessionId: options.parentSessionId ?? null,
     workflowVersionId: options.workflowVersionId ?? null,
+    labDefinitionVersionId: options.labDefinitionVersionId ?? null,
+    labDefinitionCanonicalHash: options.labDefinitionCanonicalHash ?? null,
     runtimeMode: "legacy",
     runtimeInspection: null,
     runtimeProjection: null,
@@ -206,6 +214,14 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           request.parentSessionId ?? options.parentSessionId ?? null,
         workflowVersionId:
           request.workflowVersionId ?? options.workflowVersionId ?? null,
+        labDefinitionVersionId:
+          request.labDefinitionVersionId ??
+          options.labDefinitionVersionId ??
+          null,
+        labDefinitionCanonicalHash:
+          request.labDefinitionCanonicalHash ??
+          options.labDefinitionCanonicalHash ??
+          null,
         runtimeMode: request.runtimeMode ?? "legacy",
         runtimeInspection: null,
         runtimeProjection: null,
@@ -425,6 +441,9 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
       mode: current.mode,
       parentSessionId: current.parentSessionId ?? undefined,
       workflowVersionId: current.workflowVersionId ?? undefined,
+      labDefinitionVersionId: current.labDefinitionVersionId ?? undefined,
+      labDefinitionCanonicalHash:
+        current.labDefinitionCanonicalHash ?? undefined,
       sessionSeed,
       events: checkpointEvents.length > 0 ? checkpointEvents : undefined,
       skillEstimates: Object.entries(studentModel.skills).map(

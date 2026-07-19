@@ -40,7 +40,7 @@ export default async function TeacherClassesPage() {
           Assemble a supported physical setup and flexible workflow from
           verified laboratory primitives—no AI generation required.
         </p>
-        <Link className="ui-button-secondary" href="/teacher/lab-composer">
+        <Link className="ui-button-secondary" href="/lab-composer">
           Open Lab Composer
         </Link>
       </section>

@@ -9,7 +9,7 @@ const demoRoles = [
     label: "Student",
     kicker: "Interactive lab",
     description:
-      "Start near the titration endpoint and produce real semantic evidence.",
+      "Run the default setup-driven titration without an account and produce real semantic evidence.",
     action: "Open student demo"
   },
   {
@@ -20,6 +20,15 @@ const demoRoles = [
     description:
       "View seeded class metrics plus the current live demo session.",
     action: "Open teacher demo"
+  },
+  {
+    href: "/lab-composer",
+    icon: "✎",
+    label: "Lab Composer",
+    kicker: "Authoring",
+    description:
+      "Build and preview labs as a student or teacher. Cloud save and Assign require teacher sign-in.",
+    action: "Open Composer"
   },
   {
     href: "/demo/technical",
@@ -43,12 +52,13 @@ export default function DemoHubPage() {
           <p className={styles.eyebrow}>Guided product tour</p>
           <h1>LabBench AI judge demo</h1>
           <p className={styles.summary}>
-            Follow one chemistry session from hands-on practice to classroom
-            readiness and the deterministic evidence underneath it.
+            Judges can reach the student bench, teacher readiness view, and Lab
+            Composer from this hub. Guest practice needs no account; teachers
+            sign in only to persist drafts and create assignments.
           </p>
           <p className={styles.accessNote}>
             <span aria-hidden="true">✓</span>
-            No account or API key required
+            No account or API key required for demo paths
           </p>
         </header>
 

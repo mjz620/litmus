@@ -80,6 +80,14 @@ import type {
   CapabilityAuthorTraceSummary
 } from "../../../lib/agent/lab-authoring/capabilityAuthorSchemas";
 import type { WorkflowJudgeResponse } from "../../../lib/agent/lab-workflow-judge/schemas";
+import {
+  approveComposerDraft,
+  createComposerAssignment,
+  listComposerDrafts,
+  listTeacherClasses,
+  saveComposerDraft,
+  type TeacherClassSummary
+} from "../../../lib/persistence/composerDefinitionClient";
 
 import styles from "./LabComposer.module.css";
 
@@ -254,6 +262,16 @@ export function LabComposer() {
   const [draftName, setDraftName] = useState("Endpoint practice");
   const [savedDraftNames, setSavedDraftNames] = useState<readonly string[]>([]);
   const [selectedSavedDraft, setSelectedSavedDraft] = useState("");
+  const [serverDraftId, setServerDraftId] = useState<string | null>(null);
+  const [serverStorageRevision, setServerStorageRevision] = useState<
+    number | null
+  >(null);
+  const [teacherClasses, setTeacherClasses] = useState<
+    readonly TeacherClassSummary[]
+  >([]);
+  const [teacherSignedIn, setTeacherSignedIn] = useState<boolean | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
   const [repositoryMessage, setRepositoryMessage] = useState<string | null>(
     null
   );
@@ -315,8 +333,33 @@ export function LabComposer() {
   const autosaveFailedRef = useRef(false);
 
   useEffect(() => {
+    void listTeacherClasses()
+      .then((classes) => {
+        setTeacherSignedIn(true);
+        setTeacherClasses(classes);
+        if (classes[0]) setSelectedClassId(classes[0].id);
+      })
+      .catch(() => {
+        setTeacherClasses([]);
+        setTeacherSignedIn(false);
+      });
+    void listComposerDrafts()
+      .then((drafts) => {
+        if (drafts.length === 0) return;
+        setSavedDraftNames(drafts.map((entry) => entry.name));
+        const latest = drafts[0];
+        if (latest) {
+          setServerDraftId(latest.id);
+          setServerStorageRevision(latest.storageRevision);
+        }
+      })
+      .catch(() => {
+        // Local named drafts remain available when the teacher is offline.
+      });
     const timer = window.setTimeout(() => {
-      setSavedDraftNames(draftRepository().list());
+      setSavedDraftNames((current) =>
+        current.length > 0 ? current : draftRepository().list()
+      );
       const returningDraft = window.sessionStorage.getItem(
         COMPOSER_RETURN_DRAFT_KEY
       );
@@ -403,6 +446,11 @@ export function LabComposer() {
       ? evaluateLabWorkflowEligibilityV2(validated.spec, "preview")
       : null;
   const canPreview = previewEligibility?.eligible === true;
+  const canAssign =
+    canPreview &&
+    validationIsCurrent &&
+    validationOutcome?.schemaValid === true &&
+    validationOutcome.validation.assignmentEligible === true;
   const judgeSuggestions = useMemo(
     () =>
       judgeReview && judgeTraces
@@ -985,7 +1033,7 @@ export function LabComposer() {
     changeStage("define");
   }
 
-  function saveDraft() {
+  async function saveDraft() {
     try {
       const repository = draftRepository();
       repository.save(draftName, draft);
@@ -993,12 +1041,88 @@ export function LabComposer() {
       setSavedDraftNames(names);
       setSelectedSavedDraft(draftName.trim());
       setBaselineHash(currentHash);
-      setRepositoryMessage(`Saved “${draftName.trim()}” on this device.`);
       setError(null);
       setErrorPath(null);
+      try {
+        const saved = await saveComposerDraft({
+          idempotencyKey: crypto.randomUUID(),
+          draftId: serverDraftId ?? undefined,
+          expectedStorageRevision: serverStorageRevision ?? undefined,
+          name: draftName.trim(),
+          draft
+        });
+        setServerDraftId(saved.id);
+        setServerStorageRevision(saved.storageRevision);
+        setSavedDraftNames((current) =>
+          Object.freeze(
+            [...new Set([saved.name, ...current, ...names])].sort()
+          )
+        );
+        setRepositoryMessage(
+          `Saved “${draftName.trim()}” to your teacher account.`
+        );
+      } catch (serverError) {
+        const message =
+          serverError instanceof Error
+            ? serverError.message
+            : "unknown error";
+        setRepositoryMessage(
+          message.toLowerCase().includes("authentication") ||
+            message.toLowerCase().includes("sign in") ||
+            message.includes("401")
+            ? `Saved “${draftName.trim()}” on this device. Sign in as a teacher to sync to the cloud and assign.`
+            : `Saved “${draftName.trim()}” on this device. Server sync unavailable: ${message}`
+        );
+        setTeacherSignedIn(false);
+      }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Save failed.");
       setErrorPath("localDraftRepository.save");
+    }
+  }
+
+  async function assignLab() {
+    if (!canAssign || !validated) return;
+    if (!selectedClassId) {
+      setError("Choose a class before assigning this lab.");
+      setErrorPath("assign.classId");
+      return;
+    }
+    setIsAssigning(true);
+    setError(null);
+    setErrorPath(null);
+    try {
+      const saved = await saveComposerDraft({
+        idempotencyKey: crypto.randomUUID(),
+        draftId: serverDraftId ?? undefined,
+        expectedStorageRevision: serverStorageRevision ?? undefined,
+        name: draftName.trim(),
+        draft
+      });
+      setServerDraftId(saved.id);
+      setServerStorageRevision(saved.storageRevision);
+      const version = await approveComposerDraft({
+        draftId: saved.id,
+        idempotencyKey: crypto.randomUUID(),
+        expectedStorageRevision: saved.storageRevision,
+        expectedCanonicalHash: validated.validation.canonicalSpecHash
+      });
+      const assignment = await createComposerAssignment({
+        idempotencyKey: crypto.randomUUID(),
+        classId: selectedClassId,
+        versionId: version.id,
+        title: draftName.trim()
+      });
+      setRepositoryMessage(
+        `Assigned “${assignment.title}”. Student start: /assignments/${assignment.id}`
+      );
+    } catch (assignError) {
+      setError(
+        assignError instanceof Error ? assignError.message : "Assign failed."
+      );
+      setErrorPath("assignLab");
+    } finally {
+      setIsAssigning(false);
     }
   }
 
@@ -1365,6 +1489,13 @@ export function LabComposer() {
 
   return (
     <div className={styles.composer} data-draft-revision={draft.revision}>
+      {teacherSignedIn === false && (
+        <p className={styles.authBanner} role="status">
+          Authoring and Preview work without an account.{" "}
+          <a href="/auth/sign-in">Sign in as a teacher</a> to save cloud drafts
+          and assign labs to a class.
+        </p>
+      )}
       <section className={styles.statusBar} aria-label="Draft status">
         <div>
           <span
@@ -1471,12 +1602,40 @@ export function LabComposer() {
           >
             Preview
           </button>
+          <label className={styles.assignClass}>
+            <span className={styles.srOnly}>Class</span>
+            <select
+              aria-label="Class for assignment"
+              value={selectedClassId}
+              disabled={teacherClasses.length === 0 || isAssigning}
+              onChange={(event) => setSelectedClassId(event.target.value)}
+            >
+              {teacherClasses.length === 0 ? (
+                <option value="">No classes yet</option>
+              ) : (
+                teacherClasses.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
           <button
             type="button"
-            disabled
-            title="Assignment is not available yet"
+            disabled={!canAssign || !selectedClassId || isAssigning}
+            title={
+              canAssign
+                ? selectedClassId
+                  ? "Approve the current runnable lab and assign it to the selected class"
+                  : "Create a class before assigning"
+                : "A current assignment-eligible validation is required first"
+            }
+            onClick={() => {
+              void assignLab();
+            }}
           >
-            Assign
+            {isAssigning ? "Assigning…" : "Assign"}
           </button>
         </div>
       </section>

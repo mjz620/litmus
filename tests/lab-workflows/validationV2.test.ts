@@ -68,7 +68,7 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       status: "runnable",
       runnable: true,
       previewEligible: true,
-      assignmentEligible: false
+      assignmentEligible: true
     });
     expect(direct.issues).toEqual([]);
     expect(evaluateLabWorkflowEligibility(direct.spec, "preview")).toEqual({
@@ -77,11 +77,9 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       failureCodes: []
     });
     expect(evaluateLabWorkflowEligibility(direct.spec, "assignment")).toEqual({
-      eligible: false,
+      eligible: true,
       purpose: "assignment",
-      failureCodes: [
-        WORKFLOW_ELIGIBILITY_FAILURE_CODES_V2.assignmentNotEligible
-      ]
+      failureCodes: []
     });
   });
 
@@ -97,7 +95,7 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       status: "runnable",
       runnable: true,
       previewEligible: true,
-      assignmentEligible: false
+      assignmentEligible: true
     });
     expect(outcome.validation.resolvedChemistryModels).toEqual([
       expect.objectContaining({
@@ -111,6 +109,11 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       purpose: "preview",
       failureCodes: []
     });
+    expect(evaluateLabWorkflowEligibility(outcome.spec, "assignment")).toEqual({
+      eligible: true,
+      purpose: "assignment",
+      failureCodes: []
+    });
 
     const unscoped = createMigratedEndpointV2Draft();
     delete unscoped.compatibility;
@@ -120,12 +123,22 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     expect(rejected.schemaValid).toBe(true);
     if (!rejected.schemaValid) throw new Error("Expected unscoped v2 schema");
     expect(rejected.validation.runnable).toBe(false);
+    expect(rejected.validation.assignmentEligible).toBe(false);
     expect(rejected.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: WORKFLOW_VALIDATION_ISSUE_CODES_V2.chemistryModelResolutionFailed
         })
       ])
+    );
+    expect(evaluateLabWorkflowEligibility(rejected.spec, "assignment")).toEqual(
+      {
+        eligible: false,
+        purpose: "assignment",
+        failureCodes: expect.arrayContaining([
+          WORKFLOW_ELIGIBILITY_FAILURE_CODES_V2.assignmentNotEligible
+        ])
+      }
     );
   });
 

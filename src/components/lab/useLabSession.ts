@@ -25,6 +25,8 @@ export interface LabSessionOptions {
   runtimeMode?: LabSessionRuntimeMode;
   setupDrivenSelection?: SetupDrivenLabSelection;
   setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
+  labDefinitionVersionId?: string;
+  labDefinitionCanonicalHash?: string;
 }
 
 /**
@@ -41,7 +43,9 @@ export function useLabSession({
   mode,
   runtimeMode = "legacy",
   setupDrivenSelection,
-  setupDrivenWorkflow
+  setupDrivenWorkflow,
+  labDefinitionVersionId,
+  labDefinitionCanonicalHash
 }: LabSessionOptions) {
   const startedKey = useRef<string | null>(null);
   const status = useLabStore((store) => store.status);
@@ -65,7 +69,9 @@ export function useLabSession({
       mode,
       runtimeMode,
       workflowId: setupDrivenSelection?.workflowId,
-      workflowHash: setupDrivenSelection?.workflowHash
+      workflowHash: setupDrivenSelection?.workflowHash,
+      labDefinitionVersionId,
+      labDefinitionCanonicalHash
     });
     if (startedKey.current === initializationKey) return;
     startedKey.current = initializationKey;
@@ -92,7 +98,9 @@ export function useLabSession({
         runtimeMode,
         setupDrivenSelection,
         setupDrivenWorkflow,
-        workflowVersionId: setupDrivenSelection?.workflowHash
+        workflowVersionId: setupDrivenSelection?.workflowHash,
+        labDefinitionVersionId,
+        labDefinitionCanonicalHash
       }).catch(() => undefined);
     } else {
       void loadExperiment({
@@ -102,11 +110,15 @@ export function useLabSession({
         seed: { sessionSeed },
         mode,
         parentSessionId,
-        runtimeMode
+        runtimeMode,
+        labDefinitionVersionId,
+        labDefinitionCanonicalHash
       }).catch(() => undefined);
     }
   }, [
     experimentId,
+    labDefinitionCanonicalHash,
+    labDefinitionVersionId,
     loadExperiment,
     mode,
     parentSessionId,
