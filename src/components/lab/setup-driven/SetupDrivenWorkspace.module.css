@@ -1,268 +1,415 @@
+.page {
+  --lab-page: var(--color-canvas);
+  --lab-surface: var(--color-surface);
+  --lab-surface-muted: var(--color-surface-muted);
+  --lab-ink: var(--color-ink);
+  --lab-ink-muted: var(--color-ink-muted);
+  --lab-primary: var(--color-primary);
+  --lab-primary-soft: var(--color-primary-soft);
+  --lab-border: var(--color-border);
+  --lab-focus: var(--color-focus);
+  --lab-danger: var(--color-danger);
+  --lab-danger-soft: var(--color-danger-soft);
+  --lab-hud-surface: rgb(255 239 194 / 94%);
+  --lab-hud-dark: rgb(32 43 45 / 88%);
+  --lab-card-shadow: var(--shadow-card);
+  --lab-floating-shadow: var(--shadow-floating);
+  --simulation-canvas-height: clamp(42rem, 79vh, 64rem);
+
+  min-height: 100vh;
+  overflow: hidden;
+  padding: clamp(0.55rem, 1.25vw, 1.2rem);
+  background: var(--lab-page);
+  color: var(--lab-ink);
+  font-family: var(--font-body);
+}
+
+.previewEyebrow {
+  margin: 0;
+  color: var(--lab-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
 .workspace {
-  display: grid;
-  gap: 1rem;
+  position: relative;
+  min-width: 0;
   width: min(100%, 116rem);
   margin: 0 auto;
-  color: var(--color-ink);
+  isolation: isolate;
 }
 
-.workspaceHeader,
-.mainGrid,
-.coachCard,
-.teacherEvidence {
-  border: 1px solid var(--color-border);
+.setupError {
+  display: grid;
+  min-height: 18rem;
+  padding: 2rem;
+  place-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--lab-danger);
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  background: var(--lab-danger-soft);
+  color: var(--lab-ink);
+  text-align: center;
 }
 
-.workspaceHeader {
+.drawer {
+  position: absolute;
+  z-index: 12;
+  top: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(24rem, calc(100% - 1.7rem));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--lab-primary) 36%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--lab-surface);
+  box-shadow: 0 1rem 2.5rem rgb(20 48 42 / 24%);
+}
+
+.drawerHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 0.9rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--lab-border);
+  background: var(--lab-surface-muted);
 }
 
-.workspaceHeader > div:first-child {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.workspaceHeader p,
-.workspaceHeader h2,
-.workspaceHeader span,
-.controlsHeading p,
-.controlsHeading h3 {
+.drawerHeader p,
+.drawerHeader h2 {
   margin: 0;
 }
 
-.workspaceHeader p,
-.controlsHeading p {
-  color: var(--color-primary);
-  font-size: var(--text-xs);
+.drawerHeader p {
+  color: var(--lab-primary);
+  font-size: 0.68rem;
   font-weight: var(--type-ui-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.035em;
 }
 
-.workspaceHeader span {
-  max-width: 56rem;
-  color: var(--color-ink-muted);
-}
-
-.statusBlock {
-  display: grid;
-  justify-items: end;
-  gap: 0.5rem;
-  flex: 0 0 auto;
-}
-
-.statusBlock button,
-.controls button {
-  min-height: var(--control-height);
-  padding: 0.6rem 0.85rem;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-weight: var(--type-ui-semibold);
-}
-
-.mainGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
-  overflow: hidden;
-}
-
-.mainGrid > div:first-child {
-  min-width: 0;
-  border-right: 1px solid var(--color-border);
-}
-
-.benchCanvas {
-  height: clamp(28rem, 58vh, 48rem);
-  min-height: 28rem;
-  background: #e8f0ec;
-}
-
-.immersiveBench {
-  overflow: hidden;
-  min-height: clamp(28rem, 58vh, 48rem);
-  background: #e8f0ec;
-}
-
-.bench {
-  display: grid;
-  gap: 0.75rem;
-  padding: 1.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-muted);
-}
-
-.equipmentList {
-  padding: 0.85rem 1rem 1rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.equipmentList h3,
-.teacherEvidence h3 {
-  margin: 0 0 0.65rem;
+.drawerHeader h2 {
+  margin-top: 0.14rem;
+  font-family: var(--font-ui);
   font-size: 1rem;
+  font-weight: var(--type-ui-semibold);
 }
 
-.equipmentList ul,
-.teacherEvidence ul,
-.teacherEvidence ol {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.equipmentList li,
-.teacherEvidence li {
-  display: grid;
-  gap: 0.15rem;
-  padding: 0.6rem;
+.setupBadge {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid color-mix(in srgb, var(--lab-primary) 35%, transparent);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-muted);
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
+  font-size: 0.68rem;
+  font-weight: var(--type-ui-semibold);
 }
 
-.equipmentList span,
-.teacherEvidence span,
-.teacherEvidence p {
-  color: var(--color-ink-muted);
-  font-size: var(--text-sm);
+.drawerHeader button {
+  display: grid;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-md);
+  background: var(--lab-surface);
+  color: var(--lab-primary);
+  cursor: pointer;
+  font-size: 1.45rem;
+  line-height: 1;
 }
 
-.controls {
+.drawerHeader button:hover,
+.drawerHeader button:focus-visible {
+  border-color: var(--lab-primary);
+  background: var(--lab-primary-soft);
+}
+
+.drawerHeader button:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: 2px;
+}
+
+.controlPanel {
   display: grid;
   align-content: start;
   gap: 0.75rem;
-  max-height: 62rem;
-  padding: 1rem;
-  overflow: auto;
+  min-height: 0;
+  padding: 0.85rem;
+  overflow-y: auto;
+  background: transparent;
+  scrollbar-gutter: stable;
 }
 
-.controls fieldset {
+.controlPanel fieldset {
   display: grid;
   gap: 0.6rem;
   min-width: 0;
   margin: 0;
   padding: 0.8rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--lab-border);
   border-radius: var(--radius-md);
 }
 
-.controls fieldset:disabled {
+.controlPanel fieldset:disabled {
   opacity: 0.58;
 }
 
-.controls legend {
+.controlPanel legend {
   padding: 0 0.25rem;
   font-weight: var(--type-ui-semibold);
 }
 
-.controls fieldset > p,
-.controls small {
+.controlPanel fieldset > p,
+.controlPanel small {
   margin: 0;
-  color: var(--color-ink-muted);
+  color: var(--lab-ink-muted);
   font-size: var(--text-xs);
 }
 
-.controls label {
+.controlPanel label {
   display: grid;
   gap: 0.35rem;
-  color: var(--color-ink-muted);
+  color: var(--lab-ink-muted);
   font-size: var(--text-sm);
   font-weight: var(--type-ui-semibold);
 }
 
-.controls label > span {
+.controlPanel label > span {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-.controls input {
+.controlPanel input {
   width: 100%;
   min-height: var(--control-height);
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--lab-surface);
+  color: var(--lab-ink);
+}
+
+.controlPanel button {
+  min-height: var(--control-height);
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--lab-primary);
+  border-radius: var(--radius-sm);
+  background: var(--lab-primary);
+  color: var(--color-on-primary);
+  font-weight: var(--type-ui-semibold);
+  cursor: pointer;
+}
+
+.equipmentList {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.equipmentList h3 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.equipmentList ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipmentList li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--lab-surface-muted);
+}
+
+.equipmentList span {
+  color: var(--lab-ink-muted);
+  font-size: var(--text-sm);
 }
 
 .actionError {
-  padding: 0.75rem;
-  border: 1px solid var(--color-danger);
+  position: absolute;
+  z-index: 14;
+  top: 8.75rem;
+  left: 50%;
+  display: flex;
+  width: min(34rem, calc(100% - 2rem));
+  padding: 0.8rem 0.85rem 0.8rem 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--lab-danger);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--lab-danger-soft) 94%, white);
+  box-shadow: var(--lab-floating-shadow);
+  color: var(--lab-ink);
+  transform: translateX(-50%);
+}
+
+.actionError strong,
+.actionError p {
+  margin: 0;
+}
+
+.actionError p {
+  margin-top: 0.2rem;
+  color: var(--lab-ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.actionError button {
+  min-height: 2.5rem;
+  padding: 0.42rem 0.7rem;
+  border: 1px solid var(--lab-danger);
   border-radius: var(--radius-sm);
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+  background: var(--lab-surface);
+  color: var(--lab-danger);
+  cursor: pointer;
+  font-weight: var(--type-ui-semibold);
 }
 
 .teacherEvidence {
   overflow: hidden;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-md);
+  background: var(--lab-surface-muted);
 }
 
 .teacherEvidence summary {
-  padding: 0.9rem 1rem;
+  padding: 0.75rem 0.85rem;
   cursor: pointer;
   font-weight: var(--type-ui-semibold);
 }
 
 .teacherEvidence[open] summary {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--lab-border);
 }
 
 .evidenceGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.85rem;
+  padding: 0.85rem;
 }
 
 .evidenceGrid ul,
 .evidenceGrid ol {
-  grid-template-columns: minmax(0, 1fr);
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-@media (max-width: 64rem) {
-  .mainGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .mainGrid > div:first-child {
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .controls {
-    max-height: none;
-  }
+.evidenceGrid li {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--lab-surface);
 }
 
-@media (max-width: 48rem) {
-  .workspaceHeader {
-    align-items: stretch;
-    flex-direction: column;
+.evidenceGrid span,
+.evidenceGrid p {
+  color: var(--lab-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.focusedActionList {
+  display: grid;
+  gap: 0.55rem;
+  max-height: min(42vh, 22rem);
+  overflow-y: auto;
+  padding-right: 0.15rem;
+  scrollbar-gutter: stable;
+}
+
+.focusedActionList fieldset {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.65rem;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--lab-surface) 88%, white);
+}
+
+.focusedActionList fieldset:disabled {
+  opacity: 0.58;
+}
+
+.focusedActionList legend {
+  padding: 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.focusedActionList fieldset > p,
+.focusedActionList small {
+  margin: 0;
+  color: var(--lab-ink-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.focusedActionList label {
+  display: grid;
+  gap: 0.28rem;
+  color: var(--lab-ink-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.focusedActionList label > span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.focusedActionList input {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--lab-surface);
+  color: var(--lab-ink);
+}
+
+.focusedActionList button {
+  min-height: 2.45rem;
+}
+
+@media (max-width: 46rem) {
+  .page {
+    --simulation-canvas-height: clamp(34rem, 76svh, 46rem);
   }
 
-  .statusBlock {
-    justify-items: start;
+  .drawer {
+    top: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.45rem;
+    width: calc(100% - 0.9rem);
+    border-radius: 1rem;
   }
 
-  .benchCanvas {
-    height: 27rem;
-    min-height: 27rem;
-  }
-
-  .evidenceGrid {
-    grid-template-columns: minmax(0, 1fr);
+  .actionError {
+    top: 10.5rem;
+    width: calc(100% - 1rem);
   }
 }

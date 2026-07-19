@@ -1,6 +1,14 @@
 import { Html } from "@react-three/drei";
 import { type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
+import {
+  type CSSProperties,
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useRef
+} from "react";
 import type { Group } from "three";
 
 import type { EquipmentId } from "../titration/equipment";
@@ -21,7 +29,10 @@ interface InteractableProps {
   highlightShape: InteractableHighlightShape;
   children: ReactNode;
   enabled?: boolean;
+  /** Pointer is over this equipment (and it is not the reason for focus alone). */
   hovered: boolean;
+  /** Equipment is the current camera/focus selection. */
+  selected?: boolean;
   onHover: (equipment: EquipmentId | null) => void;
   onSelect: (equipment: EquipmentId) => void;
 }
@@ -47,9 +58,10 @@ const SCALE_EPSILON = 0.0005;
 
 /**
  * Shared 3D equipment affordance. It reports pointer interest upward while
- * owning the visual hover pulse, emissive shell, and non-interactive HTML
- * label. The upward hover callback also drives the scene-frame cursor. It
- * never dispatches experiment actions.
+ * owning the visual hover/selection pulse, emissive shell, and non-interactive
+ * HTML label. An invisible hit mesh keeps thin glassware reliably targetable.
+ * The upward hover callback also drives the scene-frame cursor. It never
+ * dispatches experiment actions.
  */
 export function Interactable({
   id,
@@ -58,12 +70,14 @@ export function Interactable({
   children,
   enabled = true,
   hovered,
+  selected = false,
   onHover,
   onSelect
 }: InteractableProps) {
   const pulseGroupRef = useRef<Group>(null);
   const pointerInsideRef = useRef(false);
   const invalidate = useThree((state) => state.invalidate);
+  const highlighted = enabled && (hovered || selected);
 
   useEffect(
     () => () => {
@@ -78,13 +92,13 @@ export function Interactable({
       onHover(null);
     }
     invalidate();
-  }, [enabled, hovered, invalidate, onHover]);
+  }, [enabled, highlighted, invalidate, onHover]);
 
   useFrame((_, deltaS) => {
     const pulseGroup = pulseGroupRef.current;
     if (!pulseGroup) return;
 
-    const targetScale = enabled && hovered ? HOVER_SCALE : 1;
+    const targetScale = highlighted ? HOVER_SCALE : 1;
     const currentScale = pulseGroup.scale.x;
     const blend = 1 - Math.exp(-SCALE_RESPONSE * deltaS);
     const nextScale =
@@ -127,20 +141,35 @@ export function Interactable({
     >
       <group ref={pulseGroupRef}>
         {children}
-        {enabled && hovered && (
+        {/* Invisible hit volume so thin glassware remains easy to target. */}
+        <mesh
+          position={highlightShape.position}
+          rotation={highlightShape.rotation}
+          visible={false}
+        >
+          {isValidElement(highlightShape.geometry)
+            ? cloneElement(highlightShape.geometry as ReactElement)
+            : highlightShape.geometry}
+          <meshBasicMaterial />
+        </mesh>
+        {highlighted && (
           <>
             <mesh
               position={highlightShape.position}
               rotation={highlightShape.rotation}
             >
-              {highlightShape.geometry}
+              {isValidElement(highlightShape.geometry)
+                ? cloneElement(highlightShape.geometry as ReactElement)
+                : highlightShape.geometry}
               <meshStandardMaterial
-                color={LAB_PALETTE.hoverMint}
+                color={
+                  selected ? LAB_PALETTE.selectionTeal : LAB_PALETTE.hoverMint
+                }
                 emissive={LAB_PALETTE.selectionTeal}
-                emissiveIntensity={0.9}
+                emissiveIntensity={selected ? 1.15 : 0.9}
                 roughness={0.8}
                 transparent
-                opacity={0.24}
+                opacity={selected ? 0.34 : 0.24}
                 depthWrite={false}
               />
             </mesh>
@@ -151,7 +180,11 @@ export function Interactable({
               zIndexRange={[2, 0]}
               aria-hidden="true"
             >
-              <span data-equipment-hover-label={id} style={LABEL_STYLE}>
+              <span
+                data-equipment-hover-label={id}
+                data-equipment-selected={selected ? "true" : "false"}
+                style={LABEL_STYLE}
+              >
                 {label}
               </span>
             </Html>

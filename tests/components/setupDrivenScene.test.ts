@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   SETUP_DRIVEN_SCENE_ERROR_CODES,
   TITRATION_VISUAL_ADAPTERS,
+  projectionActionsForEquipmentFocus,
   resolveTitrationSceneConfiguration,
   visibleControlGroupsForConfiguration
 } from "../../src/components/lab/titration/setupDrivenScene";
@@ -178,12 +179,14 @@ describe("setup-driven titration scene projection", () => {
     expect(configuration.projectedState).toBeNull();
   });
 
-  it("registers shared lab visual adapters for titration and dilution", () => {
+  it("registers shared lab visual adapters for titration, dilution, and calorimetry", () => {
     expect(Object.keys(TITRATION_VISUAL_ADAPTERS).sort()).toEqual([
       "visual-adapter.burette.v1",
+      "visual-adapter.calorimeter.v1",
       "visual-adapter.erlenmeyer_flask.v1",
       "visual-adapter.indicator_bottle.v1",
       "visual-adapter.reagent_bottle.v1",
+      "visual-adapter.thermometer.v1",
       "visual-adapter.volumetric_flask.v1",
       "visual-adapter.volumetric_pipette.v1",
       "visual-adapter.wash_bottle.v1"
@@ -221,6 +224,47 @@ describe("setup-driven titration scene projection", () => {
       ])
     );
     expect(configuration.availableControlGroups).toContain("solution");
+  });
+
+  it("filters native lab actions to the focused equipment instance", () => {
+    const workflow = validateSolutionPreparationV2("2026-07-18T15:00:00.000Z");
+    const session = createSetupDrivenNativeSession({
+      sessionId: "dilution-focus-actions-test",
+      sessionSeed: "dilution-focus-actions-seed",
+      selection: {
+        workflowId: workflow.id,
+        workflowHash: workflow.validation.canonicalSpecHash
+      },
+      workflow
+    });
+    const projection = session.getProjection();
+    const pipetteActions = projectionActionsForEquipmentFocus(
+      projection,
+      "volumetricPipette"
+    );
+    const flaskActions = projectionActionsForEquipmentFocus(
+      projection,
+      "volumetricFlask"
+    );
+
+    expect(pipetteActions.length).toBeGreaterThan(0);
+    expect(
+      pipetteActions.every(
+        (action) =>
+          action.sourceEquipmentInstanceId === "transfer_pipette" ||
+          action.targetEquipmentInstanceIds.includes("transfer_pipette")
+      )
+    ).toBe(true);
+    expect(
+      flaskActions.every(
+        (action) =>
+          action.sourceEquipmentInstanceId === "preparation_flask" ||
+          action.targetEquipmentInstanceIds.includes("preparation_flask")
+      )
+    ).toBe(true);
+    expect(projectionActionsForEquipmentFocus(projection, null)).toEqual(
+      projection.actions
+    );
   });
 
   it.each([

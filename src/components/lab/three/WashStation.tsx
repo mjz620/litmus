@@ -2,18 +2,13 @@ import { Html } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import {
   type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
-  useMemo
+  type MouseEvent as ReactMouseEvent
 } from "react";
-import {
-  CanvasTexture,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  SRGBColorSpace
-} from "three";
+import { MeshBasicMaterial, MeshStandardMaterial } from "three";
 
 import { WASH } from "./benchLayout";
 import { LAB_PALETTE } from "./labPalette";
+import { WashSqueezeBottle } from "./WashSqueezeBottle";
 
 interface WashStationProps {
   focused: boolean;
@@ -29,11 +24,6 @@ export type WashLiquid = "water" | "titrant";
 
 const trayMaterial = new MeshStandardMaterial({
   color: LAB_PALETTE.muralBlue,
-  roughness: 0.76,
-  metalness: 0
-});
-const washBottleMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.glassFallback,
   roughness: 0.76,
   metalness: 0
 });
@@ -67,35 +57,6 @@ const HOTSPOT_LABEL_STYLE: CSSProperties = {
   whiteSpace: "nowrap"
 };
 
-let cachedWaterLabel: CanvasTexture | null = null;
-
-function getWaterLabelTexture(): CanvasTexture | null {
-  if (cachedWaterLabel) return cachedWaterLabel;
-  if (typeof document === "undefined") return null;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 160;
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-
-  context.fillStyle = LAB_PALETTE.ceramic;
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.strokeStyle = LAB_PALETTE.selectionTeal;
-  context.lineWidth = 10;
-  context.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
-  context.fillStyle = LAB_PALETTE.graduationInk;
-  context.font = "700 58px system-ui, sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText("Distilled water", canvas.width / 2, canvas.height / 2);
-
-  cachedWaterLabel = new CanvasTexture(canvas);
-  cachedWaterLabel.colorSpace = SRGBColorSpace;
-  cachedWaterLabel.anisotropy = 4;
-  return cachedWaterLabel;
-}
-
 /**
  * Preparation station with a labeled water squeeze bottle, titrant reagent
  * bottle, and fill funnel. Hotspots report gesture facts upward only.
@@ -109,7 +70,6 @@ export function WashStation({
   onTitrantBottleClick,
   onFunnelClick
 }: WashStationProps) {
-  const waterLabel = useMemo(() => getWaterLabelTexture(), []);
   const hotspotsEnabled = focused && preparationEnabled;
 
   function clickHandler(callback: () => void) {
@@ -130,25 +90,7 @@ export function WashStation({
         scale={selectedLiquid === "water" ? 1.06 : 1}
         onClick={hotspotsEnabled ? clickHandler(onWashBottleClick) : undefined}
       >
-        <mesh position={[0, 0.095, 0]} material={washBottleMaterial}>
-          <cylinderGeometry args={[0.045, 0.052, 0.15, 14]} />
-        </mesh>
-        <mesh position={[0, 0.178, 0]} material={washBottleMaterial}>
-          <cylinderGeometry args={[0.025, 0.042, 0.035, 14]} />
-        </mesh>
-        <mesh
-          position={[0.026, 0.212, 0]}
-          rotation={[0, 0, -Math.PI / 3]}
-          material={fixtureMaterial}
-        >
-          <cylinderGeometry args={[0.009, 0.014, 0.095, 10]} />
-        </mesh>
-        {waterLabel && (
-          <mesh position={[0, 0.1, 0.051]}>
-            <planeGeometry args={[0.082, 0.032]} />
-            <meshBasicMaterial map={waterLabel} />
-          </mesh>
-        )}
+        <WashSqueezeBottle showLabel />
         {focused && selectedLiquid === "water" && (
           <SelectionRing radius={0.063} />
         )}

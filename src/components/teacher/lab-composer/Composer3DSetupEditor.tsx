@@ -20,12 +20,18 @@ import { ClassroomEnvironment } from "../../lab/three/ClassroomEnvironment";
 import { ErlenmeyerFlask } from "../../lab/three/ErlenmeyerFlask";
 import { IndicatorShelf } from "../../lab/three/IndicatorShelf";
 import {
+  Calorimeter,
   DistilledWaterWashBottle,
   RegisteredReagentBottle,
+  Thermometer,
   VolumetricFlask,
   VolumetricPipette
 } from "../../lab/three/SolutionPreparationEquipment";
 import { BURETTE, FLASK, ISLAND, SHELF } from "../../lab/three/benchLayout";
+import {
+  usesLocalOriginMesh,
+  worldPositionForEquipmentPose
+} from "../../lab/three/equipmentPose";
 
 import styles from "./LabComposer.module.css";
 
@@ -129,6 +135,10 @@ function visualForPose(
       return <VolumetricFlask fillFraction={0.45} />;
     case "visual-adapter.wash_bottle.v1":
       return <DistilledWaterWashBottle fillFraction={0.75} />;
+    case "visual-adapter.calorimeter.v1":
+      return <Calorimeter fillFraction={0.4} />;
+    case "visual-adapter.thermometer.v1":
+      return <Thermometer />;
     default:
       return null;
   }
@@ -361,13 +371,17 @@ function ArrangementScene({
           drag?.linkedEquipmentInstanceIds.includes(pose.equipmentInstanceId) ??
           false;
         const delta = followsDrag ? (drag?.delta ?? [0, 0, 0]) : [0, 0, 0];
+        const base = worldPositionForEquipmentPose(pose);
+        const localOrigin = usesLocalOriginMesh(
+          pose.visualAdapterDefinitionId
+        );
         return (
           <group
             key={pose.equipmentInstanceId}
             position={[
-              pose.translation[0] + delta[0],
-              pose.translation[1] + delta[1],
-              pose.translation[2] + delta[2]
+              base[0] + delta[0],
+              base[1] + delta[1],
+              base[2] + delta[2]
             ]}
             onPointerDown={(event) => beginDrag(event, pose)}
             onPointerMove={moveDrag}
@@ -376,11 +390,17 @@ function ArrangementScene({
             {selectedEquipmentId === pose.equipmentInstanceId && (
               <mesh
                 position={[
-                  scenePlacementRegistry.get(pose.placementSlotId)
-                    .footprintCenterXZ[0] - pose.translation[0],
-                  ISLAND.topY + 0.022,
-                  scenePlacementRegistry.get(pose.placementSlotId)
-                    .footprintCenterXZ[1] - pose.translation[2]
+                  localOrigin
+                    ? 0
+                    : scenePlacementRegistry.get(pose.placementSlotId)
+                        .footprintCenterXZ[0] - pose.translation[0],
+                  localOrigin
+                    ? 0.022
+                    : ISLAND.topY + 0.022,
+                  localOrigin
+                    ? 0
+                    : scenePlacementRegistry.get(pose.placementSlotId)
+                        .footprintCenterXZ[1] - pose.translation[2]
                 ]}
                 rotation={[Math.PI / 2, 0, 0]}
               >

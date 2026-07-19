@@ -22,12 +22,15 @@ import { ClassroomEnvironment } from "../three/ClassroomEnvironment";
 import { ErlenmeyerFlask } from "../three/ErlenmeyerFlask";
 import { IndicatorShelf } from "../three/IndicatorShelf";
 import {
+  Calorimeter,
   DistilledWaterWashBottle,
   RegisteredReagentBottle,
+  Thermometer,
   VolumetricFlask,
   VolumetricPipette
 } from "../three/SolutionPreparationEquipment";
 import { BURETTE, FLASK, SHELF } from "../three/benchLayout";
+import { worldPositionForEquipmentPose } from "../three/equipmentPose";
 
 import styles from "./SetupDrivenWorkspace.module.css";
 
@@ -160,6 +163,10 @@ function visualFor(equipment: SetupDrivenLabProjection["equipment"][number]) {
       return <VolumetricFlask fillFraction={fillFraction(equipment)} />;
     case "visual-adapter.wash_bottle.v1":
       return <DistilledWaterWashBottle fillFraction={0.75} />;
+    case "visual-adapter.calorimeter.v1":
+      return <Calorimeter fillFraction={fillFraction(equipment)} />;
+    case "visual-adapter.thermometer.v1":
+      return <Thermometer />;
     default:
       return null;
   }
@@ -250,7 +257,7 @@ function Scene({
               if (node) groupRefs.set(instanceId, node);
               else groupRefs.delete(instanceId);
             }}
-            position={pose.translation}
+            position={[...worldPositionForEquipmentPose(pose)]}
             rotation={[0, pose.yawRadians, 0]}
             onPointerOver={(event) =>
               handlePointerOver(event, instanceId, equipment.label)

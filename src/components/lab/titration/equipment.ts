@@ -13,14 +13,17 @@ export type EquipmentId =
   | "volumetricPipette"
   | "volumetricFlask"
   | "washBottle"
-  | "reagentBottle";
+  | "reagentBottle"
+  | "calorimeter"
+  | "thermometer";
 
 export type ControlGroupId =
   | "prepare"
   | "deliver"
   | "indicator"
   | "reading"
-  | "solution";
+  | "solution"
+  | "calorimetry";
 
 export interface EquipmentInfo {
   id: EquipmentId;
@@ -83,6 +86,18 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentInfo> = {
     name: "Stock bottle",
     purpose: "Source bottle for the concentrated stock solution.",
     controlGroups: ["solution"]
+  },
+  calorimeter: {
+    id: "calorimeter",
+    name: "Coffee-cup calorimeter",
+    purpose: "Receive poured water, seal the lid, and mix for heat transfer.",
+    controlGroups: ["calorimetry"]
+  },
+  thermometer: {
+    id: "thermometer",
+    name: "Digital thermometer",
+    purpose: "Place the probe and record the calorimeter temperature.",
+    controlGroups: ["calorimetry"]
   }
 };
 
@@ -95,7 +110,9 @@ export const EQUIPMENT_IDS: readonly EquipmentId[] = [
   "volumetricPipette",
   "volumetricFlask",
   "washBottle",
-  "reagentBottle"
+  "reagentBottle",
+  "calorimeter",
+  "thermometer"
 ];
 
 const ALL_CONTROL_GROUPS: readonly ControlGroupId[] = [
@@ -103,7 +120,8 @@ const ALL_CONTROL_GROUPS: readonly ControlGroupId[] = [
   "indicator",
   "deliver",
   "reading",
-  "solution"
+  "solution",
+  "calorimetry"
 ];
 
 /**

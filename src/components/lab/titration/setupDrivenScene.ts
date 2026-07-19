@@ -17,7 +17,9 @@ export type LabVisualAdapterKind =
   | "volumetric_pipette"
   | "volumetric_flask"
   | "wash_bottle"
-  | "reagent_bottle";
+  | "reagent_bottle"
+  | "calorimeter"
+  | "thermometer";
 
 export interface LabVisualAdapterRegistration {
   readonly visualAdapterDefinitionId: string;
@@ -69,6 +71,16 @@ export const LAB_VISUAL_ADAPTERS: Readonly<
     visualAdapterDefinitionId: "visual-adapter.wash_bottle.v1",
     kind: "wash_bottle",
     selectableEquipmentIds: Object.freeze(["washBottle"] as const)
+  }),
+  "visual-adapter.calorimeter.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.calorimeter.v1",
+    kind: "calorimeter",
+    selectableEquipmentIds: Object.freeze(["calorimeter"] as const)
+  }),
+  "visual-adapter.thermometer.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.thermometer.v1",
+    kind: "thermometer",
+    selectableEquipmentIds: Object.freeze(["thermometer"] as const)
   })
 });
 
@@ -86,7 +98,13 @@ const ACTION_CONTROL_GROUP: Readonly<Record<string, ControlGroupId>> =
     "action.rinse_transfer_device.v1": "solution",
     "action.transfer_liquid.v1": "solution",
     "action.fill_to_mark.v1": "solution",
-    "action.mix_solution.v1": "solution"
+    "action.mix_solution.v1": "solution",
+    "action.pour_liquid.v1": "calorimetry",
+    "action.mix_calorimeter.v1": "calorimetry",
+    "action.set_calorimeter_lid.v1": "calorimetry",
+    "action.place_thermometer.v1": "calorimetry",
+    "action.remove_thermometer.v1": "calorimetry",
+    "action.read_temperature.v1": "calorimetry"
   });
 
 export const SETUP_DRIVEN_SCENE_ERROR_CODES = Object.freeze({
@@ -446,4 +464,35 @@ export function visibleControlGroupsForConfiguration(
   return focusedGroups.filter((group) =>
     configuration.availableControlGroups.includes(group)
   );
+}
+
+/**
+ * Native-lab actions whose source or target equipment maps to the focused
+ * visual selection. Empty focus returns every currently projected action.
+ */
+export function projectionActionsForEquipmentFocus(
+  projection: Readonly<SetupDrivenLabProjection>,
+  focused: EquipmentId | null
+): SetupDrivenLabProjection["actions"] {
+  if (!focused) return projection.actions;
+  const instanceIds = new Set<string>();
+  for (const equipment of projection.equipment) {
+    const adapter = LAB_VISUAL_ADAPTERS[equipment.visualAdapterDefinitionId];
+    if (!adapter) continue;
+    if (adapter.selectableEquipmentIds.includes(focused)) {
+      instanceIds.add(equipment.instanceId);
+    }
+  }
+  if (instanceIds.size === 0) return [];
+  return projection.actions.filter((action) => {
+    if (
+      action.sourceEquipmentInstanceId &&
+      instanceIds.has(action.sourceEquipmentInstanceId)
+    ) {
+      return true;
+    }
+    return action.targetEquipmentInstanceIds.some((id) =>
+      instanceIds.has(id)
+    );
+  });
 }

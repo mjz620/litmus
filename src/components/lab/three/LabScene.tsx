@@ -15,12 +15,25 @@ import { Interactable } from "./Interactable";
 import { SceneEnvironment } from "./SceneEnvironment";
 import { SkyDome } from "./SkyDome";
 import {
+  CALORIMETER_HIT,
+  Calorimeter,
+  DISTILLED_WASH_BOTTLE_HIT,
   DistilledWaterWashBottle,
+  REAGENT_BOTTLE_HIT,
   RegisteredReagentBottle,
+  THERMOMETER_HIT,
+  Thermometer,
+  VOLUMETRIC_FLASK_HIT,
+  VOLUMETRIC_PIPETTE_HIT,
   VolumetricFlask,
   VolumetricPipette
 } from "./SolutionPreparationEquipment";
 import { type WashLiquid, WashStation } from "./WashStation";
+import { worldPositionForEquipmentPose } from "./equipmentPose";
+import {
+  LabVisualGestureLayer,
+  type LabVisualGesture
+} from "./gestures/LabVisualGestures";
 import {
   BURETTE,
   CAMERA_POSES,
@@ -37,6 +50,12 @@ interface LabSceneProps {
   enabledEquipmentIds: readonly EquipmentId[];
   equipmentPoses?: readonly ResolvedEquipmentPose[];
   equipmentFillFractions?: Readonly<Record<string, number>>;
+  calorimeterLidClosed?: boolean;
+  thermometerPlaced?: boolean;
+  hideCalorimeterLid?: boolean;
+  hideThermometer?: boolean;
+  activeVisualGesture?: LabVisualGesture | null;
+  onVisualGestureComplete?: (sequence: number) => void;
   buretteAvailableML: number;
   buretteCapacityML: number;
   flaskLiquidColor: string;
@@ -108,6 +127,12 @@ export function LabScene({
   enabledEquipmentIds,
   equipmentPoses = [],
   equipmentFillFractions = {},
+  calorimeterLidClosed = true,
+  thermometerPlaced = false,
+  hideCalorimeterLid = false,
+  hideThermometer = false,
+  activeVisualGesture = null,
+  onVisualGestureComplete,
   buretteAvailableML,
   buretteCapacityML,
   flaskLiquidColor,
@@ -146,6 +171,8 @@ export function LabScene({
   const pipettePose = poseFor("visual-adapter.volumetric_pipette.v1");
   const volumetricFlaskPose = poseFor("visual-adapter.volumetric_flask.v1");
   const washBottlePose = poseFor("visual-adapter.wash_bottle.v1");
+  const calorimeterPose = poseFor("visual-adapter.calorimeter.v1");
+  const thermometerPose = poseFor("visual-adapter.thermometer.v1");
   const showBurette = show("burette", "visual-adapter.burette.v1");
   const showFlask = show("flask", "visual-adapter.erlenmeyer_flask.v1");
   const showMeniscus = showBurette && enabledEquipmentIds.includes("meniscus");
@@ -185,7 +212,9 @@ export function LabScene({
               : selected === "volumetricPipette" ||
                   selected === "volumetricFlask" ||
                   selected === "washBottle" ||
-                  selected === "reagentBottle"
+                  selected === "reagentBottle" ||
+                  selected === "calorimeter" ||
+                  selected === "thermometer"
                 ? CAMERA_POSES.overview
                 : CAMERA_POSES.overview;
   const selectedPose =
@@ -203,7 +232,11 @@ export function LabScene({
                 ? volumetricFlaskPose
                 : selected === "washBottle"
                   ? washBottlePose
-                  : undefined;
+                  : selected === "calorimeter"
+                    ? calorimeterPose
+                    : selected === "thermometer"
+                      ? thermometerPose
+                      : undefined;
   const selectedPivot: readonly [number, number, number] =
     selected === "burette" || selected === "meniscus"
       ? [BURETTE.x, 0, BURETTE.z]
@@ -253,7 +286,8 @@ export function LabScene({
             ),
             labelPosition: [0, buretteHighlightHeight / 2 + 0.08, 0]
           }}
-          hovered={hovered === "burette" && selected !== "burette"}
+          hovered={hovered === "burette"}
+            selected={selected === "burette"}
           onHover={onHover}
           onSelect={onSelect}
         >
@@ -296,7 +330,8 @@ export function LabScene({
             ),
             labelPosition: [0, flaskHighlightHeight / 2 + 0.06, 0]
           }}
-          hovered={hovered === "flask" && selected !== "flask"}
+          hovered={hovered === "flask"}
+            selected={selected === "flask"}
           onHover={onHover}
           onSelect={onSelect}
         >
@@ -326,7 +361,8 @@ export function LabScene({
             rotation: [Math.PI / 2, 0, 0],
             labelPosition: [0, 0.08, 0]
           }}
-          hovered={hovered === "meniscus" && selected !== "meniscus"}
+          hovered={hovered === "meniscus"}
+            selected={selected === "meniscus"}
           onHover={onHover}
           onSelect={onSelect}
         >
@@ -377,9 +413,8 @@ export function LabScene({
             position: [0, SHELF.totalHeight / 2, 0.02],
             labelPosition: [0, SHELF.totalHeight + 0.08, 0]
           }}
-          hovered={
-            hovered === "indicatorShelf" && selected !== "indicatorShelf"
-          }
+          hovered={hovered === "indicatorShelf"}
+            selected={selected === "indicatorShelf"}
           onHover={onHover}
           onSelect={onSelect}
         >
@@ -420,7 +455,8 @@ export function LabScene({
             position: [0, WASH.totalHeight / 2, 0],
             labelPosition: [0, WASH.totalHeight + 0.08, 0]
           }}
-          hovered={hovered === "washStation" && selected !== "washStation"}
+          hovered={hovered === "washStation"}
+            selected={selected === "washStation"}
           onHover={onHover}
           onSelect={onSelect}
         >
@@ -439,7 +475,7 @@ export function LabScene({
 
       {pipettePose && enabledEquipmentIds.includes("volumetricPipette") && (
         <group
-          position={pipettePose.translation}
+          position={[...worldPositionForEquipmentPose(pipettePose)]}
           rotation={[0, pipettePose.yawRadians, 0]}
         >
           <Interactable
@@ -448,13 +484,22 @@ export function LabScene({
             label={EQUIPMENT.volumetricPipette.name}
             highlightShape={{
               geometry: (
-                <cylinderGeometry args={[0.03, 0.03, 0.55, 16, 1, true]} />
+                <cylinderGeometry
+                  args={[
+                    VOLUMETRIC_PIPETTE_HIT.radius,
+                    VOLUMETRIC_PIPETTE_HIT.radius,
+                    VOLUMETRIC_PIPETTE_HIT.height,
+                    16,
+                    1,
+                    true
+                  ]}
+                />
               ),
-              labelPosition: [0, 0.32, 0]
+              position: [0, VOLUMETRIC_PIPETTE_HIT.centerY, 0],
+              labelPosition: [0, VOLUMETRIC_PIPETTE_HIT.labelY, 0]
             }}
-            hovered={
-              hovered === "volumetricPipette" && selected !== "volumetricPipette"
-            }
+            hovered={hovered === "volumetricPipette"}
+            selected={selected === "volumetricPipette"}
             onHover={onHover}
             onSelect={onSelect}
           >
@@ -468,7 +513,7 @@ export function LabScene({
       {volumetricFlaskPose &&
         enabledEquipmentIds.includes("volumetricFlask") && (
           <group
-            position={volumetricFlaskPose.translation}
+            position={[...worldPositionForEquipmentPose(volumetricFlaskPose)]}
             rotation={[0, volumetricFlaskPose.yawRadians, 0]}
           >
             <Interactable
@@ -477,13 +522,22 @@ export function LabScene({
               label={EQUIPMENT.volumetricFlask.name}
               highlightShape={{
                 geometry: (
-                  <cylinderGeometry args={[0.05, 0.05, 0.28, 18, 1, true]} />
+                  <cylinderGeometry
+                    args={[
+                      VOLUMETRIC_FLASK_HIT.radius,
+                      VOLUMETRIC_FLASK_HIT.radius,
+                      VOLUMETRIC_FLASK_HIT.height,
+                      18,
+                      1,
+                      true
+                    ]}
+                  />
                 ),
-                labelPosition: [0, 0.18, 0]
+                position: [0, VOLUMETRIC_FLASK_HIT.centerY, 0],
+                labelPosition: [0, VOLUMETRIC_FLASK_HIT.labelY, 0]
               }}
-              hovered={
-                hovered === "volumetricFlask" && selected !== "volumetricFlask"
-              }
+              hovered={hovered === "volumetricFlask"}
+              selected={selected === "volumetricFlask"}
               onHover={onHover}
               onSelect={onSelect}
             >
@@ -496,7 +550,7 @@ export function LabScene({
 
       {washBottlePose && enabledEquipmentIds.includes("washBottle") && (
         <group
-          position={washBottlePose.translation}
+          position={[...worldPositionForEquipmentPose(washBottlePose)]}
           rotation={[0, washBottlePose.yawRadians, 0]}
         >
           <Interactable
@@ -505,11 +559,22 @@ export function LabScene({
             label={EQUIPMENT.washBottle.name}
             highlightShape={{
               geometry: (
-                <cylinderGeometry args={[0.035, 0.035, 0.22, 14, 1, true]} />
+                <cylinderGeometry
+                  args={[
+                    DISTILLED_WASH_BOTTLE_HIT.radius,
+                    DISTILLED_WASH_BOTTLE_HIT.radius,
+                    DISTILLED_WASH_BOTTLE_HIT.height,
+                    14,
+                    1,
+                    true
+                  ]}
+                />
               ),
-              labelPosition: [0, 0.14, 0]
+              position: [0, DISTILLED_WASH_BOTTLE_HIT.centerY, 0],
+              labelPosition: [0, DISTILLED_WASH_BOTTLE_HIT.labelY, 0]
             }}
-            hovered={hovered === "washBottle" && selected !== "washBottle"}
+            hovered={hovered === "washBottle"}
+            selected={selected === "washBottle"}
             onHover={onHover}
             onSelect={onSelect}
           >
@@ -522,7 +587,7 @@ export function LabScene({
 
       {showReagentBottle && washPose && (
         <group
-          position={washPose.translation}
+          position={[...worldPositionForEquipmentPose(washPose)]}
           rotation={[0, washPose.yawRadians, 0]}
         >
           <Interactable
@@ -531,17 +596,102 @@ export function LabScene({
             label={EQUIPMENT.reagentBottle.name}
             highlightShape={{
               geometry: (
-                <cylinderGeometry args={[0.04, 0.04, 0.24, 14, 1, true]} />
+                <cylinderGeometry
+                  args={[
+                    REAGENT_BOTTLE_HIT.radius,
+                    REAGENT_BOTTLE_HIT.radius,
+                    REAGENT_BOTTLE_HIT.height,
+                    14,
+                    1,
+                    true
+                  ]}
+                />
               ),
-              labelPosition: [0, 0.15, 0]
+              position: [0, REAGENT_BOTTLE_HIT.centerY, 0],
+              labelPosition: [0, REAGENT_BOTTLE_HIT.labelY, 0]
             }}
-            hovered={hovered === "reagentBottle" && selected !== "reagentBottle"}
+            hovered={hovered === "reagentBottle"}
+            selected={selected === "reagentBottle"}
             onHover={onHover}
             onSelect={onSelect}
           >
             <RegisteredReagentBottle
               fillFraction={fillOf("visual-adapter.reagent_bottle.v1", 0.7)}
             />
+          </Interactable>
+        </group>
+      )}
+
+      {calorimeterPose && enabledEquipmentIds.includes("calorimeter") && (
+        <group
+          position={[...worldPositionForEquipmentPose(calorimeterPose)]}
+          rotation={[0, calorimeterPose.yawRadians, 0]}
+        >
+          <Interactable
+            id="calorimeter"
+            enabled
+            label={EQUIPMENT.calorimeter.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[
+                    CALORIMETER_HIT.radius,
+                    CALORIMETER_HIT.radius,
+                    CALORIMETER_HIT.height,
+                    18,
+                    1,
+                    true
+                  ]}
+                />
+              ),
+              position: [0, CALORIMETER_HIT.centerY, 0],
+              labelPosition: [0, CALORIMETER_HIT.labelY, 0]
+            }}
+            hovered={hovered === "calorimeter"}
+            selected={selected === "calorimeter"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <Calorimeter
+              fillFraction={fillOf("visual-adapter.calorimeter.v1", 0)}
+              lidClosed={calorimeterLidClosed}
+              hideLid={hideCalorimeterLid}
+            />
+          </Interactable>
+        </group>
+      )}
+
+      {thermometerPose && enabledEquipmentIds.includes("thermometer") && (
+        <group
+          position={[...worldPositionForEquipmentPose(thermometerPose)]}
+          rotation={[0, thermometerPose.yawRadians, 0]}
+        >
+          <Interactable
+            id="thermometer"
+            enabled
+            label={EQUIPMENT.thermometer.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[
+                    THERMOMETER_HIT.radius,
+                    THERMOMETER_HIT.radius,
+                    THERMOMETER_HIT.height,
+                    12,
+                    1,
+                    true
+                  ]}
+                />
+              ),
+              position: [0, THERMOMETER_HIT.centerY, 0],
+              labelPosition: [0, THERMOMETER_HIT.labelY, 0]
+            }}
+            hovered={hovered === "thermometer"}
+            selected={selected === "thermometer"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <Thermometer placed={thermometerPlaced} hidden={hideThermometer} />
           </Interactable>
         </group>
       )}
@@ -555,6 +705,11 @@ export function LabScene({
           onComplete={onIndicatorAdditionComplete}
         />
       )}
+
+      <LabVisualGestureLayer
+        gesture={activeVisualGesture}
+        onComplete={onVisualGestureComplete ?? (() => undefined)}
+      />
 
       <BenchCameraControls pose={pose} />
     </>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
-import { CoachPanelView } from "../../coach/CoachPanel";
 import { createAuthoredCoachWorkflowContext } from "../../../lib/agent/authoredCoach";
 import { AUTHORED_COACH_CONTRACT_VERSION } from "../../../lib/agent/authoredCoachSchemas";
 import { HttpCoachClient } from "../../../lib/agent/client";
@@ -16,14 +16,27 @@ import {
   type NormalizedLabAction
 } from "../../../lab-workflows/runtime";
 import type { ValidatedLabWorkflowSpecV2 } from "../../../lab-workflows/schema/v2";
-import { type CoachMessage, type CoachStatus, localCoachFallback } from "../../../stores/labStore";
+import {
+  type CoachMessage,
+  type CoachStatus,
+  localCoachFallback
+} from "../../../stores/labStore";
 import {
   createSetupDrivenNativeSession,
   type SetupDrivenLabProjection,
   type SetupDrivenNativeSession
 } from "../../../stores/setupDrivenLabSession";
+import { useLabUiStore } from "../../../stores/labUiStore";
 import { ImmersiveSetupDrivenBench } from "./ImmersiveSetupDrivenBench";
+import {
+  projectionActionsForEquipmentFocus,
+  resolveTitrationSceneConfiguration
+} from "../titration/setupDrivenScene";
+import type { LabVisualGesture } from "../three/gestures/LabVisualGestures";
+import { gestureForNativeAction } from "../three/gestures/nativeActionGestures";
+import { getLabSounds } from "../three/labSounds";
 
+import sessionBarStyles from "../LabSessionBar.module.css";
 import styles from "./SetupDrivenWorkspace.module.css";
 
 interface WorkspaceSnapshot {
@@ -34,7 +47,8 @@ interface WorkspaceSnapshot {
 const PARAMETER_LABELS: Readonly<Record<string, string>> = Object.freeze({
   volumeML: "Volume",
   finalVolumeML: "Final volume",
-  inversions: "Number of inversions"
+  inversions: "Number of inversions",
+  reportedC: "Reported temperature"
 });
 
 function createSession(
@@ -93,6 +107,22 @@ function actionLabel(
       return "Fill the flask to the mark";
     case "action.mix_solution.v1":
       return "Mix the prepared solution";
+    case "action.pour_liquid.v1": {
+      const source = projection.equipment.find(
+        ({ instanceId }) => instanceId === action.sourceEquipmentInstanceId
+      );
+      return source?.equipmentDefinitionId === "component.wash_bottle.v1"
+        ? "Pour cold water into the calorimeter"
+        : "Pour hot water into the calorimeter";
+    }
+    case "action.mix_calorimeter.v1":
+      return "Mix the calorimeter contents";
+    case "action.set_calorimeter_lid.v1":
+      return "Open or close the calorimeter lid";
+    case "action.place_thermometer.v1":
+      return "Place the thermometer probe";
+    case "action.read_temperature.v1":
+      return "Read the calorimeter temperature";
     case "action.transfer_liquid.v1": {
       const source = projection.equipment.find(
         ({ instanceId }) => instanceId === action.sourceEquipmentInstanceId
@@ -118,7 +148,11 @@ function equipmentSummary(
     case "component.wash_bottle.v1":
       return `${Number(value("availableML") ?? 0).toFixed(2)} mL water remaining`;
     case "component.reagent_bottle.v1":
-      return "Stock solution ready";
+      return "Registered liquid ready";
+    case "component.calorimeter.v1":
+      return `${Number(value("totalVolumeML") ?? 0).toFixed(2)} mL · lid ${value("lidClosed") ? "closed" : "open"} · ${value("mixed") ? "mixed" : "not yet mixed"}`;
+    case "component.thermometer.v1":
+      return value("placed") ? "Probe inserted" : "Probe ready to place";
     default:
       return "Ready";
   }
@@ -129,6 +163,12 @@ function observableLabel(observableId: string): string {
     return "Solution concentration";
   if (observableId === "observable.solution_volume_ml.v1")
     return "Solution volume";
+  if (observableId === "observable.calorimeter_temperature_c.v1")
+    return "Calorimeter temperature";
+  if (observableId === "observable.calorimeter_heat_content_j.v1")
+    return "Calorimeter heat content";
+  if (observableId === "observable.calorimeter_volume_ml.v1")
+    return "Calorimeter volume";
   const entry = configurationRegistry
     .list()
     .find(({ id }) => id === observableId);
@@ -233,11 +273,15 @@ export function NativeSetupDrivenWorkspace({
   const [current, setCurrent] = useState(() => snapshot(session));
   const [values, setValues] = useState<Readonly<Record<string, string>>>({});
   const [error, setError] = useState<string | null>(null);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [coachMessages, setCoachMessages] = useState<readonly CoachMessage[]>(
     []
   );
   const [coachStatus, setCoachStatus] = useState<CoachStatus>("idle");
   const [coachError, setCoachError] = useState<string | null>(null);
+  const [activeVisualGesture, setActiveVisualGesture] =
+    useState<LabVisualGesture | null>(null);
+  const gestureSequenceRef = useRef(0);
   const coachClient = useRef(new HttpCoachClient()).current;
   const coachMessageSequence = useRef(0);
   const servedCoachReasons = useRef<Set<string>>(new Set());
@@ -342,6 +386,32 @@ export function NativeSetupDrivenWorkspace({
         value: Number(parameterValue(action, parameterKey))
       }));
     try {
+      let poses: ReturnType<
+        typeof resolveTitrationSceneConfiguration
+      >["equipmentPoses"] = [];
+      try {
+        poses = resolveTitrationSceneConfiguration(
+          current.projection
+        ).equipmentPoses;
+      } catch {
+        poses = [];
+      }
+      const gesture = gestureForNativeAction({
+        action,
+        poses,
+        sequence: ++gestureSequenceRef.current,
+        projection: current.projection
+      });
+      if (gesture) {
+        setActiveVisualGesture(gesture);
+        if (gesture.kind === "pour") {
+          getLabSounds().playFromGesture("rinse_fill");
+        } else if (gesture.kind === "mix") {
+          getLabSounds().playFromGesture("drop");
+        } else {
+          getLabSounds().playFromGesture("indicator");
+        }
+      }
       session.dispatch({
         schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
         permissionId: action.permissionId,
@@ -368,194 +438,339 @@ export function NativeSetupDrivenWorkspace({
     setCurrent(snapshot(nextSession));
     setValues({});
     setError(null);
+    setControlsOpen(false);
     setCoachMessages([]);
     setCoachStatus("idle");
     setCoachError(null);
+    setActiveVisualGesture(null);
     servedCoachReasons.current = new Set();
   }
 
+  function handleWorkspaceKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") return;
+    if (controlsOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      setControlsOpen(false);
+      return;
+    }
+    const {
+      lookActive,
+      focused,
+      setLookActive,
+      clearFocus
+    } = useLabUiStore.getState();
+    if (lookActive) {
+      event.preventDefault();
+      event.stopPropagation();
+      setLookActive(false);
+      return;
+    }
+    if (!focused) return;
+    event.stopPropagation();
+    clearFocus();
+  }
+
   const status = current.state.workflowStatus;
+  const statusLabel =
+    status === "completed"
+      ? "Lab complete"
+      : status === "failed"
+        ? "Attempt ended"
+        : "Lab in progress";
+  const nextAction = current.projection.actions.find(
+    (action) => action.available
+  );
+  const prompt =
+    status === "completed"
+      ? "Lab complete. Open Lab steps to review measured results, or restart for another attempt."
+      : status === "failed"
+        ? "Attempt ended. Restart to try the procedure again."
+        : nextAction
+          ? `Next: ${actionLabel(nextAction, current.projection)}.`
+          : "Open Lab steps to continue the verified procedure.";
+  const focused = useLabUiStore((store) => store.focused);
+  const drawerActions = useMemo(() => {
+    try {
+      const configuration = resolveTitrationSceneConfiguration(
+        current.projection
+      );
+      const focus =
+        focused && configuration.selectableEquipmentIds.includes(focused)
+          ? focused
+          : null;
+      return projectionActionsForEquipmentFocus(current.projection, focus);
+    } catch {
+      return current.projection.actions;
+    }
+  }, [current.projection, focused]);
+
   return (
-    <section
-      className={styles.workspace}
+    <div
+      className={styles.page}
       aria-label="Interactive setup-driven lab"
       data-workflow-status={status}
       data-workflow-id={workflow.id}
       data-session-mode={mode}
     >
-      <header className={styles.workspaceHeader}>
-        <div>
-          <p>{heading}</p>
-          <h2>{workflow.metadata.title}</h2>
-          <span>{workflow.metadata.studentSummary}</span>
+      <header className={sessionBarStyles.bar}>
+        <div className={sessionBarStyles.identity}>
+          <span className={sessionBarStyles.mark} aria-hidden="true">
+            ⚗
+          </span>
+          <div>
+            {mode !== "preview" && (
+              <Link className={sessionBarStyles.backLink} href="/experiments">
+                ← Experiments
+              </Link>
+            )}
+            {mode === "preview" && (
+              <p className={styles.previewEyebrow}>{heading}</p>
+            )}
+            <div className={sessionBarStyles.titleRow}>
+              <h1>{workflow.metadata.title}</h1>
+              <span className={sessionBarStyles.stage}>{statusLabel}</span>
+            </div>
+          </div>
         </div>
-        <div className={styles.statusBlock} role="status" aria-live="polite">
-          <strong>
-            {status === "completed"
-              ? "Lab complete"
-              : status === "failed"
-                ? "Attempt ended"
-                : "Lab in progress"}
-          </strong>
-          <button type="button" onClick={restart}>
-            Restart attempt
-          </button>
+        <div className={sessionBarStyles.session}>
+          <span
+            className={sessionBarStyles.saveStatus}
+            role="status"
+            aria-live="polite"
+          >
+            {mode === "preview"
+              ? "Teacher preview"
+              : mode === "assignment"
+                ? "Assigned lab"
+                : "Practice mode — ready"}
+          </span>
+          <div className={sessionBarStyles.actions}>
+            <button type="button" onClick={restart}>
+              Restart attempt
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className={styles.mainGrid}>
-        <div>
-          <ImmersiveSetupDrivenBench projection={current.projection} />
-          <section
-            className={styles.equipmentList}
-            aria-labelledby="equipment-heading"
-          >
-            <h3 id="equipment-heading">Equipment status</h3>
-            <ul>
-              {current.projection.equipment.map((equipment) => (
-                <li key={equipment.instanceId}>
-                  <strong>{equipment.label}</strong>
-                  <span>{equipmentSummary(equipment)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-
-        <aside className={styles.controls} aria-labelledby="actions-heading">
-          <div className={styles.controlsHeading}>
-            <p>Keyboard and pointer controls</p>
-            <h3 id="actions-heading">Lab steps</h3>
-          </div>
-          {error && (
-            <div className={styles.actionError} role="alert">
-              {error}
-            </div>
-          )}
-          {current.projection.actions.map((action) => {
-            const completionMessage = completedActionMessage(
-              action,
-              current.projection
-            );
-            const unavailableMessage =
-              !action.available && !completionMessage
-                ? "Unavailable in the current attempt"
-                : null;
-            return (
-              <fieldset
-                key={action.permissionId}
-                disabled={!action.available || completionMessage !== null}
-              >
-                <legend>{actionLabel(action, current.projection)}</legend>
-                <p>
-                  {action.sourceEquipmentInstanceId
-                    ? equipmentLabels.get(action.sourceEquipmentInstanceId)
-                    : "Lab setup"}
-                  {action.targetEquipmentInstanceIds.length > 0
-                    ? ` → ${action.targetEquipmentInstanceIds
-                        .map((id) => equipmentLabels.get(id) ?? "equipment")
-                        .join(", ")}`
-                    : ""}
-                </p>
-                {action.numericParameterBounds.map((bounds) => {
-                  const key = `${action.permissionId}:${bounds.parameterKey}`;
-                  return (
-                    <label key={bounds.parameterKey}>
-                      {PARAMETER_LABELS[bounds.parameterKey] ?? "Value"}
-                      <span>
-                        <input
-                          type="number"
-                          value={parameterValue(action, bounds.parameterKey)}
-                          min={bounds.effectiveMinimum ?? undefined}
-                          max={bounds.effectiveMaximum ?? undefined}
-                          step={bounds.parameterKey === "inversions" ? 1 : 0.01}
-                          onChange={(event) => {
-                            const nextValue = event.currentTarget.value;
-                            setValues((currentValues) => ({
-                              ...currentValues,
-                              [key]: nextValue
-                            }));
-                          }}
-                        />
-                        {bounds.unitId === "unit.ml.v1" ? "mL" : ""}
-                      </span>
-                    </label>
-                  );
-                })}
-                <button type="button" onClick={() => dispatch(action)}>
-                  Apply step
-                </button>
-                {(completionMessage || unavailableMessage) && (
-                  <small>{completionMessage ?? unavailableMessage}</small>
-                )}
-              </fieldset>
-            );
-          })}
-        </aside>
-      </div>
-
-      <div className={styles.coachCard}>
-        <CoachPanelView
-          messages={coachMessages}
-          status={coachStatus}
-          error={coachError}
-          sessionId={`teacher-preview-${run}`}
+      <div
+        className={styles.workspace}
+        data-precision-controls-open={controlsOpen ? "true" : "false"}
+        onKeyDown={handleWorkspaceKeyDown}
+      >
+        <ImmersiveSetupDrivenBench
+          projection={current.projection}
+          prompt={prompt}
+          statusLabel={statusLabel}
+          precisionControlsOpen={controlsOpen}
+          onPrecisionControlsChange={setControlsOpen}
+          coachMessages={coachMessages}
+          coachStatus={coachStatus}
+          coachError={coachError}
+          coachSessionId={`${prefix}-${run}`}
           askCoach={askCoach}
+          equipmentLabels={equipmentLabels}
+          actionLabel={(action) => actionLabel(action, current.projection)}
+          completedActionMessage={(action) =>
+            completedActionMessage(action, current.projection)
+          }
+          parameterLabel={(parameterKey) =>
+            PARAMETER_LABELS[parameterKey] ?? "Value"
+          }
+          parameterValue={parameterValue}
+          onParameterChange={(action, key, value) => {
+            setValues((currentValues) => ({
+              ...currentValues,
+              [`${action.permissionId}:${key}`]: value
+            }));
+          }}
+          onDispatch={dispatch}
+          activeVisualGesture={activeVisualGesture}
+          onVisualGestureComplete={(sequence) => {
+            setActiveVisualGesture((currentGesture) =>
+              currentGesture?.sequence === sequence ? null : currentGesture
+            );
+          }}
         />
-      </div>
 
-      <details className={styles.teacherEvidence}>
-        <summary>Teacher preview evidence</summary>
-        <div className={styles.evidenceGrid}>
-          <section>
-            <h3>Measured results</h3>
-            {current.state.chemistry.observables.length === 0 ? (
-              <p>No measurements yet.</p>
-            ) : (
-              <ul>
-                {current.state.chemistry.observables.map((observable) => (
-                  <li key={observable.observableId}>
-                    <strong>{observableLabel(observable.observableId)}</strong>
-                    <span>
-                      {String(observable.value)}
-                      {observable.unitId === "unit.ml.v1"
-                        ? " mL"
-                        : observable.unitId === "unit.mol_per_l.v1"
-                          ? " mol/L"
-                          : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          <section>
-            <h3>Rule results</h3>
-            <ul>
-              {current.state.diagnoses.map((diagnosis) => (
-                <li key={diagnosis.ruleId}>
-                  <strong>{ruleLabel(workflow, diagnosis.ruleId)}</strong>
-                  <span>{diagnosis.status}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section>
-            <h3>Observed events</h3>
-            {current.state.eventEnvelopes.length === 0 ? (
-              <p>No actions observed yet.</p>
-            ) : (
-              <ol>
-                {current.state.eventEnvelopes.map((event) => (
-                  <li key={event.eventId}>
-                    {event.payload.type.replaceAll("_", " ")}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-        </div>
-      </details>
-    </section>
+        {error && (
+          <div
+            className={styles.actionError}
+            role="alert"
+            aria-live="assertive"
+          >
+            <div>
+              <strong>Action not applied</strong>
+              <p>{error}</p>
+            </div>
+            <button type="button" onClick={() => setError(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {controlsOpen && (
+          <div className={styles.drawer} role="presentation">
+            <div className={styles.drawerHeader}>
+              <div>
+                <p>Keyboard and pointer controls</p>
+                <h2>Lab steps</h2>
+                <span className={styles.setupBadge}>Setup-driven workflow</span>
+              </div>
+              <button
+                type="button"
+                aria-label="Close lab steps"
+                onClick={() => setControlsOpen(false)}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <aside className={styles.controlPanel} aria-label="Lab steps">
+              <section
+                className={styles.equipmentList}
+                aria-labelledby="equipment-heading"
+              >
+                <h3 id="equipment-heading">Equipment status</h3>
+                <ul>
+                  {current.projection.equipment.map((equipment) => (
+                    <li key={equipment.instanceId}>
+                      <strong>{equipment.label}</strong>
+                      <span>{equipmentSummary(equipment)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              {drawerActions.map((action) => {
+                const completionMessage = completedActionMessage(
+                  action,
+                  current.projection
+                );
+                const unavailableMessage =
+                  !action.available && !completionMessage
+                    ? "Unavailable in the current attempt"
+                    : null;
+                return (
+                  <fieldset
+                    key={action.permissionId}
+                    disabled={!action.available || completionMessage !== null}
+                  >
+                    <legend>{actionLabel(action, current.projection)}</legend>
+                    <p>
+                      {action.sourceEquipmentInstanceId
+                        ? equipmentLabels.get(action.sourceEquipmentInstanceId)
+                        : "Lab setup"}
+                      {action.targetEquipmentInstanceIds.length > 0
+                        ? ` → ${action.targetEquipmentInstanceIds
+                            .map((id) => equipmentLabels.get(id) ?? "equipment")
+                            .join(", ")}`
+                        : ""}
+                    </p>
+                    {action.numericParameterBounds.map((bounds) => {
+                      const key = `${action.permissionId}:${bounds.parameterKey}`;
+                      return (
+                        <label key={bounds.parameterKey}>
+                          {PARAMETER_LABELS[bounds.parameterKey] ?? "Value"}
+                          <span>
+                            <input
+                              type="number"
+                              value={parameterValue(action, bounds.parameterKey)}
+                              min={bounds.effectiveMinimum ?? undefined}
+                              max={bounds.effectiveMaximum ?? undefined}
+                              step={
+                                bounds.parameterKey === "inversions" ? 1 : 0.01
+                              }
+                              onChange={(event) => {
+                                const nextValue = event.currentTarget.value;
+                                setValues((currentValues) => ({
+                                  ...currentValues,
+                                  [key]: nextValue
+                                }));
+                              }}
+                            />
+                            {bounds.unitId === "unit.ml.v1"
+                              ? " mL"
+                              : bounds.unitId === "unit.celsius.v1"
+                                ? " °C"
+                                : ""}
+                          </span>
+                        </label>
+                      );
+                    })}
+                    <button type="button" onClick={() => dispatch(action)}>
+                      Apply step
+                    </button>
+                    {(completionMessage || unavailableMessage) && (
+                      <small>{completionMessage ?? unavailableMessage}</small>
+                    )}
+                  </fieldset>
+                );
+              })}
+              {mode === "preview" && (
+                <details className={styles.teacherEvidence}>
+                  <summary>Teacher preview evidence</summary>
+                  <div className={styles.evidenceGrid}>
+                    <section>
+                      <h3>Measured results</h3>
+                      {current.state.chemistry.observables.length === 0 ? (
+                        <p>No measurements yet.</p>
+                      ) : (
+                        <ul>
+                          {current.state.chemistry.observables.map(
+                            (observable) => (
+                              <li key={observable.observableId}>
+                                <strong>
+                                  {observableLabel(observable.observableId)}
+                                </strong>
+                                <span>
+                                  {String(observable.value)}
+                                  {observable.unitId === "unit.ml.v1"
+                                    ? " mL"
+                                    : observable.unitId === "unit.mol_per_l.v1"
+                                      ? " mol/L"
+                                      : observable.unitId === "unit.celsius.v1"
+                                        ? " °C"
+                                        : ""}
+                                </span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      )}
+                    </section>
+                    <section>
+                      <h3>Rule results</h3>
+                      <ul>
+                        {current.state.diagnoses.map((diagnosis) => (
+                          <li key={diagnosis.ruleId}>
+                            <strong>
+                              {ruleLabel(workflow, diagnosis.ruleId)}
+                            </strong>
+                            <span>{diagnosis.status}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                    <section>
+                      <h3>Observed events</h3>
+                      {current.state.eventEnvelopes.length === 0 ? (
+                        <p>No actions observed yet.</p>
+                      ) : (
+                        <ol>
+                          {current.state.eventEnvelopes.map((event) => (
+                            <li key={event.eventId}>
+                              {event.payload.type.replaceAll("_", " ")}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </section>
+                  </div>
+                </details>
+              )}
+            </aside>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
