@@ -21,6 +21,7 @@ import {
   IndicatorSelectionDialog
 } from "./IndicatorSelectionDialog";
 import {
+  DISPENSE_RESIDUE_ML,
   FLOW_RATES_ML_PER_S,
   type FlowDetent,
   useDispenseGesture
@@ -37,6 +38,13 @@ const indicatorOptions: ReadonlyArray<{
   { value: "methyl_orange", label: "Methyl orange" }
 ];
 
+function formatDispenseLimit(volumeML: number): string {
+  const fixed = volumeML.toFixed(6);
+  const trimmed = fixed.replace(/0+$/, "").replace(/\.$/, "");
+  const [whole, fraction = ""] = trimmed.split(".");
+  return `${whole}.${fraction.padEnd(2, "0")}`;
+}
+
 interface TitrationControlsProps {
   /**
    * Control groups to render; defaults to every group. Selecting equipment in
@@ -47,6 +55,8 @@ interface TitrationControlsProps {
   contextLabel?: string;
   /** Runtime-authored maximum for one normalized dispense action. */
   maxDispenseVolumeML?: number | null;
+  /** Effective registered/authored minimum for one normalized dispense action. */
+  minDispenseVolumeML?: number | null;
   /** Shows an action-aware empty state for a setup-driven selection. */
   setupDriven?: boolean;
 }
@@ -54,6 +64,7 @@ interface TitrationControlsProps {
 export function TitrationControls({
   visibleGroups = getVisibleControlGroups(null),
   contextLabel,
+  minDispenseVolumeML = null,
   maxDispenseVolumeML = null,
   setupDriven = false
 }: TitrationControlsProps = {}) {
@@ -78,13 +89,23 @@ export function TitrationControls({
     "water" | "titrant" | null
   >(null);
   const [funnelSelected, setFunnelSelected] = useState(false);
+  const availableVolumeML = state?.buretteAvailableML ?? 0;
+  const minimumManualDispenseML = minDispenseVolumeML ?? 0.01;
+  const minimumGestureCommitML = minDispenseVolumeML ?? DISPENSE_RESIDUE_ML;
+  const availableDispenseVolumeML = Math.min(
+    availableVolumeML,
+    maxDispenseVolumeML ?? availableVolumeML
+  );
+  const deliveryPermissionAvailable = visibleGroups.includes("deliver");
+  const indicatorAdded = state?.indicatorAdded ?? false;
+  const hasAvailableTitrant = availableVolumeML > 0;
   const dispense = useDispenseGesture({
-    availableML: state
-      ? Math.min(
-          state.buretteAvailableML,
-          maxDispenseVolumeML ?? state.buretteAvailableML
-        )
-      : 0,
+    availableML: availableDispenseVolumeML,
+    minimumCommitML: minimumGestureCommitML,
+    enabled:
+      deliveryPermissionAvailable &&
+      indicatorAdded &&
+      availableDispenseVolumeML >= minimumGestureCommitML,
     onCommit: () =>
       playDeliverySounds(useLabStore.getState().eventQueue.slice(-1)),
     onDetentChange: () => getLabSounds().playFromGesture("valve"),
@@ -105,19 +126,12 @@ export function TitrationControls({
   const preparationReady = preparationLiquid === "titrant" && funnelSelected;
   const remainingFillCapacityML =
     state.config.buretteCapacityML - state.buretteAvailableML;
-  const availableVolumeML = state.buretteAvailableML;
-  const availableDispenseVolumeML = Math.min(
-    availableVolumeML,
-    maxDispenseVolumeML ?? availableVolumeML
-  );
-  const hasAvailableTitrant = availableVolumeML > 0;
-  const indicatorAdded = state.indicatorAdded;
   const isDispensing = dispense.state.isHolding;
   const canFillBurette =
     remainingFillCapacityML > 0 && !isDispensing && preparationReady;
   const canHoldDispense =
     indicatorAdded &&
-    hasAvailableTitrant &&
+    availableDispenseVolumeML >= minimumGestureCommitML &&
     dispense.state.selectedDetent !== "closed";
   const conditioningStatus = state.buretteConditioned
     ? "Conditioned with titrant"
@@ -150,8 +164,10 @@ export function TitrationControls({
     const volumeML = Number(additionVolume);
     const durationS = Number(additionDuration);
 
-    if (!Number.isFinite(volumeML) || volumeML <= 0) {
-      setInputError("Enter a titrant volume greater than zero.");
+    if (!Number.isFinite(volumeML) || volumeML < minimumManualDispenseML) {
+      setInputError(
+        `Enter at least ${formatDispenseLimit(minimumManualDispenseML)} mL of titrant.`
+      );
       return;
     }
     if (!Number.isFinite(durationS) || durationS <= 0) {
@@ -475,13 +491,29 @@ export function TitrationControls({
                 Volume to add (mL)
                 <input
                   type="number"
-                  min="0.01"
+                  min={minimumManualDispenseML}
                   max={availableDispenseVolumeML}
                   step="0.01"
                   value={additionVolume}
                   onChange={(event) =>
                     setAdditionVolume(event.currentTarget.value)
                   }
+                  onInvalid={(event) => {
+                    event.preventDefault();
+                    const volumeML = Number(event.currentTarget.value);
+                    if (
+                      Number.isFinite(volumeML) &&
+                      volumeML > availableDispenseVolumeML
+                    ) {
+                      setInputError(
+                        `This workflow permits at most ${formatDispenseLimit(availableDispenseVolumeML)} mL per addition.`
+                      );
+                      return;
+                    }
+                    setInputError(
+                      `Enter a volume from ${formatDispenseLimit(minimumManualDispenseML)} to ${formatDispenseLimit(availableDispenseVolumeML)} mL.`
+                    );
+                  }}
                   disabled={!hasAvailableTitrant || isDispensing}
                   required
                 />
@@ -501,13 +533,21 @@ export function TitrationControls({
                 />
               </label>
             </div>
+            {setupDriven && (
+              <p className={styles.note}>
+                Workflow range per addition:{" "}
+                {formatDispenseLimit(minimumManualDispenseML)}–
+                {formatDispenseLimit(availableDispenseVolumeML)} mL
+              </p>
+            )}
             <div className={styles.presetRow} aria-label="Volume presets">
               <button
                 type="button"
                 disabled={
                   !hasAvailableTitrant ||
                   isDispensing ||
-                  (maxDispenseVolumeML !== null && maxDispenseVolumeML < 1)
+                  minimumManualDispenseML > 1 ||
+                  availableDispenseVolumeML < 1
                 }
                 onClick={() => setAdditionVolume("1.00")}
               >
@@ -515,14 +555,24 @@ export function TitrationControls({
               </button>
               <button
                 type="button"
-                disabled={!hasAvailableTitrant || isDispensing}
+                disabled={
+                  !hasAvailableTitrant ||
+                  isDispensing ||
+                  minimumManualDispenseML > 0.1 ||
+                  availableDispenseVolumeML < 0.1
+                }
                 onClick={() => setAdditionVolume("0.10")}
               >
                 Fine 0.10 mL
               </button>
               <button
                 type="button"
-                disabled={!hasAvailableTitrant || isDispensing}
+                disabled={
+                  !hasAvailableTitrant ||
+                  isDispensing ||
+                  minimumManualDispenseML > 0.05 ||
+                  availableDispenseVolumeML < 0.05
+                }
                 onClick={() => setAdditionVolume("0.05")}
               >
                 Drop 0.05 mL

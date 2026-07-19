@@ -37,9 +37,10 @@ function runTimeline(
 
 function stateForDetent(
   detent: "dropwise" | "slow" | "open",
-  availableML = 10
+  availableML = 10,
+  minimumCommitML = 0.005
 ): DispenseGestureState {
-  return createDispenseGestureState(detent, availableML);
+  return createDispenseGestureState(detent, availableML, minimumCommitML);
 }
 
 describe("dispense gesture reducer", () => {
@@ -133,6 +134,53 @@ describe("dispense gesture reducer", () => {
     expect(result.state.remainingML).toBe(0);
     expect(result.state.activeDetent).toBe("closed");
     expect(result.state.isHolding).toBe(false);
+  });
+
+  it("carries a sub-minimum detent fragment until it forms a valid action", () => {
+    const result = runTimeline(stateForDetent("dropwise", 0.5, 0.01), [
+      { type: "start", nowMS: 0, availableML: 0.5, minimumCommitML: 0.01 },
+      { type: "select_detent", detent: "slow", nowMS: 110 },
+      { type: "tick", nowMS: 140 },
+      { type: "end", nowMS: 140, reason: "pointer_up" }
+    ]);
+
+    expect(result.commits).toHaveLength(1);
+    expect(result.commits[0]!.volumeML).toBeGreaterThanOrEqual(0.01);
+    expect(result.commits[0]!.volumeML).toBeLessThanOrEqual(0.5);
+    expect(result.commits[0]!.durationS).toBeGreaterThan(0);
+    expect(result.state.remainingML).toBeCloseTo(
+      0.5 - result.commits[0]!.volumeML,
+      6
+    );
+  });
+
+  it("never emits above the exact per-action allowance across frame partitions", () => {
+    const events: DispenseGestureEvent[] = [
+      { type: "start", nowMS: 0, availableML: 0.5, minimumCommitML: 0.01 }
+    ];
+    for (let frame = 1; frame <= 40; frame += 1) {
+      events.push({ type: "tick", nowMS: frame * 16.67 });
+    }
+    const result = runTimeline(stateForDetent("open", 0.5, 0.01), events);
+
+    expect(result.commits).toHaveLength(1);
+    expect(result.commits[0]!.volumeML).toBe(0.5);
+    expect(result.commits[0]!.volumeML).toBeLessThanOrEqual(0.5);
+    expect(result.state.remainingML).toBe(0);
+    expect(result.state.isHolding).toBe(false);
+  });
+
+  it("cancels pending delivery without emitting an action", () => {
+    const result = runTimeline(stateForDetent("open", 0.5, 0.01), [
+      { type: "start", nowMS: 0, availableML: 0.5, minimumCommitML: 0.01 },
+      { type: "tick", nowMS: 100 },
+      { type: "cancel", reason: "permission_change" }
+    ]);
+
+    expect(result.commits).toEqual([]);
+    expect(result.state.isHolding).toBe(false);
+    expect(result.state.pendingML).toBe(0);
+    expect(result.state.remainingML).toBeCloseTo(0.5, 10);
   });
 
   it("drops sub-0.005 mL numerical residues without consuming volume", () => {

@@ -15,6 +15,7 @@ export const FLOW_RATES_ML_PER_S: Readonly<Record<FlowDetent, number>> = {
 
 export const DISPENSE_COMMIT_THRESHOLD_ML = 0.5;
 export const DISPENSE_RESIDUE_ML = 0.005;
+export const DISPENSE_ACTION_PRECISION_DECIMALS = 6;
 export const DETENT_DEBOUNCE_MS = 100;
 
 export type DispenseEndReason =
@@ -49,13 +50,20 @@ export interface DispenseGestureState {
   lastDetentChangeMS: number | null;
   gestureCommittedML: number;
   gestureDetentChanges: number;
+  minimumCommitML: number;
 }
 
 export type DispenseGestureEvent =
   | { type: "select_detent"; detent: FlowDetent; nowMS: number }
-  | { type: "start"; nowMS: number; availableML: number }
+  | {
+      type: "start";
+      nowMS: number;
+      availableML: number;
+      minimumCommitML?: number;
+    }
   | { type: "tick"; nowMS: number }
-  | { type: "end"; nowMS: number; reason: DispenseEndReason };
+  | { type: "end"; nowMS: number; reason: DispenseEndReason }
+  | { type: "cancel"; reason: "dispatch_rejected" | "permission_change" };
 
 export interface DispenseTransition {
   state: DispenseGestureState;
@@ -64,7 +72,8 @@ export interface DispenseTransition {
 
 export function createDispenseGestureState(
   selectedDetent: FlowDetent = "dropwise",
-  availableML = 0
+  availableML = 0,
+  minimumCommitML = DISPENSE_RESIDUE_ML
 ): DispenseGestureState {
   return {
     selectedDetent,
@@ -77,7 +86,8 @@ export function createDispenseGestureState(
     gestureStartedAtMS: null,
     lastDetentChangeMS: null,
     gestureCommittedML: 0,
-    gestureDetentChanges: 0
+    gestureDetentChanges: 0,
+    minimumCommitML: sanitizeMinimumCommitML(minimumCommitML)
   };
 }
 
@@ -90,11 +100,18 @@ export function reduceDispenseGesture(
     case "select_detent":
       return selectDetent(state, event.detent, event.nowMS);
     case "start":
-      return startGesture(state, event.nowMS, event.availableML);
+      return startGesture(
+        state,
+        event.nowMS,
+        event.availableML,
+        event.minimumCommitML
+      );
     case "tick":
       return advanceGesture(state, event.nowMS);
     case "end":
       return endGesture(state, event.nowMS);
+    case "cancel":
+      return cancelGesture(state);
   }
 }
 
@@ -131,7 +148,7 @@ function selectDetent(
     return {
       state: closeValve(
         { ...flushed.state, selectedDetent: "closed" },
-        flushed.state.remainingML
+        flushed.state.remainingML + flushed.state.pendingML
       ),
       commits
     };
@@ -153,14 +170,24 @@ function selectDetent(
 function startGesture(
   state: DispenseGestureState,
   nowMS: number,
-  availableML: number
+  availableML: number,
+  minimumCommitML = DISPENSE_RESIDUE_ML
 ): DispenseTransition {
   const remainingML = sanitizeAvailableML(availableML);
+  const effectiveMinimumCommitML = sanitizeMinimumCommitML(minimumCommitML);
   const detent = state.selectedDetent;
 
-  if (state.isHolding || detent === "closed" || remainingML <= 0) {
+  if (
+    state.isHolding ||
+    detent === "closed" ||
+    remainingML < effectiveMinimumCommitML
+  ) {
     return {
-      state: { ...state, remainingML },
+      state: {
+        ...state,
+        remainingML,
+        minimumCommitML: effectiveMinimumCommitML
+      },
       commits: []
     };
   }
@@ -177,7 +204,8 @@ function startGesture(
       gestureStartedAtMS: nowMS,
       lastDetentChangeMS: nowMS,
       gestureCommittedML: 0,
-      gestureDetentChanges: 0
+      gestureDetentChanges: 0,
+      minimumCommitML: effectiveMinimumCommitML
     },
     commits: []
   };
@@ -278,12 +306,20 @@ function flushPending(
 ): DispenseTransition {
   const pendingML = state.pendingML;
   const pendingDurationS = state.pendingDurationS;
+  const normalizedML = normalizeDispenseActionVolume(pendingML);
 
   if (
-    pendingML < DISPENSE_RESIDUE_ML ||
+    normalizedML < state.minimumCommitML ||
     pendingDurationS <= 0 ||
     state.activeDetent === "closed"
   ) {
+    if (
+      reason === "detent_change" &&
+      pendingDurationS > 0 &&
+      state.activeDetent !== "closed"
+    ) {
+      return { state, commits: [] };
+    }
     return {
       state: {
         ...state,
@@ -295,21 +331,33 @@ function flushPending(
     };
   }
 
+  const normalizedDurationS =
+    pendingML > 0 ? pendingDurationS * (normalizedML / pendingML) : 0;
+  const returnedResidueML = Math.max(0, pendingML - normalizedML);
+
   return {
     state: {
       ...state,
       pendingML: 0,
       pendingDurationS: 0,
-      gestureCommittedML: state.gestureCommittedML + pendingML
+      remainingML: state.remainingML + returnedResidueML,
+      gestureCommittedML: state.gestureCommittedML + normalizedML
     },
     commits: [
       {
-        volumeML: pendingML,
-        durationS: pendingDurationS,
+        volumeML: normalizedML,
+        durationS: normalizedDurationS,
         detent: state.activeDetent,
         reason
       }
     ]
+  };
+}
+
+function cancelGesture(state: DispenseGestureState): DispenseTransition {
+  return {
+    state: closeValve(state, state.remainingML + state.pendingML),
+    commits: []
   };
 }
 
@@ -336,8 +384,22 @@ function sanitizeAvailableML(availableML: number): number {
   return Number.isFinite(availableML) ? Math.max(0, availableML) : 0;
 }
 
+function sanitizeMinimumCommitML(minimumCommitML: number): number {
+  return Number.isFinite(minimumCommitML)
+    ? Math.max(DISPENSE_RESIDUE_ML, minimumCommitML)
+    : DISPENSE_RESIDUE_ML;
+}
+
+export function normalizeDispenseActionVolume(volumeML: number): number {
+  if (!Number.isFinite(volumeML) || volumeML <= 0) return 0;
+  const factor = 10 ** DISPENSE_ACTION_PRECISION_DECIMALS;
+  return Math.floor((volumeML + Number.EPSILON) * factor) / factor;
+}
+
 interface UseDispenseGestureOptions {
   availableML: number;
+  minimumCommitML?: number;
+  enabled?: boolean;
   onCommit?: (commit: DispenseCommit) => void;
   onDetentChange?: (detent: FlowDetent) => void;
   onGestureStart?: () => void;
@@ -354,6 +416,8 @@ export interface DispenseGestureController {
 /** Browser-event and animation-frame adapter around the pure reducer. */
 export function useDispenseGesture({
   availableML,
+  minimumCommitML = DISPENSE_RESIDUE_ML,
+  enabled = true,
   onCommit,
   onDetentChange,
   onGestureStart,
@@ -374,9 +438,11 @@ export function useDispenseGesture({
       onGestureEnd
     };
   }, [onCommit, onDetentChange, onGestureEnd, onGestureStart]);
-  const stateRef = useRef(createDispenseGestureState("dropwise", availableML));
+  const stateRef = useRef(
+    createDispenseGestureState("dropwise", availableML, minimumCommitML)
+  );
   const [state, setState] = useState(() =>
-    createDispenseGestureState("dropwise", availableML)
+    createDispenseGestureState("dropwise", availableML, minimumCommitML)
   );
 
   const applyEvent = useCallback(
@@ -386,11 +452,20 @@ export function useDispenseGesture({
       setState(transition.state);
 
       for (const commit of transition.commits) {
-        dispatch({
+        const accepted = dispatch({
           type: "add_titrant",
           volumeML: commit.volumeML,
           durationS: commit.durationS
         });
+        if (!accepted) {
+          const cancelled = reduceDispenseGesture(stateRef.current, {
+            type: "cancel",
+            reason: "dispatch_rejected"
+          });
+          stateRef.current = cancelled.state;
+          setState(cancelled.state);
+          break;
+        }
         callbacksRef.current.onCommit?.(commit);
       }
     },
@@ -413,16 +488,18 @@ export function useDispenseGesture({
   );
 
   const start = useCallback(() => {
+    if (!enabled) return;
     const wasHolding = stateRef.current.isHolding;
     applyEvent({
       type: "start",
       nowMS: performance.now(),
-      availableML
+      availableML,
+      minimumCommitML
     });
     if (!wasHolding && stateRef.current.isHolding) {
       callbacksRef.current.onGestureStart?.();
     }
-  }, [applyEvent, availableML]);
+  }, [applyEvent, availableML, enabled, minimumCommitML]);
 
   const end = useCallback(
     (reason: DispenseEndReason) => {
@@ -449,6 +526,16 @@ export function useDispenseGesture({
     animationFrame = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(animationFrame);
   }, [applyEvent, state.isHolding]);
+
+  useEffect(() => {
+    if (
+      !stateRef.current.isHolding ||
+      (enabled && availableML >= minimumCommitML)
+    ) {
+      return;
+    }
+    applyEvent({ type: "cancel", reason: "permission_change" });
+  }, [applyEvent, availableML, enabled, minimumCommitML]);
 
   useEffect(() => {
     if (!state.isHolding) return;

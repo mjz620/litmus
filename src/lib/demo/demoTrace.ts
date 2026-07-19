@@ -1,7 +1,7 @@
 import type { SemanticEvent, StudentModel } from "../../experiments/shared";
 import type { TitrationState } from "../../experiments/titration/titration";
 import type { CoachMessage } from "../../stores/labStore";
-import type { CoachRequest } from "../agent/schemas";
+import type { AnyCoachRequest } from "../agent/schemas";
 import type { CheckpointRequest } from "../persistence";
 import type { ClassAnalyticsInput } from "../analytics/classAnalytics";
 import type { LabWorkflowConsumerContext } from "../../lab-workflows/consumers";
@@ -19,7 +19,7 @@ export interface DemoTrace {
   events: SemanticEvent[];
   studentModel: StudentModel;
   coachMessages: CoachMessage[];
-  lastCoachRequest: CoachRequest | null;
+  lastCoachRequest: AnyCoachRequest | null;
   lastCheckpoint: CheckpointRequest | null;
   runtimeInspection?: SetupDrivenRuntimeInspection | null;
   labWorkflowContext?: LabWorkflowConsumerContext | null;

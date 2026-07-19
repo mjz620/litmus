@@ -122,6 +122,58 @@
   scrollbar-gutter: stable;
 }
 
+.actionError {
+  position: absolute;
+  z-index: 14;
+  top: 8.75rem;
+  left: 50%;
+  display: flex;
+  width: min(34rem, calc(100% - 2rem));
+  padding: 0.8rem 0.85rem 0.8rem 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--lab-danger);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--lab-danger-soft) 94%, white);
+  box-shadow: var(--lab-floating-shadow);
+  color: var(--lab-ink);
+  transform: translateX(-50%);
+}
+
+.actionError strong,
+.actionError p {
+  margin: 0;
+}
+
+.actionError p {
+  margin-top: 0.2rem;
+  color: var(--lab-ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.actionError button {
+  min-height: 2.5rem;
+  padding: 0.42rem 0.7rem;
+  border: 1px solid var(--lab-danger);
+  border-radius: var(--radius-sm);
+  background: var(--lab-surface);
+  color: var(--lab-danger);
+  cursor: pointer;
+  font-weight: var(--type-ui-semibold);
+}
+
+.actionError button:hover,
+.actionError button:focus-visible {
+  background: var(--lab-danger-soft);
+}
+
+.actionError button:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: 2px;
+}
+
 @media (max-width: 46rem) {
   .workspace {
     --simulation-canvas-height: clamp(34rem, 76svh, 46rem);
@@ -133,5 +185,10 @@
     bottom: 0.45rem;
     width: calc(100% - 0.9rem);
     border-radius: 1rem;
+  }
+
+  .actionError {
+    top: 10.5rem;
+    width: calc(100% - 1rem);
   }
 }

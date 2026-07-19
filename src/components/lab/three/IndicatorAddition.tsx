@@ -42,6 +42,8 @@ export function getIndicatorBottleStart(
 interface IndicatorAdditionProps {
   indicator: IndicatorId;
   sequence: number;
+  shelfTranslation?: readonly [number, number, number];
+  flaskTranslation?: readonly [number, number, number];
   onComplete: (sequence: number) => void;
 }
 
@@ -57,6 +59,8 @@ function easeInOut(t: number): number {
 export function IndicatorAddition({
   indicator,
   sequence,
+  shelfTranslation = [0, 0, 0],
+  flaskTranslation = [0, 0, 0],
   onComplete
 }: IndicatorAdditionProps) {
   const groupRef = useRef<Group>(null);
@@ -66,11 +70,16 @@ export function IndicatorAddition({
   const reducedMotionRef = useRef(false);
   const invalidate = useThree((state) => state.invalidate);
   const color = INDICATOR_COLORS[indicator];
-  const start = getIndicatorBottleStart(indicator);
+  const registeredStart = getIndicatorBottleStart(indicator);
+  const start: readonly [number, number, number] = [
+    registeredStart[0] + shelfTranslation[0],
+    registeredStart[1] + shelfTranslation[1],
+    registeredStart[2] + shelfTranslation[2]
+  ];
   const pour: readonly [number, number, number] = [
-    FLASK.x + 0.045,
-    FLASK_RIM_Y + 0.085,
-    FLASK.z
+    FLASK.x + 0.045 + flaskTranslation[0],
+    FLASK_RIM_Y + 0.085 + flaskTranslation[1],
+    FLASK.z + flaskTranslation[2]
   ];
 
   useEffect(() => {
@@ -121,9 +130,9 @@ export function IndicatorAddition({
       if (!active) return;
 
       drop.position.set(
-        FLASK.x,
-        FLASK_RIM_Y + 0.075 * (1 - staggered),
-        FLASK.z
+        FLASK.x + flaskTranslation[0],
+        FLASK_RIM_Y + flaskTranslation[1] + 0.075 * (1 - staggered),
+        FLASK.z + flaskTranslation[2]
       );
     });
 

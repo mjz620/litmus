@@ -36,6 +36,8 @@ const TitrationScene = dynamic(
 export function TitrationWorkspace() {
   const focused = useLabUiStore((state) => state.focused);
   const runtimeProjection = useLabStore((state) => state.runtimeProjection);
+  const actionError = useLabStore((state) => state.actionError);
+  const clearActionError = useLabStore((state) => state.clearActionError);
   const [controlsOpen, setControlsOpen] = useState(false);
   const sceneResolution = useMemo(() => {
     try {
@@ -137,6 +139,22 @@ export function TitrationWorkspace() {
         precisionControlsOpen={controlsOpen}
         onPrecisionControlsChange={setControlsOpen}
       />
+      {actionError && (
+        <div
+          className={styles.actionError}
+          role="alert"
+          aria-live="assertive"
+          data-testid="lab-action-error"
+        >
+          <div>
+            <strong>Action not applied</strong>
+            <p>{actionError.message}</p>
+          </div>
+          <button type="button" onClick={clearActionError}>
+            Dismiss
+          </button>
+        </div>
+      )}
       {controlsOpen && (
         <div className={styles.drawer} role="presentation">
           <div className={styles.drawerHeader}>
@@ -160,6 +178,7 @@ export function TitrationWorkspace() {
               visibleGroups={visibleGroups}
               contextLabel={focused ? EQUIPMENT[focused].name : undefined}
               setupDriven={configuration.mode === "setup_driven_v2"}
+              minDispenseVolumeML={configuration.minDispenseVolumeML}
               maxDispenseVolumeML={configuration.maxDispenseVolumeML}
             />
           </aside>

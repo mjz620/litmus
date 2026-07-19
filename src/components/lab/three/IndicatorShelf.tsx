@@ -19,6 +19,13 @@ interface IndicatorShelfProps {
   selectedIndicator: IndicatorId | null;
   pouringIndicator: IndicatorId | null;
   onBottleClick: (indicator: IndicatorId) => void;
+  /**
+   * Which indicators are actually present in the lab. When omitted, all three
+   * are shown (the student titration default); the Composer bench passes only
+   * the indicators bound in the draft so the shelf never shows a bottle the lab
+   * cannot use.
+   */
+  availableIndicators?: readonly IndicatorId[];
 }
 
 const INDICATOR_BOTTLES: readonly IndicatorBottle[] = [
@@ -78,8 +85,14 @@ export function IndicatorShelf({
   selectionEnabled,
   selectedIndicator,
   pouringIndicator,
-  onBottleClick
+  onBottleClick,
+  availableIndicators
 }: IndicatorShelfProps) {
+  const bottles = availableIndicators
+    ? INDICATOR_BOTTLES.filter((bottle) =>
+        availableIndicators.includes(bottle.id)
+      )
+    : INDICATOR_BOTTLES;
   return (
     <group>
       <mesh position={[0, SHELF.riserHeight / 2, 0]} material={shelfMaterial}>
@@ -92,8 +105,8 @@ export function IndicatorShelf({
         <boxGeometry args={[SHELF.width, 0.024, 0.024]} />
       </mesh>
 
-      {INDICATOR_BOTTLES.map((bottle, index) => {
-        const x = (index - 1) * SHELF.bottleSpacing;
+      {bottles.map((bottle, index) => {
+        const x = (index - (bottles.length - 1) / 2) * SHELF.bottleSpacing;
         const isSelected = selectedIndicator === bottle.id;
         const bodyCenterY = SHELF.riserHeight + SHELF.bottleBodyHeight / 2;
         const capCenterY =

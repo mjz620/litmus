@@ -1,5 +1,9 @@
 import type { SetupDrivenLabProjection } from "../../../stores/setupDrivenLabSession";
 import {
+  resolveEquipmentPose,
+  type ResolvedEquipmentPose
+} from "../../../lab-workflows/registries/scene-placements";
+import {
   EQUIPMENT_IDS,
   getVisibleControlGroups,
   type ControlGroupId,
@@ -16,7 +20,6 @@ export interface TitrationVisualAdapterRegistration {
   readonly visualAdapterDefinitionId: string;
   readonly kind: TitrationVisualAdapterKind;
   readonly selectableEquipmentIds: readonly EquipmentId[];
-  readonly placementSlotIds: readonly string[];
 }
 
 export const TITRATION_VISUAL_ADAPTERS: Readonly<
@@ -25,26 +28,22 @@ export const TITRATION_VISUAL_ADAPTERS: Readonly<
   "visual-adapter.burette.v1": Object.freeze({
     visualAdapterDefinitionId: "visual-adapter.burette.v1",
     kind: "burette",
-    selectableEquipmentIds: Object.freeze(["burette", "meniscus"] as const),
-    placementSlotIds: Object.freeze(["placement.bench_center_stand.v1"])
+    selectableEquipmentIds: Object.freeze(["burette", "meniscus"] as const)
   }),
   "visual-adapter.erlenmeyer_flask.v1": Object.freeze({
     visualAdapterDefinitionId: "visual-adapter.erlenmeyer_flask.v1",
     kind: "flask",
-    selectableEquipmentIds: Object.freeze(["flask"] as const),
-    placementSlotIds: Object.freeze(["placement.under_burette.v1"])
+    selectableEquipmentIds: Object.freeze(["flask"] as const)
   }),
   "visual-adapter.indicator_bottle.v1": Object.freeze({
     visualAdapterDefinitionId: "visual-adapter.indicator_bottle.v1",
     kind: "indicator_shelf",
-    selectableEquipmentIds: Object.freeze(["indicatorShelf"] as const),
-    placementSlotIds: Object.freeze(["placement.indicator_shelf.v1"])
+    selectableEquipmentIds: Object.freeze(["indicatorShelf"] as const)
   }),
   "visual-adapter.reagent_bottle.v1": Object.freeze({
     visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
     kind: "wash_station",
-    selectableEquipmentIds: Object.freeze(["washStation"] as const),
-    placementSlotIds: Object.freeze(["placement.reagent_station.v1"])
+    selectableEquipmentIds: Object.freeze(["washStation"] as const)
   })
 });
 
@@ -90,9 +89,11 @@ export interface TitrationSceneConfiguration {
   readonly workflowId: string | null;
   readonly workflowHash: string | null;
   readonly equipmentInstanceIds: readonly string[];
+  readonly equipmentPoses: readonly ResolvedEquipmentPose[];
   readonly selectableEquipmentIds: readonly EquipmentId[];
   readonly availableActionIds: readonly string[];
   readonly availableControlGroups: readonly ControlGroupId[];
+  readonly minDispenseVolumeML: number | null;
   readonly maxDispenseVolumeML: number | null;
   readonly projectedState: {
     readonly burette: {
@@ -113,6 +114,7 @@ const LEGACY_SCENE_CONFIGURATION: TitrationSceneConfiguration = Object.freeze({
   workflowId: null,
   workflowHash: null,
   equipmentInstanceIds: Object.freeze([]),
+  equipmentPoses: Object.freeze([]),
   selectableEquipmentIds: EQUIPMENT_IDS,
   availableActionIds: Object.freeze(Object.keys(ACTION_CONTROL_GROUP)),
   availableControlGroups: Object.freeze([
@@ -121,6 +123,7 @@ const LEGACY_SCENE_CONFIGURATION: TitrationSceneConfiguration = Object.freeze({
     "deliver",
     "reading"
   ] as const),
+  minDispenseVolumeML: null,
   maxDispenseVolumeML: null,
   projectedState: null
 });
@@ -176,6 +179,7 @@ export function resolveTitrationSceneConfiguration(
   if (!projection) return LEGACY_SCENE_CONFIGURATION;
 
   const selectableEquipmentIds: EquipmentId[] = [];
+  const equipmentPoses: ResolvedEquipmentPose[] = [];
   let buretteState:
     | NonNullable<TitrationSceneConfiguration["projectedState"]>["burette"]
     | null = null;
@@ -195,11 +199,20 @@ export function resolveTitrationSceneConfiguration(
         `No exact titration visual adapter is registered for ${equipment.visualAdapterDefinitionId}.`
       );
     }
-    if (!adapter.placementSlotIds.includes(equipment.placementSlotId)) {
+    try {
+      equipmentPoses.push(
+        resolveEquipmentPose({
+          equipmentInstanceId: equipment.instanceId,
+          equipmentDefinitionId: equipment.equipmentDefinitionId,
+          visualAdapterDefinitionId: equipment.visualAdapterDefinitionId,
+          placementSlotId: equipment.placementSlotId
+        })
+      );
+    } catch {
       throw new SetupDrivenSceneError(
         SETUP_DRIVEN_SCENE_ERROR_CODES.placementUnsupported,
         equipment.placementSlotId,
-        `${equipment.placementSlotId} is not supported by ${adapter.visualAdapterDefinitionId}.`
+        `${equipment.placementSlotId} is not a verified pose for ${adapter.visualAdapterDefinitionId}.`
       );
     }
     for (const equipmentId of adapter.selectableEquipmentIds) {
@@ -232,6 +245,7 @@ export function resolveTitrationSceneConfiguration(
 
   const availableActionIds: string[] = [];
   const availableControlGroups: ControlGroupId[] = [];
+  let minDispenseVolumeML: number | null = null;
   let maxDispenseVolumeML: number | null = null;
   for (const action of projection.actions) {
     if (
@@ -253,11 +267,27 @@ export function resolveTitrationSceneConfiguration(
         `No exact titration control adapter is registered for ${action.actionId}.`
       );
     }
-    if (
-      action.actionId === "action.dispense.v1" &&
-      typeof action.authoredLimits.maxVolumeMLPerAction === "number"
-    ) {
-      maxDispenseVolumeML = action.authoredLimits.maxVolumeMLPerAction;
+    if (action.actionId === "action.dispense.v1") {
+      const volumeBounds = action.numericParameterBounds.find(
+        ({ parameterKey }) => parameterKey === "volumeML"
+      );
+      if (
+        !volumeBounds ||
+        volumeBounds.effectiveMinimum === null ||
+        volumeBounds.effectiveMaximum === null ||
+        !Number.isFinite(volumeBounds.effectiveMinimum) ||
+        !Number.isFinite(volumeBounds.effectiveMaximum) ||
+        volumeBounds.effectiveMinimum <= 0 ||
+        volumeBounds.effectiveMaximum < volumeBounds.effectiveMinimum
+      ) {
+        throw new SetupDrivenSceneError(
+          SETUP_DRIVEN_SCENE_ERROR_CODES.equipmentStateInvalid,
+          `${action.permissionId}.volumeML`,
+          `Action permission ${action.permissionId} has invalid volume bounds.`
+        );
+      }
+      minDispenseVolumeML = volumeBounds.effectiveMinimum;
+      maxDispenseVolumeML = volumeBounds.effectiveMaximum;
     }
     if (!action.available) continue;
     if (!availableActionIds.includes(action.actionId)) {
@@ -275,9 +305,11 @@ export function resolveTitrationSceneConfiguration(
     equipmentInstanceIds: Object.freeze(
       projection.equipment.map(({ instanceId }) => instanceId)
     ),
+    equipmentPoses: Object.freeze(equipmentPoses),
     selectableEquipmentIds: Object.freeze(selectableEquipmentIds),
     availableActionIds: Object.freeze(availableActionIds),
     availableControlGroups: Object.freeze(availableControlGroups),
+    minDispenseVolumeML,
     maxDispenseVolumeML,
     projectedState: Object.freeze({
       burette: buretteState,

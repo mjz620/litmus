@@ -409,9 +409,11 @@
 .coachDock {
   position: absolute;
   z-index: 8;
+  top: 9rem;
   bottom: 0.72rem;
   left: 0.72rem;
   display: grid;
+  align-content: end;
   justify-items: start;
   gap: 0.55rem;
   pointer-events: none;
@@ -456,7 +458,7 @@
 .coachDialog {
   position: relative;
   width: min(25rem, calc(100vw - 2.8rem));
-  max-height: min(36rem, calc(var(--simulation-canvas-height) - 8rem));
+  max-height: min(36rem, calc(100% - 3.35rem));
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, var(--lab-coach) 36%, white);
   border-radius: var(--radius-lg);
@@ -605,10 +607,6 @@
     top: 8.5rem;
     right: 0.45rem;
     width: min(18rem, calc(100% - 0.9rem));
-  }
-
-  .coachDialog {
-    max-height: calc(var(--simulation-canvas-height) - 6rem);
   }
 
   .recenterButton,

@@ -39,7 +39,7 @@ import {
   getProcedureStage,
   type TitrationProcedureStage
 } from "./procedureStage";
-import { useDispenseGesture } from "./useDispenseGesture";
+import { DISPENSE_RESIDUE_ML, useDispenseGesture } from "./useDispenseGesture";
 import { useTitrationIntents } from "./useTitrationIntents";
 import type { TitrationSceneConfiguration } from "./setupDrivenScene";
 
@@ -163,16 +163,30 @@ export function TitrationScene({
   const setLookActive = useLabUiStore((store) => store.setLookActive);
   const clearFocus = useLabUiStore((store) => store.clearFocus);
   const titrationIntents = useTitrationIntents();
+  const deliveryAvailable =
+    configuration.availableControlGroups.includes("deliver");
+  const projectedBurette = configuration.projectedState?.burette;
+  const projectedFlask = configuration.projectedState?.flask;
+  const visualBuretteAvailableML =
+    projectedBurette?.availableML ?? state?.buretteAvailableML ?? 0;
+  const physicalDispenseMinimumML =
+    configuration.minDispenseVolumeML ?? DISPENSE_RESIDUE_ML;
+  const physicalDispenseAvailableML = state
+    ? Math.min(
+        visualBuretteAvailableML,
+        configuration.maxDispenseVolumeML ?? visualBuretteAvailableML
+      )
+    : 0;
+  const physicalDispenseEnabled = Boolean(
+    state &&
+    deliveryAvailable &&
+    (projectedFlask?.indicatorAdded ?? state.indicatorAdded) &&
+    physicalDispenseAvailableML >= physicalDispenseMinimumML
+  );
   const physicalDispense = useDispenseGesture({
-    availableML: state
-      ? Math.min(
-          configuration.projectedState?.burette.availableML ??
-            state.buretteAvailableML,
-          configuration.maxDispenseVolumeML ??
-            configuration.projectedState?.burette.availableML ??
-            state.buretteAvailableML
-        )
-      : 0,
+    availableML: physicalDispenseAvailableML,
+    minimumCommitML: physicalDispenseMinimumML,
+    enabled: physicalDispenseEnabled,
     onCommit: () => {
       const sounds = getLabSounds();
       sounds.playFromGesture("drop");
@@ -279,12 +293,6 @@ export function TitrationScene({
     configuration.availableControlGroups.includes("prepare");
   const indicatorAvailable =
     configuration.availableControlGroups.includes("indicator");
-  const deliveryAvailable =
-    configuration.availableControlGroups.includes("deliver");
-  const projectedBurette = configuration.projectedState?.burette;
-  const projectedFlask = configuration.projectedState?.flask;
-  const visualBuretteAvailableML =
-    projectedBurette?.availableML ?? state.buretteAvailableML;
   const visualBuretteCapacityML =
     projectedBurette?.capacityML ?? state.config.buretteCapacityML;
   const indicatorAdded = projectedFlask?.indicatorAdded ?? state.indicatorAdded;
@@ -586,6 +594,7 @@ export function TitrationScene({
           >
             <LabScene
               enabledEquipmentIds={configuration.selectableEquipmentIds}
+              equipmentPoses={configuration.equipmentPoses}
               buretteAvailableML={visualBuretteAvailableML}
               buretteCapacityML={visualBuretteCapacityML}
               flaskLiquidColor={flaskLiquidColor}

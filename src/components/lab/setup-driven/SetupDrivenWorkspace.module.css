@@ -1,0 +1,253 @@
+.workspace {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 116rem);
+  margin: 0 auto;
+  color: var(--color-ink);
+}
+
+.workspaceHeader,
+.mainGrid,
+.coachCard,
+.teacherEvidence {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.workspaceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.workspaceHeader > div:first-child {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.workspaceHeader p,
+.workspaceHeader h2,
+.workspaceHeader span,
+.controlsHeading p,
+.controlsHeading h3 {
+  margin: 0;
+}
+
+.workspaceHeader p,
+.controlsHeading p {
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workspaceHeader span {
+  max-width: 56rem;
+  color: var(--color-ink-muted);
+}
+
+.statusBlock {
+  display: grid;
+  justify-items: end;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.statusBlock button,
+.controls button {
+  min-height: var(--control-height);
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: var(--type-ui-semibold);
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+  overflow: hidden;
+}
+
+.mainGrid > div:first-child {
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+}
+
+.benchCanvas {
+  height: clamp(28rem, 58vh, 48rem);
+  min-height: 28rem;
+  background: #e8f0ec;
+}
+
+.equipmentList {
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.equipmentList h3,
+.teacherEvidence h3 {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+}
+
+.equipmentList ul,
+.teacherEvidence ul,
+.teacherEvidence ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipmentList li,
+.teacherEvidence li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.equipmentList span,
+.teacherEvidence span,
+.teacherEvidence p {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.controls {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  max-height: 62rem;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.controls fieldset {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.controls fieldset:disabled {
+  opacity: 0.58;
+}
+
+.controls legend {
+  padding: 0 0.25rem;
+  font-weight: var(--type-ui-semibold);
+}
+
+.controls fieldset > p,
+.controls small {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.controls label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--type-ui-semibold);
+}
+
+.controls label > span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.controls input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.actionError {
+  padding: 0.75rem;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.teacherEvidence {
+  overflow: hidden;
+}
+
+.teacherEvidence summary {
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  font-weight: var(--type-ui-semibold);
+}
+
+.teacherEvidence[open] summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.evidenceGrid ul,
+.evidenceGrid ol {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 64rem) {
+  .mainGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mainGrid > div:first-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .controls {
+    max-height: none;
+  }
+}
+
+@media (max-width: 48rem) {
+  .workspaceHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .statusBlock {
+    justify-items: start;
+  }
+
+  .benchCanvas {
+    height: 27rem;
+    min-height: 27rem;
+  }
+
+  .evidenceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

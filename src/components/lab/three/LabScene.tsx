@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { PCFShadowMap, type WebGLRenderer } from "three";
 
 import type { IndicatorId } from "../../../experiments/titration/titration";
+import type { ResolvedEquipmentPose } from "../../../lab-workflows/registries/scene-placements";
 import { EQUIPMENT, type EquipmentId } from "../titration/equipment";
 import { BenchCameraControls } from "./BenchCameraControls";
 import { Burette } from "./Burette";
@@ -28,6 +29,7 @@ import { LAB_PALETTE } from "./labPalette";
 
 interface LabSceneProps {
   enabledEquipmentIds: readonly EquipmentId[];
+  equipmentPoses?: readonly ResolvedEquipmentPose[];
   buretteAvailableML: number;
   buretteCapacityML: number;
   flaskLiquidColor: string;
@@ -97,6 +99,7 @@ function LabLighting({ quality }: { quality: GlassQuality }) {
  */
 export function LabScene({
   enabledEquipmentIds,
+  equipmentPoses = [],
   buretteAvailableML,
   buretteCapacityML,
   flaskLiquidColor,
@@ -117,6 +120,19 @@ export function LabScene({
   onTitrantBottleClick,
   onFunnelClick
 }: LabSceneProps) {
+  const poseFor = (visualAdapterDefinitionId: string) =>
+    equipmentPoses.find(
+      (equipmentPose) =>
+        equipmentPose.visualAdapterDefinitionId === visualAdapterDefinitionId
+    );
+  const burettePose = poseFor("visual-adapter.burette.v1");
+  const flaskPose = poseFor("visual-adapter.erlenmeyer_flask.v1");
+  const shelfPose = poseFor("visual-adapter.indicator_bottle.v1");
+  const washPose = poseFor("visual-adapter.reagent_bottle.v1");
+  const buretteTranslation = burettePose?.translation ?? ([0, 0, 0] as const);
+  const flaskTranslation = flaskPose?.translation ?? ([0, 0, 0] as const);
+  const shelfTranslation = shelfPose?.translation ?? ([0, 0, 0] as const);
+  const washTranslation = washPose?.translation ?? ([0, 0, 0] as const);
   const liquidTopY = getBuretteLiquidTopY(
     buretteAvailableML,
     buretteCapacityML
@@ -126,7 +142,7 @@ export function LabScene({
   const buretteHighlightHeight = BURETTE.tubeTopY - BURETTE.tipBottomY + 0.03;
   const flaskCenterY = FLASK.baseY + (FLASK.bodyHeight + FLASK.neckHeight) / 2;
   const flaskHighlightHeight = FLASK.bodyHeight + FLASK.neckHeight + 0.03;
-  const pose =
+  const basePose =
     selected === "burette"
       ? CAMERA_POSES.burette
       : selected === "flask"
@@ -138,6 +154,34 @@ export function LabScene({
             : selected === "washStation"
               ? CAMERA_POSES.washStation
               : CAMERA_POSES.overview;
+  const selectedPose =
+    selected === "burette" || selected === "meniscus"
+      ? burettePose
+      : selected === "flask"
+        ? flaskPose
+        : selected === "indicatorShelf"
+          ? shelfPose
+          : selected === "washStation"
+            ? washPose
+            : undefined;
+  const selectedPivot: readonly [number, number, number] =
+    selected === "burette" || selected === "meniscus"
+      ? [BURETTE.x, 0, BURETTE.z]
+      : selected === "flask"
+        ? [FLASK.x, 0, FLASK.z]
+        : selected === "indicatorShelf"
+          ? [SHELF.x, 0, SHELF.z]
+          : selected === "washStation"
+            ? [WASH.x, 0, WASH.z]
+            : [0, 0, 0];
+  const pose = selectedPose
+    ? transformCameraPose(
+        basePose,
+        selectedPose.translation,
+        selectedPose.yawRadians,
+        selectedPivot
+      )
+    : basePose;
 
   return (
     <>
@@ -148,7 +192,14 @@ export function LabScene({
       {quality === "high" && <SkyDome />}
       <ClassroomEnvironment />
 
-      <group position={[BURETTE.x, buretteCenterY, BURETTE.z]}>
+      <group
+        position={[
+          BURETTE.x + buretteTranslation[0],
+          buretteCenterY + buretteTranslation[1],
+          BURETTE.z + buretteTranslation[2]
+        ]}
+        rotation={[0, burettePose?.yawRadians ?? 0, 0]}
+      >
         <Interactable
           id="burette"
           enabled={enabledEquipmentIds.includes("burette")}
@@ -175,7 +226,14 @@ export function LabScene({
         </Interactable>
       </group>
 
-      <group position={[FLASK.x, flaskCenterY, FLASK.z]}>
+      <group
+        position={[
+          FLASK.x + flaskTranslation[0],
+          flaskCenterY + flaskTranslation[1],
+          FLASK.z + flaskTranslation[2]
+        ]}
+        rotation={[0, flaskPose?.yawRadians ?? 0, 0]}
+      >
         <Interactable
           id="flask"
           enabled={enabledEquipmentIds.includes("flask")}
@@ -206,7 +264,14 @@ export function LabScene({
       </group>
 
       {/* Meniscus hotspot: an invisible hitbox at the liquid surface. */}
-      <group position={[BURETTE.x, meniscusY, BURETTE.z]}>
+      <group
+        position={[
+          BURETTE.x + buretteTranslation[0],
+          meniscusY + buretteTranslation[1],
+          BURETTE.z + buretteTranslation[2]
+        ]}
+        rotation={[0, burettePose?.yawRadians ?? 0, 0]}
+      >
         <Interactable
           id="meniscus"
           enabled={enabledEquipmentIds.includes("meniscus")}
@@ -240,7 +305,14 @@ export function LabScene({
         )}
       </group>
 
-      <group position={[SHELF.x, SHELF.baseY, SHELF.z]}>
+      <group
+        position={[
+          SHELF.x + shelfTranslation[0],
+          SHELF.baseY + shelfTranslation[1],
+          SHELF.z + shelfTranslation[2]
+        ]}
+        rotation={[0, shelfPose?.yawRadians ?? 0, 0]}
+      >
         <Interactable
           id="indicatorShelf"
           enabled={enabledEquipmentIds.includes("indicatorShelf")}
@@ -274,7 +346,14 @@ export function LabScene({
         </Interactable>
       </group>
 
-      <group position={[WASH.x, WASH.baseY, WASH.z]}>
+      <group
+        position={[
+          WASH.x + washTranslation[0],
+          WASH.baseY + washTranslation[1],
+          WASH.z + washTranslation[2]
+        ]}
+        rotation={[0, washPose?.yawRadians ?? 0, 0]}
+      >
         <Interactable
           id="washStation"
           enabled={enabledEquipmentIds.includes("washStation")}
@@ -312,6 +391,8 @@ export function LabScene({
         <IndicatorAddition
           indicator={indicatorAddition.indicator}
           sequence={indicatorAddition.sequence}
+          shelfTranslation={shelfTranslation}
+          flaskTranslation={flaskTranslation}
           onComplete={onIndicatorAdditionComplete}
         />
       )}
@@ -319,4 +400,32 @@ export function LabScene({
       <BenchCameraControls pose={pose} />
     </>
   );
+}
+
+function transformCameraPose(
+  pose: Readonly<{
+    position: readonly [number, number, number];
+    target: readonly [number, number, number];
+  }>,
+  translation: readonly [number, number, number],
+  yawRadians: number,
+  pivot: readonly [number, number, number]
+) {
+  const rotateAndTranslate = (
+    value: readonly [number, number, number]
+  ): readonly [number, number, number] => {
+    const cosine = Math.cos(yawRadians);
+    const sine = Math.sin(yawRadians);
+    const relativeX = value[0] - pivot[0];
+    const relativeZ = value[2] - pivot[2];
+    return [
+      relativeX * cosine + relativeZ * sine + pivot[0] + translation[0],
+      value[1] + translation[1],
+      -relativeX * sine + relativeZ * cosine + pivot[2] + translation[2]
+    ];
+  };
+  return {
+    position: rotateAndTranslate(pose.position),
+    target: rotateAndTranslate(pose.target)
+  } as const;
 }

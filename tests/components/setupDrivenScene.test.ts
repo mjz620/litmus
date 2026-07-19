@@ -37,6 +37,23 @@ describe("setup-driven titration scene projection", () => {
         "analyte_flask",
         "indicator_source"
       ],
+      equipmentPoses: [
+        expect.objectContaining({
+          equipmentInstanceId: "titrant_burette",
+          placementSlotId: "placement.bench_center_stand.v1",
+          translation: [0, 0, 0]
+        }),
+        expect.objectContaining({
+          equipmentInstanceId: "analyte_flask",
+          placementSlotId: "placement.under_burette.v1",
+          translation: [0, 0, 0]
+        }),
+        expect.objectContaining({
+          equipmentInstanceId: "indicator_source",
+          placementSlotId: "placement.indicator_shelf.v1",
+          translation: [0, 0, 0]
+        })
+      ],
       selectableEquipmentIds: [
         "burette",
         "meniscus",
@@ -45,6 +62,7 @@ describe("setup-driven titration scene projection", () => {
       ],
       availableActionIds: ["action.read_volume.v1"],
       availableControlGroups: ["reading"],
+      minDispenseVolumeML: 0.01,
       maxDispenseVolumeML: 0.5,
       projectedState: {
         burette: {
@@ -90,6 +108,52 @@ describe("setup-driven titration scene projection", () => {
     expect(
       visibleControlGroupsForConfiguration(configuration, "meniscus")
     ).toEqual([]);
+  });
+
+  it("projects an alternate verified arrangement without changing action or state authority", () => {
+    const current = structuredClone(
+      session().getProjection()
+    ) as SetupDrivenLabProjection;
+    const projection: SetupDrivenLabProjection = {
+      ...current,
+      equipment: current.equipment.map((equipment) => {
+        if (equipment.instanceId === "titrant_burette") {
+          return {
+            ...equipment,
+            placementSlotId: "placement.bench_left_stand_reversed.v1"
+          };
+        }
+        if (equipment.instanceId === "analyte_flask") {
+          return {
+            ...equipment,
+            placementSlotId: "placement.under_left_burette.v1"
+          };
+        }
+        return {
+          ...equipment,
+          placementSlotId: "placement.indicator_shelf_right.v1"
+        };
+      })
+    };
+    const configuration = resolveTitrationSceneConfiguration(projection);
+
+    expect(configuration.equipmentPoses).toEqual([
+      expect.objectContaining({
+        equipmentInstanceId: "titrant_burette",
+        translation: [-0.34, 0, 0],
+        yawRadians: Math.PI
+      }),
+      expect.objectContaining({
+        equipmentInstanceId: "analyte_flask",
+        translation: [-0.34, 0, 0]
+      }),
+      expect.objectContaining({
+        equipmentInstanceId: "indicator_source",
+        translation: [1.17, 0, 0]
+      })
+    ]);
+    expect(configuration.availableActionIds).toEqual(["action.read_volume.v1"]);
+    expect(configuration.projectedState?.burette.meniscusReadingML).toBe(22);
   });
 
   it("keeps the legacy scene and controls unchanged without a setup projection", () => {
