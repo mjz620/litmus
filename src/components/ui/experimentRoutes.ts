@@ -12,6 +12,11 @@ export const SOLUTION_PREPARATION_PRACTICE_PATH =
 export const SOLUTION_PREPARATION_PRACTICE_SEED =
   "2026-07-18T15:00:00.000Z" as const;
 
+/** Guest practice path for the verified native calorimetry seed (not an engine registry id). */
+export const CALORIMETRY_PRACTICE_PATH = "/lab/calorimetry" as const;
+
+export const CALORIMETRY_PRACTICE_SEED = "2026-07-19T12:00:00.000Z" as const;
+
 export function getExperimentPath(
   experimentId: ExperimentId
 ): `/lab/${string}` {
@@ -20,6 +25,10 @@ export function getExperimentPath(
 
 export function getSolutionPreparationPracticePath(): typeof SOLUTION_PREPARATION_PRACTICE_PATH {
   return SOLUTION_PREPARATION_PRACTICE_PATH;
+}
+
+export function getCalorimetryPracticePath(): typeof CALORIMETRY_PRACTICE_PATH {
+  return CALORIMETRY_PRACTICE_PATH;
 }
 
 export function resolveExperimentId(routeSegment: string): ExperimentId | null {

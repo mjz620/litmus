@@ -1549,7 +1549,28 @@ export function LabComposer() {
                   role="menuitem"
                   onClick={() => startNewLab("solution_preparation")}
                 >
-                  Solution preparation template
+                  Dilute 0.5000 M NaCl → 0.0500 M
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => startNewLab("solution_preparation_stock_1m")}
+                >
+                  Dilute 1.000 M NaCl → 0.1000 M
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => startNewLab("solution_preparation_quarter")}
+                >
+                  Dilute 0.2500 M NaCl → 0.0250 M
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => startNewLab("calorimetry")}
+                >
+                  Hot/cold water calorimetry
                 </button>
               </div>
             )}

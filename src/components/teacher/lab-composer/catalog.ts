@@ -5,13 +5,21 @@ import { configurationRegistry } from "../../../lab-workflows/registries/configu
 import { materialRegistry } from "../../../lab-workflows/registries/reagents";
 import { skillRegistry } from "../../../lab-workflows/registries/skills";
 import { BLANK_LAB_V2_DRAFT } from "../../../lab-workflows/definitions/blank-lab";
-import { SOLUTION_PREPARATION_V2_DRAFT } from "../../../lab-workflows/definitions/solution-preparation";
+import { CALORIMETRY_V2_DRAFT } from "../../../lab-workflows/definitions/calorimetry";
+import {
+  SOLUTION_PREPARATION_QUARTER_V2_DRAFT,
+  SOLUTION_PREPARATION_STOCK_1M_V2_DRAFT,
+  SOLUTION_PREPARATION_V2_DRAFT
+} from "../../../lab-workflows/definitions/solution-preparation";
 import { NATIVE_TITRATION_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-control";
 import type { LabWorkflowDraftV2 } from "../../../lab-workflows/schema/v2";
 
 export type ComposerLabTemplateId =
   | "blank"
   | "solution_preparation"
+  | "solution_preparation_stock_1m"
+  | "solution_preparation_quarter"
+  | "calorimetry"
   | "titration";
 
 export interface ComposerLabTemplate {
@@ -37,10 +45,31 @@ export const composerLabTemplateCatalog: readonly ComposerLabTemplate[] =
     }),
     Object.freeze({
       id: "solution_preparation" as const,
-      title: "Prepare a solution",
+      title: "Dilute 0.5000 M NaCl → 0.0500 M",
       description:
-        "Measure an aliquot, dilute to the mark, and mix a verified solution.",
+        "Measure a 10.00 mL aliquot, dilute to 100.00 mL, and mix a verified 0.0500 mol/L solution.",
       draft: SOLUTION_PREPARATION_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "solution_preparation_stock_1m" as const,
+      title: "Dilute 1.000 M NaCl → 0.1000 M",
+      description:
+        "Practice a tenfold dilution from a 1.000 M stock into a 100.00 mL volumetric flask.",
+      draft: SOLUTION_PREPARATION_STOCK_1M_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "solution_preparation_quarter" as const,
+      title: "Dilute 0.2500 M NaCl → 0.0250 M",
+      description:
+        "Prepare a more dilute product from a teacher-authored 0.2500 mol/L stock.",
+      draft: SOLUTION_PREPARATION_QUARTER_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "calorimetry" as const,
+      title: "Hot/cold water calorimetry",
+      description:
+        "Pour equal registered hot and cold volumes, mix, and read the equilibrium temperature.",
+      draft: CALORIMETRY_V2_DRAFT
     })
   ]);
 

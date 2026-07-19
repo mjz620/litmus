@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { ExperimentCard } from "../../components/ui/ExperimentCard";
-import { getSolutionPreparationPracticePath } from "../../components/ui/experimentRoutes";
+import {
+  getCalorimetryPracticePath,
+  getSolutionPreparationPracticePath
+} from "../../components/ui/experimentRoutes";
 import {
   listExperimentManifests,
   type ExperimentId
@@ -67,6 +70,35 @@ export default function ExperimentsPage() {
             className={cardStyles.cta}
             href={getSolutionPreparationPracticePath()}
           >
+            Start practice
+          </Link>
+        </article>
+        <article className={cardStyles.card}>
+          <div className={cardStyles.cardHeader}>
+            <span className={cardStyles.availability}>Available</span>
+            <span className={cardStyles.version}>setup-driven</span>
+          </div>
+          <h2>Mix hot and cold water in a coffee-cup calorimeter</h2>
+          <p className={cardStyles.description}>
+            Pour equal registered hot and cold volumes, mix, place the probe,
+            and record the equilibrium temperature from deterministic heat
+            conservation. Uses the shared immersive 3D bench.
+          </p>
+          <dl className={cardStyles.details}>
+            <div>
+              <dt>Estimated time</dt>
+              <dd>10 minutes</dd>
+            </div>
+            <div>
+              <dt>Difficulty</dt>
+              <dd>intro</dd>
+            </div>
+            <div>
+              <dt>Skills practiced</dt>
+              <dd>1</dd>
+            </div>
+          </dl>
+          <Link className={cardStyles.cta} href={getCalorimetryPracticePath()}>
             Start practice
           </Link>
         </article>
