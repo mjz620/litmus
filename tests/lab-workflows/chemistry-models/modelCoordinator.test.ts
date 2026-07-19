@@ -129,28 +129,31 @@ function modules(
       expect(Object.isFrozen(context)).toBe(true);
       return [{ key: "accumulator", value: index === 2 ? 50 : 0 }];
     });
-    const apply = vi.fn((
-      action: Readonly<ExecutedMaterialAction>,
-      state: readonly GenericStateField[]
-    ) => {
-      calls.push(`apply:${entry.id}`);
-      expect(Object.isFrozen(action)).toBe(true);
-      expect(Object.isFrozen(state)).toBe(true);
-      const amount = action.transfers.reduce(
-        (sum: number, transfer: { readonly amount: number }) =>
-          sum + transfer.amount,
-        0
-      );
-      return {
-        state: [
-          {
-            key: "accumulator",
-            value:
-              fieldValue(state, "accumulator") + (index === 2 ? -amount : amount)
-          }
-        ]
-      };
-    });
+    const apply = vi.fn(
+      (
+        action: Readonly<ExecutedMaterialAction>,
+        state: readonly GenericStateField[]
+      ) => {
+        calls.push(`apply:${entry.id}`);
+        expect(Object.isFrozen(action)).toBe(true);
+        expect(Object.isFrozen(state)).toBe(true);
+        const amount = action.transfers.reduce(
+          (sum: number, transfer: { readonly amount: number }) =>
+            sum + transfer.amount,
+          0
+        );
+        return {
+          state: [
+            {
+              key: "accumulator",
+              value:
+                fieldValue(state, "accumulator") +
+                (index === 2 ? -amount : amount)
+            }
+          ]
+        };
+      }
+    );
     applySpies.push(apply);
     return {
       metadataId: entry.id,
@@ -216,7 +219,8 @@ function validatedLiquid(registryContext: LabWorkflowV2RegistryContext) {
     registries: registryContext
   });
   expect(result.schemaValid).toBe(true);
-  if (!result.schemaValid) throw new Error("Expected schema-valid model fixture");
+  if (!result.schemaValid)
+    throw new Error("Expected schema-valid model fixture");
   expect(result.validation).toMatchObject({ runnable: true });
   return { draft, workflow: result.spec };
 }
@@ -245,11 +249,9 @@ describe("deterministic chemistry model coordinator", () => {
     const fixture = modules();
     const runtime = assemble(fixture.registrations);
 
-    expect(runtime.program.chemistryModels.map(({ modelId }) => modelId)).toEqual([
-      MODEL_IDS.ledger,
-      MODEL_IDS.volume,
-      MODEL_IDS.mixing
-    ]);
+    expect(
+      runtime.program.chemistryModels.map(({ modelId }) => modelId)
+    ).toEqual([MODEL_IDS.ledger, MODEL_IDS.volume, MODEL_IDS.mixing]);
     expect(fixture.calls).toEqual([
       `initialize:${MODEL_IDS.ledger}`,
       `initialize:${MODEL_IDS.volume}`,
@@ -262,11 +264,9 @@ describe("deterministic chemistry model coordinator", () => {
     const initial = structuredClone(runtime.getState());
     const transition = runtime.dispatch(FILL_ACTION);
 
-    expect(runtime.getState().chemistry.modelStates.map(({ modelId }) => modelId)).toEqual([
-      MODEL_IDS.ledger,
-      MODEL_IDS.volume,
-      MODEL_IDS.mixing
-    ]);
+    expect(
+      runtime.getState().chemistry.modelStates.map(({ modelId }) => modelId)
+    ).toEqual([MODEL_IDS.ledger, MODEL_IDS.volume, MODEL_IDS.mixing]);
     expect(fixture.calls.slice(6)).toEqual([
       `apply:${MODEL_IDS.ledger}`,
       `apply:${MODEL_IDS.volume}`,
@@ -338,7 +338,8 @@ describe("deterministic chemistry model coordinator", () => {
     const before = runtime.getState().chemistry;
     runtime.dispatch(READ_VOLUME_ACTION);
 
-    for (const apply of fixture.applySpies) expect(apply).not.toHaveBeenCalled();
+    for (const apply of fixture.applySpies)
+      expect(apply).not.toHaveBeenCalled();
     expect(runtime.getState().chemistry).toEqual(before);
   });
 

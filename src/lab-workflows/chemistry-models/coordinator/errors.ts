@@ -12,8 +12,7 @@ export const CHEMISTRY_MODEL_COORDINATOR_ERROR_CODES = Object.freeze({
   modelStateInvalid: "chemistry_model_coordinator.model_state_invalid.v1",
   observableUnregistered:
     "chemistry_model_coordinator.observable_unregistered.v1",
-  observableDuplicate:
-    "chemistry_model_coordinator.observable_duplicate.v1",
+  observableDuplicate: "chemistry_model_coordinator.observable_duplicate.v1",
   initializationRejected:
     "chemistry_model_coordinator.initialization_rejected.v1",
   transitionRejected: "chemistry_model_coordinator.transition_rejected.v1",

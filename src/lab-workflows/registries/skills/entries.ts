@@ -198,6 +198,51 @@ export const SKILL_REGISTRY_DEFINITIONS = [
     restricted: false
   },
   {
+    id: "volumetric_transfer",
+    version: "1.0.0",
+    description:
+      "Conditions a calibrated transfer pipette and delivers a bounded aliquot to a receiving vessel.",
+    aliases: [],
+    supportedFamilyIds: [],
+    requiredComponentIds: [
+      "component.reagent_bottle.v1",
+      "component.volumetric_pipette.v1",
+      "component.volumetric_flask.v1"
+    ],
+    recommendedComponentIds: [],
+    relevantEventFlagIds: [],
+    positiveEvidenceReasonIds: [],
+    assessmentModeIds: ["assessment.event_performance.v1"],
+    coachTriggerTypeIds: [],
+    adaptiveRetryPatternIds: [],
+    examplePrompts: [
+      "Create a solution-preparation lab that assesses calibrated aliquot transfer."
+    ],
+    restricted: false
+  },
+  {
+    id: "solution_dilution",
+    version: "1.0.0",
+    description:
+      "Prepares a bounded aqueous dilution by filling to a verified mark, mixing, and using deterministic concentration evidence.",
+    aliases: [],
+    supportedFamilyIds: [],
+    requiredComponentIds: [
+      "component.volumetric_flask.v1",
+      "component.wash_bottle.v1"
+    ],
+    recommendedComponentIds: ["component.volumetric_pipette.v1"],
+    relevantEventFlagIds: [],
+    positiveEvidenceReasonIds: [],
+    assessmentModeIds: ["assessment.event_performance.v1"],
+    coachTriggerTypeIds: [],
+    adaptiveRetryPatternIds: [],
+    examplePrompts: [
+      "Create a bounded sodium-chloride dilution using a volumetric flask."
+    ],
+    restricted: false
+  },
+  {
     id: "procedural_safety",
     version: "1.0.0",
     description:

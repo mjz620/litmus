@@ -1,0 +1,65 @@
+import type {
+  ComponentRegistryId,
+  VisualAdapterDefinitionId
+} from "../components";
+
+export type ScenePlacementId =
+  | "placement.bench_center_stand.v1"
+  | "placement.bench_center_stand_reversed.v1"
+  | "placement.bench_left_stand.v1"
+  | "placement.bench_left_stand_reversed.v1"
+  | "placement.under_burette.v1"
+  | "placement.under_left_burette.v1"
+  | "placement.indicator_shelf.v1"
+  | "placement.indicator_shelf_right.v1"
+  | "placement.reagent_station.v1"
+  | "placement.reagent_station_left.v1"
+  | "placement.solution_pipette_stand.v1"
+  | "placement.solution_flask_center.v1"
+  | "placement.solution_stock_right.v1"
+  | "placement.solution_wash_left.v1";
+
+export type SceneAssemblyId = "assembly.dispense_station.v1";
+export type SceneAnchorId =
+  | "anchor.dispense.center.v1"
+  | "anchor.dispense.left.v1"
+  | "anchor.indicator.left.v1"
+  | "anchor.indicator.right.v1"
+  | "anchor.reagent.left.v1"
+  | "anchor.reagent.right.v1"
+  | "anchor.solution.pipette.v1"
+  | "anchor.solution.flask.v1"
+  | "anchor.solution.stock.v1"
+  | "anchor.solution.wash.v1";
+
+export type SceneVector3 = readonly [number, number, number];
+export type SceneVector2 = readonly [number, number];
+
+export interface VerifiedScenePlacement {
+  readonly id: ScenePlacementId;
+  readonly version: "1.0.0";
+  readonly displayName: string;
+  readonly equipmentDefinitionId: ComponentRegistryId;
+  readonly visualAdapterDefinitionId: VisualAdapterDefinitionId;
+  readonly anchorId: SceneAnchorId;
+  readonly assemblyId: SceneAssemblyId | null;
+  /** Code-owned world-space translation from the historical visual pose. */
+  readonly translation: SceneVector3;
+  /** Code-owned rotation around the vertical axis. */
+  readonly yawRadians: number;
+  /** World-space footprint center and half extents used by hard validation. */
+  readonly footprintCenterXZ: SceneVector2;
+  readonly footprintHalfExtentsXZ: SceneVector2;
+  readonly rotationOrder: number;
+}
+
+export interface ResolvedEquipmentPose {
+  readonly equipmentInstanceId: string;
+  readonly equipmentDefinitionId: ComponentRegistryId;
+  readonly visualAdapterDefinitionId: VisualAdapterDefinitionId;
+  readonly placementSlotId: ScenePlacementId;
+  readonly anchorId: SceneAnchorId;
+  readonly assemblyId: SceneAssemblyId | null;
+  readonly translation: SceneVector3;
+  readonly yawRadians: number;
+}

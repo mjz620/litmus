@@ -29,5 +29,5 @@ export interface EventTypeRegistryEntry {
   readonly workflowReferenceId: string | null;
   readonly observationKeys: readonly string[];
   readonly emittedSemanticFlags: readonly string[];
-  readonly compatibleEngineIds: readonly ["engine.titration.v1"];
+  readonly compatibleEngineIds: readonly string[];
 }

@@ -11,7 +11,7 @@ import type {
 } from "./types";
 
 const SNAPSHOT_ID: ChemistryModelRegistrySnapshot["snapshotId"] =
-  "chemistry-models.1.1.0";
+  "chemistry-models.2.0.0";
 
 function freezeEntry(
   entry: ChemistryModelMetadataEntry

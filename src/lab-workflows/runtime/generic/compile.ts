@@ -1,4 +1,5 @@
 import type { ValidatedLabWorkflowSpecV2 } from "../../schema/v2";
+import { canonicalBoundedDecimalToNumber } from "../../material-initialization";
 import { validatedLabWorkflowSpecV2Schema } from "../../schema/v2";
 import {
   PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES,
@@ -223,9 +224,34 @@ function compileMaterials(
         { materialInstanceId: binding.instanceId }
       );
     }
+    let initialConcentrationM = profile.concentrationM;
+    const initialization =
+      "initialization" in binding ? binding.initialization : undefined;
+    if (initialization) {
+      const contract = profile.concentrationAuthoring;
+      if (
+        !contract ||
+        initialization.configurationSchemaId !==
+          contract.configurationSchemaId ||
+        initialization.concentration.unitId !== contract.unitId
+      ) {
+        runtimeError(
+          ERROR.portContractMismatch,
+          `Validated initialization for ${binding.instanceId} no longer matches its material profile.`,
+          { materialInstanceId: binding.instanceId }
+        );
+      }
+      initialConcentrationM = canonicalBoundedDecimalToNumber(
+        initialization.concentration.decimalValue,
+        contract
+      );
+    }
     return {
       ...binding,
       materialVersion: profile.version,
+      materialPhase: profile.phase,
+      initialConcentrationM,
+      initializationPresetSchemaId: profile.initializationPresetSchemaId,
       providedChemistryCapabilityIds: [
         ...profile.providedChemistryCapabilityIds
       ],

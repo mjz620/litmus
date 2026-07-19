@@ -236,9 +236,9 @@ describe("constraint workflow evaluator", () => {
     expect(first.map(({ ruleId, status }) => ({ ruleId, status }))).toEqual(
       rules.map(({ id }) => ({ ruleId: id, status: "satisfied" }))
     );
-    expect(first.find(({ ruleId }) => ruleId === "rule.event")?.evidenceEventIds).toEqual([
-      "evaluator-test:event:0"
-    ]);
+    expect(
+      first.find(({ ruleId }) => ruleId === "rule.event")?.evidenceEventIds
+    ).toEqual(["evaluator-test:event:0"]);
   });
 
   it("accepts either order for independent requirements and enforces only authored strict ordering", () => {
@@ -252,9 +252,13 @@ describe("constraint workflow evaluator", () => {
       kind: "student_response_submitted",
       submissionFieldId: "submission.initial_burette_reading.v1"
     });
-    const independent = createWorkflowEvaluator({ rules: [firstRule, secondRule] });
+    const independent = createWorkflowEvaluator({
+      rules: [firstRule, secondRule]
+    });
     expect(
-      independent.evaluate(baseContext([firstRule, secondRule])).map(({ status }) => status)
+      independent
+        .evaluate(baseContext([firstRule, secondRule]))
+        .map(({ status }) => status)
     ).toEqual(["satisfied", "satisfied"]);
 
     const ordering = rule(
@@ -270,7 +274,9 @@ describe("constraint workflow evaluator", () => {
     const evaluator = createWorkflowEvaluator({ rules: orderedRules });
     const passed = evaluator.evaluate(
       baseContext(orderedRules, {
-        previousDiagnoses: [diagnosis(firstRule, "satisfied", ["step.1.action"])]
+        previousDiagnoses: [
+          diagnosis(firstRule, "satisfied", ["step.1.action"])
+        ]
       })
     );
     const failed = evaluator.evaluate(baseContext(orderedRules));
@@ -312,7 +318,12 @@ describe("constraint workflow evaluator", () => {
 
     for (const test of [
       { value: 1, minInclusive: false, maxInclusive: true, status: "violated" },
-      { value: 1.0001, minInclusive: false, maxInclusive: true, status: "satisfied" },
+      {
+        value: 1.0001,
+        minInclusive: false,
+        maxInclusive: true,
+        status: "satisfied"
+      },
       { value: 2, minInclusive: true, maxInclusive: true, status: "satisfied" },
       { value: 2, minInclusive: true, maxInclusive: false, status: "violated" }
     ] as const) {
@@ -358,7 +369,9 @@ describe("constraint workflow evaluator", () => {
         baseContext([clean], { eventEnvelopes: [], currentEventIds: [] })
       )[0]?.status
     ).toBe("pending");
-    expect(evaluator.evaluate(baseContext([clean]))[0]?.status).toBe("satisfied");
+    expect(evaluator.evaluate(baseContext([clean]))[0]?.status).toBe(
+      "satisfied"
+    );
     expect(
       evaluator.evaluate(
         baseContext([clean], {
@@ -411,13 +424,17 @@ describe("constraint workflow evaluator", () => {
       "rule.score_reading_event"
     ]);
     expect(() => runtime.dispatch(READ_VOLUME_ACTION)).toThrowError(
-      expect.objectContaining({ code: GENERIC_LAB_RUNTIME_ERROR_CODES.workflowTerminal })
+      expect.objectContaining({
+        code: GENERIC_LAB_RUNTIME_ERROR_CODES.workflowTerminal
+      })
     );
   });
 
   it("lets a terminal deterministic violation dominate simultaneous success", () => {
     const draft = createRunnableMechanicalV2Draft();
-    const terminal = draft.rules.find(({ id }) => id === "rule.score_reading_event");
+    const terminal = draft.rules.find(
+      ({ id }) => id === "rule.score_reading_event"
+    );
     if (!terminal) throw new Error("Expected scoring rule fixture");
     terminal.kind = "failure";
     terminal.terminal = true;
@@ -426,7 +443,8 @@ describe("constraint workflow evaluator", () => {
       checkedAt: "2026-07-18T00:00:00.000Z"
     });
     expect(validation.schemaValid).toBe(true);
-    if (!validation.schemaValid) throw new Error("Expected valid terminal fixture");
+    if (!validation.schemaValid)
+      throw new Error("Expected valid terminal fixture");
     expect(validation.validation.runnable).toBe(true);
     const ports = createTestGenericPorts();
     const runtime = assembleGenericLabRuntime(

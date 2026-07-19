@@ -8,8 +8,10 @@ export type CanonicalSkillId =
   | "net_ionic_equations"
   | "precipitate_observation"
   | "procedural_safety"
+  | "solution_dilution"
   | "significant_figures"
-  | "stoichiometry";
+  | "stoichiometry"
+  | "volumetric_transfer";
 
 export type LegacySkillAlias =
   | "net_ionic_equation"
@@ -90,7 +92,7 @@ export class SkillRegistryError extends Error {
 }
 
 export interface SkillRegistry {
-  readonly snapshotId: "skills.1.0.0";
+  readonly snapshotId: "skills.2.0.0";
   list(): readonly SkillRegistryEntry[];
   get(id: CanonicalSkillId): SkillRegistryEntry;
   resolve(id: string): SkillResolution;

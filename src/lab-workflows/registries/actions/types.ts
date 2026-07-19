@@ -9,17 +9,25 @@ export type ActionRegistryId =
   | "action.add_indicator.v1"
   | "action.dispense.v1"
   | "action.fill.v1"
+  | "action.fill_to_mark.v1"
+  | "action.mix_solution.v1"
   | "action.read_volume.v1"
   | "action.rinse.v1"
-  | "action.select_indicator.v1";
+  | "action.rinse_transfer_device.v1"
+  | "action.select_indicator.v1"
+  | "action.transfer_liquid.v1";
 
 export type ActionParameterSchemaId =
   | "schema.action_parameters.add_indicator.v1"
   | "schema.action_parameters.dispense.v1"
   | "schema.action_parameters.fill.v1"
+  | "schema.action_parameters.fill_to_mark.v1"
+  | "schema.action_parameters.mix_solution.v1"
   | "schema.action_parameters.read_volume.v1"
   | "schema.action_parameters.rinse.v1"
-  | "schema.action_parameters.select_indicator.v1";
+  | "schema.action_parameters.rinse_transfer_device.v1"
+  | "schema.action_parameters.select_indicator.v1"
+  | "schema.action_parameters.transfer_liquid.v1";
 
 export type EquipmentPreconditionId =
   | "precondition.equipment.burette_capacity_available.v1"
@@ -27,7 +35,11 @@ export type EquipmentPreconditionId =
   | "precondition.equipment.burette_has_liquid.v1"
   | "precondition.equipment.dispense_within_available_volume.v1"
   | "precondition.equipment.indicator_added.v1"
-  | "precondition.equipment.indicator_not_added.v1";
+  | "precondition.equipment.indicator_not_added.v1"
+  | "precondition.equipment.pipette_empty_before_rinse.v1"
+  | "precondition.equipment.source_has_transfer_volume.v1"
+  | "precondition.equipment.target_has_transfer_capacity.v1"
+  | "precondition.equipment.volumetric_flask_has_liquid.v1";
 
 export type LabActionErrorCode =
   | "action-error.mechanical_adapter_unavailable.v1"
@@ -40,9 +52,13 @@ export type ActionEventContractId =
   | "event-contract.add_indicator_legacy.v1"
   | "event-contract.add_titrant.v1"
   | "event-contract.fill_burette.v1"
+  | "event-contract.fill_to_mark.v1"
+  | "event-contract.mix_solution.v1"
   | "event-contract.read_meniscus.v1"
   | "event-contract.rinse_burette.v1"
-  | "event-contract.select_indicator.v1";
+  | "event-contract.rinse_transfer_device.v1"
+  | "event-contract.select_indicator.v1"
+  | "event-contract.transfer_liquid.v1";
 
 export type ActionBehavior = "continuous" | "discrete";
 
@@ -104,7 +120,8 @@ export interface ActionRegistryEntry {
     | "fill_burette"
     | "read_meniscus"
     | "rinse_burette"
-    | "select_indicator";
+    | "select_indicator"
+    | null;
   readonly actorComponentIds: readonly ComponentRegistryId[];
   readonly targetComponentIds: readonly ComponentRegistryId[];
   readonly requiredSourceCapabilityIds: readonly EquipmentCapabilityId[];
@@ -119,6 +136,6 @@ export interface ActionRegistryEntry {
   /** @deprecated V1 compatibility metadata; parameterSchemaId is authoritative. */
   readonly parameters: readonly ActionParameterDefinition[];
   readonly emittedSemanticEventTypes: readonly string[];
-  readonly compatibleEngineIds: readonly ["engine.titration.v1"];
-  readonly compatibleFamilyIds: readonly ["family.acid_base_titration.v1"];
+  readonly compatibleEngineIds: readonly string[];
+  readonly compatibleFamilyIds: readonly string[];
 }

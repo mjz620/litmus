@@ -154,5 +154,46 @@ export const EVENT_TYPE_REGISTRY_ENTRIES = [
     observationKeys: ["reportedMolarityM", "trueMolarityM", "relErr"],
     emittedSemanticFlags: ["result_out_of_tolerance"],
     compatibleEngineIds: ENGINE
+  },
+  {
+    id: "event.transfer_liquid.v1",
+    version: "1.0.0",
+    semanticEventType: "transfer_liquid",
+    workflowReferenceId: "event.transfer_liquid.v1",
+    observationKeys: ["volumeML"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.rinse_transfer_device.v1",
+    version: "1.0.0",
+    semanticEventType: "rinse_transfer_device",
+    workflowReferenceId: "event.rinse_transfer_device.v1",
+    observationKeys: ["materialProfileId"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.fill_to_mark.v1",
+    version: "1.0.0",
+    semanticEventType: "fill_to_mark",
+    workflowReferenceId: "event.fill_to_mark.v1",
+    observationKeys: [
+      "finalVolumeML",
+      "markVolumeML",
+      "markErrorML",
+      "withinTolerance"
+    ],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.mix_solution.v1",
+    version: "1.0.0",
+    semanticEventType: "mix_solution",
+    workflowReferenceId: "event.mix_solution.v1",
+    observationKeys: ["inversions", "mixCount"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
   }
 ] as const satisfies readonly EventTypeRegistryEntry[];

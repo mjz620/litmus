@@ -19,13 +19,65 @@ import {
 
 describe("LC2-102 configuration metadata", () => {
   it("bumps the semantic snapshot and retains its legacy provenance ID", () => {
-    expect(configurationRegistry.snapshotId).toBe("configurations.2.3.0");
+    expect(configurationRegistry.snapshotId).toBe("configurations.4.0.0");
     expect(LEGACY_CONFIGURATION_REGISTRY_SNAPSHOT_IDS).toEqual([
       "configurations.1.0.0",
       "configurations.2.0.0",
       "configurations.2.1.0",
-      "configurations.2.2.0"
+      "configurations.2.2.0",
+      "configurations.2.3.0",
+      "configurations.2.4.0",
+      "configurations.3.0.0",
+      "configurations.3.1.0"
     ]);
+  });
+
+  it("registers exact solution observables and units with documented precision", () => {
+    expect(
+      configurationRegistry.get("observable.solution_concentration_m.v1")
+    ).toMatchObject({
+      category: "observable",
+      availability: "verified",
+      adapterKey: "solutionConcentrationM",
+      compatibleFamilyIds: []
+    });
+    expect(
+      configurationRegistry.get("observable.solution_volume_ml.v1")
+    ).toMatchObject({
+      category: "observable",
+      availability: "verified",
+      adapterKey: "solutionVolumeML",
+      compatibleFamilyIds: []
+    });
+    expect(configurationRegistry.get("unit.mol_per_l.v1")).toMatchObject({
+      category: "unit",
+      availability: "verified",
+      compatibleFamilyIds: []
+    });
+  });
+
+  it("registers the strict bounded material-initialization contract", () => {
+    expect(
+      configurationRegistry.get(
+        "schema.material_initialization.bounded_concentration.v1"
+      )
+    ).toMatchObject({
+      category: "configuration_schema",
+      scope: "material_initialization",
+      strict: true,
+      availability: "verified"
+    });
+    expect(
+      configurationRegistry.get(
+        "quantity-preset.sodium_chloride_solution_50ml.v1"
+      )
+    ).toMatchObject({
+      category: "quantity_preset",
+      amount: 50,
+      unitId: "unit.ml.v1",
+      compatibleMaterialProfileIds: ["reagent.sodium_chloride_aqueous.v1"],
+      availability: "verified"
+    });
   });
 
   it("rejects duplicate configuration metadata IDs deterministically", () => {

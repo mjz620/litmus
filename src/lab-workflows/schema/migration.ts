@@ -11,7 +11,13 @@ import { materialRegistry } from "../registries/reagents";
 import { safetyRegistry } from "../registries/safety";
 import { skillRegistry } from "../registries/skills";
 import { labWorkflowSpecV1Schema, type LabWorkflowSpecV1 } from "../schema";
-import { labWorkflowDraftV2Schema, type LabWorkflowDraftV2 } from "./v2";
+import {
+  labWorkflowDraftV2Schema,
+  labWorkflowDraftV2_1Schema,
+  labWorkflowSpecV2_0Schema,
+  type LabWorkflowDraftV2,
+  type LabWorkflowDraftV2_1
+} from "./v2";
 import type {
   RubricEvidenceMapping,
   WorkflowCondition,
@@ -19,6 +25,7 @@ import type {
 } from "./conditions";
 
 export const LAB_WORKFLOW_V1_TO_V2_MIGRATION_VERSION = "1.0.0" as const;
+export const LAB_WORKFLOW_V2_0_TO_V2_1_MIGRATION_VERSION = "1.0.0" as const;
 
 export const LAB_WORKFLOW_MIGRATION_ERROR_CODES = Object.freeze([
   "migration.invalid_v1",
@@ -874,4 +881,28 @@ export function isLabWorkflowMigrationError(
   error: unknown
 ): error is LabWorkflowMigrationError {
   return error instanceof LabWorkflowMigrationError;
+}
+
+/**
+ * Additively upgrades an exact v2.0 artifact to the v2.1 authoring contract.
+ * Existing quantity presets keep their meaning and no fixed concentration is
+ * rewritten as an editable value. Derived validation and Judge authority are
+ * always cleared because the schema-version/hash domain changes.
+ */
+export function migrateLabWorkflowV2_0ToV2_1(
+  input: unknown
+): LabWorkflowDraftV2_1 {
+  const source = labWorkflowSpecV2_0Schema.parse(input);
+  const { supportStatus, validation, judgeCritique, ...authored } = source;
+  void supportStatus;
+  void validation;
+  void judgeCritique;
+  return labWorkflowDraftV2_1Schema.parse({
+    ...authored,
+    schemaVersion: "2.1.0",
+    materials: authored.materials.map((material) => ({ ...material })),
+    supportStatus: "draft_unvalidated",
+    validation: null,
+    judgeCritique: null
+  });
 }

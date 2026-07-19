@@ -1,0 +1,502 @@
+{
+  "schemaVersion": "2.1.0",
+  "id": "workflow.sodium_chloride_dilution.native.v2",
+  "revision": 2,
+  "sourceRequest": "Create a bounded sodium-chloride solution-preparation lab using a teacher-authored stock concentration.",
+  "metadata": {
+    "title": "Prepare a sodium chloride dilution",
+    "learningObjective": "Transfer a calibrated aliquot, dilute it to the mark, and mix a solution with deterministic concentration evidence.",
+    "studentSummary": "Use a volumetric pipette and flask to prepare 100.00 mL of 0.0500 mol/L sodium chloride from a 0.5000 mol/L stock solution.",
+    "gradeBand": "mixed_high_school",
+    "estimatedMinutes": 12,
+    "difficulty": "intermediate",
+    "tags": ["solution preparation", "dilution", "volumetric technique"],
+    "accessibilityNotes": [
+      "Every apparatus action has a keyboard control and a text state summary.",
+      "Tolerance and completion are communicated without relying on color."
+    ],
+    "deviceProfileId": "device.chromebook_core.v1"
+  },
+  "objectiveIds": ["volumetric_transfer", "solution_dilution"],
+  "equipment": [
+    {
+      "instanceId": "stock_bottle",
+      "equipmentDefinitionId": "component.reagent_bottle.v1",
+      "configurationPresetId": "component_config.reagent_bottle.stock_solution.v1",
+      "label": "0.5000 mol/L sodium chloride stock",
+      "required": true
+    },
+    {
+      "instanceId": "transfer_pipette",
+      "equipmentDefinitionId": "component.volumetric_pipette.v1",
+      "configurationPresetId": "component_config.volumetric_pipette.10ml.v1",
+      "label": "10.00 mL volumetric pipette",
+      "required": true
+    },
+    {
+      "instanceId": "preparation_flask",
+      "equipmentDefinitionId": "component.volumetric_flask.v1",
+      "configurationPresetId": "component_config.volumetric_flask.100ml.v1",
+      "label": "100.00 mL volumetric flask",
+      "required": true
+    },
+    {
+      "instanceId": "water_bottle",
+      "equipmentDefinitionId": "component.wash_bottle.v1",
+      "configurationPresetId": "component_config.wash_bottle.250ml.v1",
+      "label": "Distilled water",
+      "required": true
+    }
+  ],
+  "layout": {
+    "configurationSchemaId": "schema.layout_configuration.solution_preparation_bench.v1",
+    "placements": [
+      {
+        "equipmentInstanceId": "stock_bottle",
+        "placementSlotId": "placement.solution_stock_right.v1"
+      },
+      {
+        "equipmentInstanceId": "transfer_pipette",
+        "placementSlotId": "placement.solution_pipette_stand.v1"
+      },
+      {
+        "equipmentInstanceId": "preparation_flask",
+        "placementSlotId": "placement.solution_flask_center.v1"
+      },
+      {
+        "equipmentInstanceId": "water_bottle",
+        "placementSlotId": "placement.solution_wash_left.v1"
+      }
+    ]
+  },
+  "requiredChemistryCapabilityIds": ["chemistry.concentration_dilution.v1"],
+  "permittedActions": [
+    {
+      "id": "permission.condition_pipette",
+      "actionId": "action.rinse_transfer_device.v1",
+      "sourceEquipmentInstanceId": "stock_bottle",
+      "targetEquipmentInstanceIds": ["transfer_pipette"],
+      "maxAttempts": 2,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.aspirate_stock",
+      "actionId": "action.transfer_liquid.v1",
+      "sourceEquipmentInstanceId": "stock_bottle",
+      "targetEquipmentInstanceIds": ["transfer_pipette"],
+      "authoredLimits": {
+        "maxTransferVolumeML": 10
+      },
+      "maxAttempts": 3,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.deliver_aliquot",
+      "actionId": "action.transfer_liquid.v1",
+      "sourceEquipmentInstanceId": "transfer_pipette",
+      "targetEquipmentInstanceIds": ["preparation_flask"],
+      "authoredLimits": {
+        "maxTransferVolumeML": 10
+      },
+      "maxAttempts": 3,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.fill_to_mark",
+      "actionId": "action.fill_to_mark.v1",
+      "sourceEquipmentInstanceId": "water_bottle",
+      "targetEquipmentInstanceIds": ["preparation_flask"],
+      "authoredLimits": {
+        "minFinalVolumeML": 90,
+        "maxFinalVolumeML": 100
+      },
+      "maxAttempts": 2,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.mix_solution",
+      "actionId": "action.mix_solution.v1",
+      "sourceEquipmentInstanceId": "preparation_flask",
+      "targetEquipmentInstanceIds": [],
+      "maxAttempts": 2,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule.pipette_conditioned",
+      "kind": "required",
+      "condition": {
+        "kind": "equipment_state_equals",
+        "equipmentInstanceId": "transfer_pipette",
+        "stateFieldKey": "conditionedMaterialProfileId",
+        "expectedValue": {
+          "valueType": "text",
+          "value": "reagent.sodium_chloride_aqueous.v1"
+        }
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["volumetric_transfer"]
+    },
+    {
+      "id": "rule.aliquot_aspirated",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.transfer_liquid.v1",
+        "sourceEquipmentInstanceId": "stock_bottle",
+        "targetEquipmentInstanceIds": ["transfer_pipette"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["volumetric_transfer"]
+    },
+    {
+      "id": "rule.aliquot_delivered",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.transfer_liquid.v1",
+        "sourceEquipmentInstanceId": "transfer_pipette",
+        "targetEquipmentInstanceIds": ["preparation_flask"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["volumetric_transfer"]
+    },
+    {
+      "id": "rule.flask_filled",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.fill_to_mark.v1",
+        "sourceEquipmentInstanceId": "water_bottle",
+        "targetEquipmentInstanceIds": ["preparation_flask"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["solution_dilution"]
+    },
+    {
+      "id": "rule.solution_mixed",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.mix_solution.v1",
+        "sourceEquipmentInstanceId": "preparation_flask",
+        "targetEquipmentInstanceIds": []
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["solution_dilution"]
+    },
+    {
+      "id": "rule.final_volume_tolerance",
+      "kind": "required",
+      "condition": {
+        "kind": "observable_within_tolerance",
+        "observableId": "observable.solution_volume_ml.v1",
+        "minimum": 99.92,
+        "maximum": 100,
+        "minimumInclusive": true,
+        "maximumInclusive": true,
+        "unitId": "unit.ml.v1"
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["solution_dilution"]
+    },
+    {
+      "id": "rule.final_concentration_tolerance",
+      "kind": "required",
+      "condition": {
+        "kind": "observable_within_tolerance",
+        "observableId": "observable.solution_concentration_m.v1",
+        "minimum": 0.04995,
+        "maximum": 0.05005,
+        "minimumInclusive": true,
+        "maximumInclusive": true,
+        "unitId": "unit.mol_per_l.v1"
+      },
+      "severity": "conceptual",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["solution_dilution"]
+    },
+    {
+      "id": "rule.mix_count_best_practice",
+      "kind": "best_practice",
+      "condition": {
+        "kind": "equipment_state_equals",
+        "equipmentInstanceId": "preparation_flask",
+        "stateFieldKey": "mixCount",
+        "expectedValue": {
+          "valueType": "number",
+          "value": 10
+        }
+      },
+      "severity": "best-practice",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["solution_dilution"]
+    },
+    {
+      "id": "rule.condition_before_aspirate",
+      "kind": "ordering",
+      "condition": {
+        "kind": "rule_satisfied_before",
+        "predecessorRuleId": "rule.pipette_conditioned",
+        "successorRuleId": "rule.aliquot_aspirated"
+      },
+      "severity": "procedural",
+      "recoverable": false,
+      "terminal": false,
+      "objectiveIds": ["volumetric_transfer"]
+    },
+    {
+      "id": "rule.aspirate_before_deliver",
+      "kind": "ordering",
+      "condition": {
+        "kind": "rule_satisfied_before",
+        "predecessorRuleId": "rule.aliquot_aspirated",
+        "successorRuleId": "rule.aliquot_delivered"
+      },
+      "severity": "procedural",
+      "recoverable": false,
+      "terminal": false,
+      "objectiveIds": ["volumetric_transfer"]
+    },
+    {
+      "id": "rule.deliver_before_fill",
+      "kind": "ordering",
+      "condition": {
+        "kind": "rule_satisfied_before",
+        "predecessorRuleId": "rule.aliquot_delivered",
+        "successorRuleId": "rule.flask_filled"
+      },
+      "severity": "conceptual",
+      "recoverable": false,
+      "terminal": true,
+      "objectiveIds": ["volumetric_transfer", "solution_dilution"]
+    },
+    {
+      "id": "rule.fill_before_mix",
+      "kind": "ordering",
+      "condition": {
+        "kind": "rule_satisfied_before",
+        "predecessorRuleId": "rule.flask_filled",
+        "successorRuleId": "rule.solution_mixed"
+      },
+      "severity": "procedural",
+      "recoverable": false,
+      "terminal": false,
+      "objectiveIds": ["solution_dilution"]
+    },
+    {
+      "id": "rule.workflow_complete",
+      "kind": "success",
+      "condition": {
+        "kind": "registered_completion_policy_satisfied",
+        "completionPolicyId": "completion.all_required_observations.v1",
+        "evidenceRuleIds": [
+          "rule.pipette_conditioned",
+          "rule.aliquot_aspirated",
+          "rule.aliquot_delivered",
+          "rule.flask_filled",
+          "rule.solution_mixed",
+          "rule.final_volume_tolerance",
+          "rule.final_concentration_tolerance",
+          "rule.condition_before_aspirate",
+          "rule.aspirate_before_deliver",
+          "rule.deliver_before_fill",
+          "rule.fill_before_mix"
+        ]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["volumetric_transfer", "solution_dilution"]
+    }
+  ],
+  "instructions": [
+    {
+      "id": "instruction.condition_and_transfer",
+      "title": "Condition and transfer the aliquot",
+      "guidance": "Condition the empty 10.00 mL pipette with stock solution, measure a total 10.00 mL aliquot, and deliver it into the volumetric flask.",
+      "relatedRuleIds": [
+        "rule.pipette_conditioned",
+        "rule.aliquot_aspirated",
+        "rule.aliquot_delivered",
+        "rule.condition_before_aspirate",
+        "rule.aspirate_before_deliver"
+      ]
+    },
+    {
+      "id": "instruction.dilute_and_mix",
+      "title": "Dilute to the mark and mix",
+      "guidance": "After the stock aliquot is in the flask, add distilled water to the 100.00 mL mark and invert the flask 10 times.",
+      "relatedRuleIds": [
+        "rule.flask_filled",
+        "rule.solution_mixed",
+        "rule.deliver_before_fill",
+        "rule.fill_before_mix",
+        "rule.mix_count_best_practice"
+      ]
+    },
+    {
+      "id": "instruction.check_result",
+      "title": "Check the prepared solution",
+      "guidance": "Use the displayed final volume and concentration evidence to confirm that the preparation is within the registered tolerances.",
+      "relatedRuleIds": [
+        "rule.final_volume_tolerance",
+        "rule.final_concentration_tolerance",
+        "rule.workflow_complete"
+      ]
+    }
+  ],
+  "coachPolicy": {
+    "triggers": [],
+    "adaptiveRetries": []
+  },
+  "rubric": {
+    "id": "rubric.sodium_chloride_dilution.v2",
+    "version": "2.0.0",
+    "title": "Sodium chloride dilution rubric",
+    "criteria": [
+      {
+        "id": "criterion.volumetric_transfer",
+        "objectiveIds": ["volumetric_transfer"],
+        "ruleIds": [
+          "rule.pipette_conditioned",
+          "rule.aliquot_aspirated",
+          "rule.aliquot_delivered",
+          "rule.condition_before_aspirate",
+          "rule.aspirate_before_deliver"
+        ],
+        "description": "Conditions the transfer pipette and delivers the complete calibrated stock aliquot in a valid order.",
+        "maxPoints": 5,
+        "assessmentModeId": "assessment.event_performance.v1",
+        "evidenceMappings": [
+          {
+            "kind": "semantic_event",
+            "eventTypeId": "event.rinse_transfer_device.v1",
+            "required": true
+          },
+          {
+            "kind": "rule_diagnosis",
+            "ruleId": "rule.aliquot_delivered",
+            "required": true
+          }
+        ],
+        "scoringGuide": [
+          "0: no supported aliquot transfer",
+          "3: transfer completed with a procedural omission",
+          "5: conditioned and transferred the full aliquot in a valid order"
+        ]
+      },
+      {
+        "id": "criterion.solution_dilution",
+        "objectiveIds": ["solution_dilution"],
+        "ruleIds": [
+          "rule.flask_filled",
+          "rule.solution_mixed",
+          "rule.final_volume_tolerance",
+          "rule.final_concentration_tolerance",
+          "rule.deliver_before_fill",
+          "rule.fill_before_mix"
+        ],
+        "description": "Reaches the registered final-volume and concentration tolerances and mixes the prepared solution.",
+        "maxPoints": 5,
+        "assessmentModeId": "assessment.event_performance.v1",
+        "evidenceMappings": [
+          {
+            "kind": "observable",
+            "observableId": "observable.solution_volume_ml.v1",
+            "required": true
+          },
+          {
+            "kind": "observable",
+            "observableId": "observable.solution_concentration_m.v1",
+            "required": true
+          },
+          {
+            "kind": "semantic_event",
+            "eventTypeId": "event.mix_solution.v1",
+            "required": true
+          }
+        ],
+        "scoringGuide": [
+          "0: preparation not completed",
+          "3: final result is recoverably outside a registered tolerance",
+          "5: final volume and concentration are in tolerance and the solution is mixed"
+        ]
+      }
+    ],
+    "totalPoints": 10,
+    "passingPolicyId": "passing.percent_70.v1"
+  },
+  "safetyPolicyIds": ["safety.virtual_solution_preparation_ppe_notice.v1"],
+  "safetyBindings": [
+    {
+      "safetyPolicyId": "safety.virtual_solution_preparation_ppe_notice.v1",
+      "equipmentInstanceIds": [
+        "transfer_pipette",
+        "preparation_flask",
+        "water_bottle"
+      ],
+      "materialInstanceIds": ["stock_solution"]
+    }
+  ],
+  "presentation": {
+    "instructionGuidance": [],
+    "materialLabels": [],
+    "rulePrompts": []
+  },
+  "materials": [
+    {
+      "instanceId": "stock_solution",
+      "materialProfileId": "reagent.sodium_chloride_aqueous.v1",
+      "containerInstanceId": "stock_bottle",
+      "quantityPresetId": "quantity-preset.sodium_chloride_solution_50ml.v1",
+      "initialization": {
+        "kind": "bounded_concentration",
+        "configurationSchemaId": "schema.material_initialization.bounded_concentration.v1",
+        "concentration": {
+          "decimalValue": "0.5",
+          "unitId": "unit.mol_per_l.v1"
+        }
+      }
+    },
+    {
+      "instanceId": "diluent_water",
+      "materialProfileId": "reagent.distilled_water.v1",
+      "containerInstanceId": "water_bottle",
+      "quantityPresetId": "quantity-preset.distilled_water_250ml.v1"
+    }
+  ],
+  "supportStatus": "draft_unvalidated",
+  "validation": null,
+  "judgeCritique": null
+}

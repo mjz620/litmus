@@ -15,7 +15,9 @@ export type ReagentRegistryId =
   | "reagent.hydrochloric_acid_0_100m.v1"
   | "reagent.methyl_orange.v1"
   | "reagent.phenolphthalein.v1"
-  | "reagent.sodium_hydroxide_0_100m.v1";
+  | "reagent.sodium_hydroxide_0_100m.v1"
+  | "reagent.sodium_chloride_aqueous.v1"
+  | "reagent.sodium_chloride_1_000m.v1";
 
 export type MaterialProfileId = ReagentRegistryId;
 export type MaterialPhase = "aqueous_solution" | "indicator" | "pure_liquid";
@@ -40,6 +42,15 @@ export interface MaterialProfile {
   readonly quantityPresetIds: readonly QuantityPresetId[];
   readonly safetyPolicyIds: readonly SafetyRegistryId[];
   readonly availability: MaterialAvailability;
+  readonly concentrationAuthoring?: {
+    readonly configurationSchemaId: "schema.material_initialization.bounded_concentration.v1";
+    readonly unitId: "unit.mol_per_l.v1";
+    readonly minimumDecimalValue: string;
+    readonly maximumDecimalValue: string;
+    readonly maximumDecimalPlaces: number;
+    readonly requiredChemistryCapabilityId: "chemistry.concentration_dilution.v1";
+    readonly safetyPolicyIds: readonly SafetyRegistryId[];
+  };
 }
 
 /**
@@ -50,12 +61,14 @@ export interface ReagentRegistryEntry extends MaterialProfile {
   readonly profileKind: MaterialPhase;
   readonly concentrationM: number | null;
   readonly compatibleContainerComponentIds: readonly ComponentRegistryId[];
-  readonly compatibleEngineIds: readonly "engine.titration.v1"[];
-  readonly compatibleFamilyIds: readonly "family.acid_base_titration.v1"[];
+  readonly compatibleEngineIds: readonly string[];
+  readonly compatibleFamilyIds: readonly string[];
   readonly allowedRoleIds: readonly (
     | "analyte"
     | "indicator"
+    | "diluent"
     | "rinse_solvent"
+    | "stock_solution"
     | "titrant"
   )[];
   readonly requestedAmountLimits: readonly {

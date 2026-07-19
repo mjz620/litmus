@@ -8,14 +8,17 @@ import {
   createComponentRegistry
 } from "../../../../src/lab-workflows/registries/components";
 
-describe("titration component registry", () => {
-  it("lists only the four currently verified titration component contracts", () => {
-    expect(componentRegistry.snapshotId).toBe("components.2.1.0");
+describe("component registry", () => {
+  it("lists the verified titration and solution-preparation component contracts", () => {
+    expect(componentRegistry.snapshotId).toBe("components.3.1.0");
     expect(componentRegistry.list().map(({ id }) => id)).toEqual([
       "component.burette.v1",
       "component.erlenmeyer_flask.v1",
       "component.reagent_bottle.v1",
-      "component.indicator_bottle.v1"
+      "component.indicator_bottle.v1",
+      "component.volumetric_pipette.v1",
+      "component.volumetric_flask.v1",
+      "component.wash_bottle.v1"
     ]);
     expect(componentRegistrySnapshot.entries).toBe(componentRegistry.list());
   });

@@ -9,7 +9,7 @@ import {
 
 export const configurationRegistry = createSupportingRegistry(
   "configuration",
-  "configurations.2.3.0",
+  "configurations.4.0.0",
   CONFIGURATION_REGISTRY_ENTRIES
 );
 
@@ -17,7 +17,11 @@ export const LEGACY_CONFIGURATION_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "configurations.1.0.0",
   "configurations.2.0.0",
   "configurations.2.1.0",
-  "configurations.2.2.0"
+  "configurations.2.2.0",
+  "configurations.2.3.0",
+  "configurations.2.4.0",
+  "configurations.3.0.0",
+  "configurations.3.1.0"
 ] as const);
 
 export function getConfigurationSchema(

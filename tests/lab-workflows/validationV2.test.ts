@@ -55,7 +55,7 @@ function createJudgeCritique(
 }
 
 describe("LabWorkflowSpec v2 hard validation", () => {
-  it("validates a verified mechanical composition but keeps runtime gates closed", () => {
+  it("opens native preview only after the complete mechanical composition validates", () => {
     const input = createRunnableMechanicalV2Draft();
     const direct = validateLabWorkflowSpecV2(input, { checkedAt: CHECKED_AT });
     const facade = validateLabWorkflowSpec(input, { checkedAt: CHECKED_AT });
@@ -67,20 +67,14 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     expect(direct.validation).toMatchObject({
       status: "runnable",
       runnable: true,
-      previewEligible: false,
+      previewEligible: true,
       assignmentEligible: false
     });
-    expect(direct.issues).toEqual([
-      expect.objectContaining({
-        code: WORKFLOW_VALIDATION_ISSUE_CODES_V2.runtimeUnavailable,
-        severity: "warning",
-        path: "$"
-      })
-    ]);
+    expect(direct.issues).toEqual([]);
     expect(evaluateLabWorkflowEligibility(direct.spec, "preview")).toEqual({
-      eligible: false,
+      eligible: true,
       purpose: "preview",
-      failureCodes: [WORKFLOW_ELIGIBILITY_FAILURE_CODES_V2.previewNotEligible]
+      failureCodes: []
     });
     expect(evaluateLabWorkflowEligibility(direct.spec, "assignment")).toEqual({
       eligible: false,
@@ -132,6 +126,65 @@ describe("LabWorkflowSpec v2 hard validation", () => {
           code: WORKFLOW_VALIDATION_ISSUE_CODES_V2.chemistryModelResolutionFailed
         })
       ])
+    );
+  });
+
+  it("validates an alternate complete 3D arrangement and rejects broken assemblies or collisions", () => {
+    const alternate = createMigratedEndpointV2Draft();
+    alternate.layout.placements = alternate.layout.placements.map(
+      (placement) => {
+        if (placement.equipmentInstanceId === "titrant_burette") {
+          return {
+            ...placement,
+            placementSlotId: "placement.bench_left_stand_reversed.v1"
+          };
+        }
+        if (placement.equipmentInstanceId === "analyte_flask") {
+          return {
+            ...placement,
+            placementSlotId: "placement.under_left_burette.v1"
+          };
+        }
+        return {
+          ...placement,
+          placementSlotId: "placement.indicator_shelf_right.v1"
+        };
+      }
+    );
+    const accepted = validateLabWorkflowSpecV2(alternate, {
+      checkedAt: CHECKED_AT
+    });
+    expect(accepted.schemaValid).toBe(true);
+    if (!accepted.schemaValid) throw new Error("Expected alternate 3D layout");
+    expect(accepted.validation.runnable).toBe(true);
+    expect(accepted.issues).toEqual([]);
+
+    const misaligned = createMigratedEndpointV2Draft();
+    misaligned.layout.placements[0]!.placementSlotId =
+      "placement.bench_left_stand.v1";
+    const misalignedOutcome = validateLabWorkflowSpecV2(misaligned, {
+      checkedAt: CHECKED_AT
+    });
+    expect(misalignedOutcome.issues).toContainEqual(
+      expect.objectContaining({
+        code: WORKFLOW_VALIDATION_ISSUE_CODES_V2.layoutIncompatible,
+        message: expect.stringContaining("same verified workstation")
+      })
+    );
+
+    const collision = createMigratedEndpointV2Draft();
+    collision.layout.placements[0]!.placementSlotId =
+      "placement.bench_left_stand.v1";
+    collision.layout.placements[1]!.placementSlotId =
+      "placement.under_left_burette.v1";
+    const collisionOutcome = validateLabWorkflowSpecV2(collision, {
+      checkedAt: CHECKED_AT
+    });
+    expect(collisionOutcome.issues).toContainEqual(
+      expect.objectContaining({
+        code: WORKFLOW_VALIDATION_ISSUE_CODES_V2.layoutIncompatible,
+        message: expect.stringContaining("overlaps")
+      })
     );
   });
 
@@ -317,7 +370,7 @@ describe("LabWorkflowSpec v2 hard validation", () => {
     );
     expect(eligibility.schemaValid).toBe(true);
     if (!eligibility.schemaValid) throw new Error("Expected validated fixture");
-    expect(eligibility.validation.passedCheckIds).not.toContain(
+    expect(eligibility.validation.passedCheckIds).toContain(
       WORKFLOW_VALIDATION_CHECK_IDS_V2.eligibility
     );
   });
@@ -402,6 +455,19 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       ])
     );
 
+    const sceneSnapshotTampered = structuredClone(outcome.spec);
+    sceneSnapshotTampered.validation.registrySnapshotIds.scenePlacements =
+      "scene-placements.0.9.0";
+    expect(
+      evaluateLabWorkflowEligibility(sceneSnapshotTampered, "preview")
+        .failureCodes
+    ).toEqual(
+      expect.arrayContaining([
+        WORKFLOW_ELIGIBILITY_FAILURE_CODES_V2.registrySnapshotStale,
+        WORKFLOW_ELIGIBILITY_FAILURE_CODES_V2.validationArtifactMismatch
+      ])
+    );
+
     const adapterTampered = structuredClone(outcome.spec);
     adapterTampered.validation.resolvedAdapters.pop();
     expect(
@@ -437,7 +503,7 @@ describe("LabWorkflowSpec v2 hard validation", () => {
       expect(outcome.schemaValid).toBe(true);
       if (!outcome.schemaValid) throw new Error("Expected reviewed fixture");
       expect(outcome.validation.status).toBe("runnable");
-      expect(outcome.validation.previewEligible).toBe(false);
+      expect(outcome.validation.previewEligible).toBe(true);
       expect(outcome.spec.judgeCritique?.recommendation).toBe(recommendation);
     }
 

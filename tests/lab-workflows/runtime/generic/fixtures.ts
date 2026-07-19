@@ -33,7 +33,7 @@ export function validatedMechanicalWorkflow(
   expect(outcome.validation).toMatchObject({
     status: "runnable",
     runnable: true,
-    previewEligible: false,
+    previewEligible: true,
     assignmentEligible: false
   });
   return outcome.spec;

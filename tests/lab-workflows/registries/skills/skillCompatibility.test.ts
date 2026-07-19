@@ -12,9 +12,10 @@ describe("verified skill compatibility", () => {
       .list()
       .filter(({ availability }) => availability === "verified")) {
       expect(
-        skill.supportedFamilyIds.some((familyId) =>
-          engineRegistry.list().some((engine) => engine.familyId === familyId)
-        )
+        skill.supportedFamilyIds.length === 0 ||
+          skill.supportedFamilyIds.some((familyId) =>
+            engineRegistry.list().some((engine) => engine.familyId === familyId)
+          )
       ).toBe(true);
       for (const componentId of skill.requiredComponentIds) {
         componentRegistry.get(componentId);

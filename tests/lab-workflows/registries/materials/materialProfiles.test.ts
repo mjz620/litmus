@@ -42,11 +42,14 @@ import { createSchemaValidWorkflowDraft } from "../../schema/fixtures";
 describe("LC2-102 material profiles", () => {
   it("evolves the exact reagent entries through one material facade", () => {
     expect(materialRegistry).toBe(reagentRegistry);
-    expect(reagentRegistry.snapshotId).toBe("reagents.2.2.0");
+    expect(reagentRegistry.snapshotId).toBe("reagents.4.0.0");
     expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual([
       "reagents.1.0.0",
       "reagents.2.0.0",
-      "reagents.2.1.0"
+      "reagents.2.1.0",
+      "reagents.2.2.0",
+      "reagents.3.0.0",
+      "reagents.3.1.0"
     ]);
     expect(materialRegistry.list().map(({ id }) => id)).toEqual([
       "reagent.hydrochloric_acid_0_100m.v1",
@@ -54,9 +57,35 @@ describe("LC2-102 material profiles", () => {
       "reagent.phenolphthalein.v1",
       "reagent.bromothymol_blue.v1",
       "reagent.methyl_orange.v1",
-      "reagent.distilled_water.v1"
+      "reagent.distilled_water.v1",
+      "reagent.sodium_chloride_aqueous.v1",
+      "reagent.sodium_chloride_1_000m.v1"
     ]);
     expect(materialRegistry.has("reagent.stock_solution.v1")).toBe(false);
+  });
+
+  it("separates authorable sodium chloride identity from its bounded initialization", () => {
+    expect(
+      materialRegistry.get("reagent.sodium_chloride_aqueous.v1")
+    ).toMatchObject({
+      displayName: "Sodium chloride solution",
+      phase: "aqueous_solution",
+      concentrationM: null,
+      availability: "verified",
+      concentrationAuthoring: {
+        configurationSchemaId:
+          "schema.material_initialization.bounded_concentration.v1",
+        unitId: "unit.mol_per_l.v1",
+        minimumDecimalValue: "0.1",
+        maximumDecimalValue: "1",
+        maximumDecimalPlaces: 4,
+        requiredChemistryCapabilityId: "chemistry.concentration_dilution.v1",
+        safetyPolicyIds: ["safety.virtual_solution_preparation_ppe_notice.v1"]
+      }
+    });
+    expect(
+      materialRegistry.get("reagent.sodium_chloride_1_000m.v1")
+    ).not.toHaveProperty("concentrationAuthoring");
   });
 
   it("fails exact unknown and duplicate material lookup closed", () => {
@@ -232,23 +261,27 @@ describe("LC2-102 material profiles", () => {
       usageModes: ["material_binding", "legacy_action_parameter"],
       initializationPresetSchemaId:
         "schema.material_initialization.pure_liquid.v1",
-      compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+      compatibleContainerComponentIds: [
+        "component.reagent_bottle.v1",
+        "component.wash_bottle.v1"
+      ],
       compatibleContainerCapabilityIds: [
         "capability.contain_liquid.v1",
         "capability.dispense_liquid.v1"
       ],
       compatibleEngineIds: ["engine.titration.v1"],
-      allowedRoleIds: ["rinse_solvent"],
+      allowedRoleIds: ["rinse_solvent", "diluent"],
       availability: "verified"
     });
     expect(water.quantityPresetIds).toEqual([
+      "quantity-preset.distilled_water_250ml.v1",
       "quantity-preset.distilled_water_50ml.v1"
     ]);
     expect(water.requestedAmountLimits).toEqual([
-      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 250 }
     ]);
     expect(getQuantityPreset(water.quantityPresetIds[0]!)).toMatchObject({
-      amount: 50,
+      amount: 250,
       unitId: "unit.ml.v1",
       compatibleMaterialProfileIds: [water.id]
     });
@@ -364,7 +397,7 @@ describe("LC2-102 material profiles", () => {
       ENDPOINT_CONTROL_PRELAB_EXPECTED_HASH
     );
     expect(outcome.validation.registrySnapshotIds.reagents).toBe(
-      "reagents.2.2.0"
+      "reagents.4.0.0"
     );
   });
 

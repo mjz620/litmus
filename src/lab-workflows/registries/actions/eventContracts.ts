@@ -38,11 +38,36 @@ export const ACTION_EVENT_CONTRACT_ENTRIES = [
     version: "1.0.0",
     description: "Burette meniscus reading semantic event contract.",
     eventTypeIds: ["event.read_meniscus.v1"]
+  },
+  {
+    id: "event-contract.transfer_liquid.v1",
+    version: "1.0.0",
+    description: "Bounded reusable liquid-transfer semantic event contract.",
+    eventTypeIds: ["event.transfer_liquid.v1"]
+  },
+  {
+    id: "event-contract.rinse_transfer_device.v1",
+    version: "1.0.0",
+    description:
+      "Conditioning-rinse semantic event contract for a transfer device.",
+    eventTypeIds: ["event.rinse_transfer_device.v1"]
+  },
+  {
+    id: "event-contract.fill_to_mark.v1",
+    version: "1.0.0",
+    description: "Volumetric fill-to-mark semantic event contract.",
+    eventTypeIds: ["event.fill_to_mark.v1"]
+  },
+  {
+    id: "event-contract.mix_solution.v1",
+    version: "1.0.0",
+    description: "Bounded mechanical solution-mixing event contract.",
+    eventTypeIds: ["event.mix_solution.v1"]
   }
 ] as const satisfies readonly ActionEventContractEntry[];
 
 export const actionEventContractRegistry = createSupportingRegistry(
   "action event contract",
-  "event-contracts.1.0.0",
+  "event-contracts.2.0.0",
   ACTION_EVENT_CONTRACT_ENTRIES
 );

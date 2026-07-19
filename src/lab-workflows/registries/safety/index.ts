@@ -3,7 +3,7 @@ import { SAFETY_REGISTRY_ENTRIES } from "./entries";
 
 export const safetyRegistry = createSupportingRegistry(
   "safety",
-  "safety.1.0.0",
+  "safety.2.0.0",
   SAFETY_REGISTRY_ENTRIES
 );
 

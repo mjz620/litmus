@@ -2,10 +2,14 @@ import type { ActionRegistryEntry } from "./types";
 import {
   ADD_INDICATOR_ACTION_PARAMETERS,
   DISPENSE_ACTION_PARAMETERS,
+  FILL_TO_MARK_ACTION_PARAMETERS,
   FILL_ACTION_PARAMETERS,
+  MIX_SOLUTION_ACTION_PARAMETERS,
   READ_VOLUME_ACTION_PARAMETERS,
+  RINSE_TRANSFER_DEVICE_ACTION_PARAMETERS,
   RINSE_ACTION_PARAMETERS,
-  SELECT_INDICATOR_ACTION_PARAMETERS
+  SELECT_INDICATOR_ACTION_PARAMETERS,
+  TRANSFER_LIQUID_ACTION_PARAMETERS
 } from "./parameterSchemas";
 
 const ENGINE = ["engine.titration.v1"] as const;
@@ -182,5 +186,122 @@ export const ACTION_REGISTRY_ENTRIES = [
     emittedSemanticEventTypes: ["read_meniscus"],
     compatibleEngineIds: ENGINE,
     compatibleFamilyIds: FAMILY
+  },
+  {
+    id: "action.rinse_transfer_device.v1",
+    version: "1.0.0",
+    purpose:
+      "Condition an empty volumetric transfer device with its exact source solution.",
+    engineActionType: null,
+    actorComponentIds: ["component.reagent_bottle.v1"],
+    targetComponentIds: ["component.volumetric_pipette.v1"],
+    requiredSourceCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    requiredTargetCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.rinse.v1"
+    ],
+    parameterSchemaId: "schema.action_parameters.rinse_transfer_device.v1",
+    preconditionIds: ["precondition.equipment.pipette_empty_before_rinse.v1"],
+    possibleErrorCodes: CONNECTION_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.volumetric_pipette.v1",
+    emittedEventContractId: "event-contract.rinse_transfer_device.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: ["stock_solution"],
+    parameters: RINSE_TRANSFER_DEVICE_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["rinse_transfer_device"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.transfer_liquid.v1",
+    version: "1.0.0",
+    purpose:
+      "Move a bounded liquid volume between an exact source and compatible receiving vessel.",
+    engineActionType: null,
+    actorComponentIds: [
+      "component.reagent_bottle.v1",
+      "component.volumetric_pipette.v1"
+    ],
+    targetComponentIds: [
+      "component.volumetric_pipette.v1",
+      "component.volumetric_flask.v1"
+    ],
+    requiredSourceCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    requiredTargetCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1"
+    ],
+    parameterSchemaId: "schema.action_parameters.transfer_liquid.v1",
+    preconditionIds: [],
+    possibleErrorCodes: CONNECTION_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.volumetric_pipette.v1",
+    emittedEventContractId: "event-contract.transfer_liquid.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: ["stock_solution"],
+    parameters: TRANSFER_LIQUID_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["transfer_liquid"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.fill_to_mark.v1",
+    version: "1.0.0",
+    purpose:
+      "Add exact bound diluent until a volumetric vessel reaches the submitted final volume.",
+    engineActionType: null,
+    actorComponentIds: ["component.wash_bottle.v1"],
+    targetComponentIds: ["component.volumetric_flask.v1"],
+    requiredSourceCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    requiredTargetCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.fill_to_mark.v1"
+    ],
+    parameterSchemaId: "schema.action_parameters.fill_to_mark.v1",
+    preconditionIds: [],
+    possibleErrorCodes: CONNECTION_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.volumetric_flask.v1",
+    emittedEventContractId: "event-contract.fill_to_mark.v1",
+    behavior: "continuous",
+    requiredReagentRoleIds: ["diluent"],
+    parameters: FILL_TO_MARK_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["fill_to_mark"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.mix_solution.v1",
+    version: "1.0.0",
+    purpose:
+      "Mechanically mix a bounded liquid preparation by flask inversion.",
+    engineActionType: null,
+    actorComponentIds: ["component.volumetric_flask.v1"],
+    targetComponentIds: [],
+    requiredSourceCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.mix.v1"
+    ],
+    requiredTargetCapabilityIds: [],
+    parameterSchemaId: "schema.action_parameters.mix_solution.v1",
+    preconditionIds: ["precondition.equipment.volumetric_flask_has_liquid.v1"],
+    possibleErrorCodes: SOURCE_ONLY_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.volumetric_flask.v1",
+    emittedEventContractId: "event-contract.mix_solution.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: [],
+    parameters: MIX_SOLUTION_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["mix_solution"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
   }
 ] as const satisfies readonly ActionRegistryEntry[];

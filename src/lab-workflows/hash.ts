@@ -8,6 +8,8 @@ import { sha256Hex } from "./sha256";
 export const LAB_WORKFLOW_HASH_ALGORITHM = "sha256" as const;
 export const LAB_WORKFLOW_HASH_DOMAIN_V2 =
   "lab-workflow-spec\0schema=2.0.0\0" as const;
+export const LAB_WORKFLOW_HASH_DOMAIN_V2_1 =
+  "lab-workflow-spec\0schema=2.1.0\0" as const;
 
 const EXCLUDED_ROOT_FIELDS = new Set([
   "supportStatus",
@@ -196,7 +198,10 @@ export function getHashableLabWorkflowSpec(
         "Cannot hash a workflow without an enumerable data schemaVersion"
       );
     }
-    if (versionDescriptor.value === "2.0.0") {
+    if (
+      versionDescriptor.value === "2.0.0" ||
+      versionDescriptor.value === "2.1.0"
+    ) {
       assertJsonData(input, "$", new Set());
     }
   }
@@ -213,9 +218,11 @@ export function canonicalizeLabWorkflowSpec(input: unknown): string {
 export function serializeLabWorkflowSpecHashPreimage(input: unknown): string {
   const hashable = getHashableLabWorkflowSpec(input);
   const canonicalSpec = canonicalJson(hashable, "$");
-  return hashable.schemaVersion === "2.0.0"
-    ? `${LAB_WORKFLOW_HASH_DOMAIN_V2}${canonicalSpec}`
-    : canonicalSpec;
+  if (hashable.schemaVersion === "2.0.0")
+    return `${LAB_WORKFLOW_HASH_DOMAIN_V2}${canonicalSpec}`;
+  if (hashable.schemaVersion === "2.1.0")
+    return `${LAB_WORKFLOW_HASH_DOMAIN_V2_1}${canonicalSpec}`;
+  return canonicalSpec;
 }
 
 export function hashLabWorkflowSpec(input: unknown): string {

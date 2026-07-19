@@ -18,6 +18,7 @@ import {
 import {
   GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
   assembleGenericLabRuntime,
+  createCapabilityGenericRuntimePorts,
   createLegacyTitrationRuntimePorts,
   parseLegacyTitrationCompatibilityState,
   type GenericLabRuntime,
@@ -58,12 +59,13 @@ export interface SetupDrivenRuntimeInspection {
   readonly runtimeSchemaVersion: string;
   readonly sequence: number;
   readonly eventSequence: number;
-  readonly runtimeAdapterId: string;
-  readonly runtimeAdapterVersion: string;
-  readonly engineId: string;
-  readonly engineVersion: string;
-  readonly experimentDefinitionId: string;
-  readonly experimentDefinitionVersion: string;
+  readonly executionKind: "native_generic" | "legacy_compatibility";
+  readonly runtimeAdapterId: string | null;
+  readonly runtimeAdapterVersion: string | null;
+  readonly engineId: string | null;
+  readonly engineVersion: string | null;
+  readonly experimentDefinitionId: string | null;
+  readonly experimentDefinitionVersion: string | null;
   readonly chemistryModels: readonly {
     readonly modelId: string;
     readonly version: string;
@@ -103,6 +105,18 @@ export interface SetupDrivenActionProjection {
   readonly attemptsUsed: number;
   readonly maxAttempts: number | null;
   readonly authoredLimits: Readonly<Record<string, number>>;
+  readonly numericParameterBounds: readonly SetupDrivenNumericParameterBounds[];
+}
+
+export interface SetupDrivenNumericParameterBounds {
+  readonly parameterKey: string;
+  readonly unitId: string | null;
+  readonly registeredMinimum: number | null;
+  readonly registeredMaximum: number | null;
+  readonly authoredMinimum: number | null;
+  readonly authoredMaximum: number | null;
+  readonly effectiveMinimum: number | null;
+  readonly effectiveMaximum: number | null;
 }
 
 export interface SetupDrivenLabProjection {
@@ -153,6 +167,7 @@ export interface SetupDrivenTitrationTransition {
 
 export interface SetupDrivenTitrationSession {
   readonly mode: "setup_driven_v2";
+  getWorkflow(): Readonly<ValidatedLabWorkflowSpecV2>;
   getState(): Readonly<TitrationState>;
   getGenericState(): Readonly<GenericLabState>;
   getInspection(): Readonly<SetupDrivenRuntimeInspection>;
@@ -160,6 +175,32 @@ export interface SetupDrivenTitrationSession {
   getConsumerContext(): Readonly<LabWorkflowConsumerContext>;
   getActionTrace(): Readonly<GenericLabActionTrace>;
   dispatch(action: NormalizedLabAction): SetupDrivenTitrationTransition;
+}
+
+export interface CreateSetupDrivenNativeSessionInput {
+  readonly sessionId: string;
+  readonly sessionSeed: string;
+  readonly selection: SetupDrivenLabSelection;
+  readonly workflow: Readonly<ValidatedLabWorkflowSpecV2>;
+}
+
+export interface SetupDrivenNativeTransition {
+  readonly state: Readonly<GenericLabState>;
+  readonly events: GenericLabRuntimeTransition["events"];
+  readonly inspection: Readonly<SetupDrivenRuntimeInspection>;
+  readonly projection: Readonly<SetupDrivenLabProjection>;
+}
+
+export interface SetupDrivenNativeSession {
+  readonly mode: "setup_driven_v2";
+  getWorkflow(): Readonly<ValidatedLabWorkflowSpecV2>;
+  getState(): Readonly<GenericLabState>;
+  getGenericState(): Readonly<GenericLabState>;
+  getInspection(): Readonly<SetupDrivenRuntimeInspection>;
+  getProjection(): Readonly<SetupDrivenLabProjection>;
+  getConsumerContext(): Readonly<LabWorkflowConsumerContext>;
+  getActionTrace(): Readonly<GenericLabActionTrace>;
+  dispatch(action: NormalizedLabAction): SetupDrivenNativeTransition;
 }
 
 export function resolveLabSessionRuntimeMode(
@@ -246,16 +287,7 @@ export function createSetupDrivenTitrationSession(
     createLegacyTitrationRuntimePorts(workflow)
   );
 
-  return createSession(runtime, input.sessionSeed);
-}
-
-function createSession(
-  runtime: GenericLabRuntime,
-  sessionSeed: string
-): SetupDrivenTitrationSession {
-  const actions: NormalizedLabAction[] = [];
-
-  function projectedState(): Readonly<TitrationState> {
+  return createSession(runtime, input.sessionSeed, () => {
     const compatibility = runtime.getState().compatibilityState;
     if (!compatibility) {
       throw new SetupDrivenSessionError(
@@ -266,17 +298,67 @@ function createSession(
     return parseLegacyTitrationCompatibilityState(
       compatibility.serializedState
     );
+  });
+}
+
+export function createSetupDrivenNativeSession(
+  input: CreateSetupDrivenNativeSessionInput
+): SetupDrivenNativeSession {
+  const { workflow } = input;
+  const eligibility = evaluateLabWorkflowEligibilityV2(workflow, "preview");
+  if (
+    workflow.compatibility ||
+    !eligibility.eligible ||
+    workflow.id !== input.selection.workflowId ||
+    workflow.validation.canonicalSpecHash !== input.selection.workflowHash
+  ) {
+    throw new SetupDrivenSessionError(
+      SETUP_DRIVEN_SESSION_ERROR_CODES.selectionInvalid,
+      "The requested native definition is stale, ineligible, compatibility-owned, or does not match its exact ID and hash."
+    );
   }
+  const runtime = assembleGenericLabRuntime(
+    workflow,
+    {
+      schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
+      sessionId: input.sessionId,
+      sessionSeed: input.sessionSeed,
+      workflowId: workflow.id,
+      workflowRevision: workflow.revision,
+      workflowHash: workflow.validation.canonicalSpecHash
+    },
+    createCapabilityGenericRuntimePorts(workflow)
+  );
+  return createSession(runtime, input.sessionSeed, runtime.getState);
+}
+
+interface SetupDrivenSessionContract<State> {
+  readonly mode: "setup_driven_v2";
+  getWorkflow(): Readonly<ValidatedLabWorkflowSpecV2>;
+  getState(): Readonly<State>;
+  getGenericState(): Readonly<GenericLabState>;
+  getInspection(): Readonly<SetupDrivenRuntimeInspection>;
+  getProjection(): Readonly<SetupDrivenLabProjection>;
+  getConsumerContext(): Readonly<LabWorkflowConsumerContext>;
+  getActionTrace(): Readonly<GenericLabActionTrace>;
+  dispatch(action: NormalizedLabAction): {
+    readonly state: Readonly<State>;
+    readonly events: GenericLabRuntimeTransition["events"];
+    readonly inspection: Readonly<SetupDrivenRuntimeInspection>;
+    readonly projection: Readonly<SetupDrivenLabProjection>;
+  };
+}
+
+function createSession<State>(
+  runtime: GenericLabRuntime,
+  sessionSeed: string,
+  projectedState: () => Readonly<State>
+): SetupDrivenSessionContract<State> {
+  const actions: NormalizedLabAction[] = [];
 
   function inspection(): Readonly<SetupDrivenRuntimeInspection> {
     const state = runtime.getState();
     const compatibility = state.provenance.compatibility;
-    if (!compatibility) {
-      throw new SetupDrivenSessionError(
-        SETUP_DRIVEN_SESSION_ERROR_CODES.projectionInvalid,
-        "The generic runtime did not provide compatibility provenance."
-      );
-    }
     return Object.freeze({
       mode: "setup_driven_v2" as const,
       workflowId: state.provenance.workflowId,
@@ -286,12 +368,16 @@ function createSession(
       runtimeSchemaVersion: state.schemaVersion,
       sequence: state.sequence,
       eventSequence: state.eventSequence,
-      runtimeAdapterId: compatibility.runtimeAdapterId,
-      runtimeAdapterVersion: compatibility.runtimeAdapterVersion,
-      engineId: compatibility.engineId,
-      engineVersion: compatibility.engineVersion,
-      experimentDefinitionId: compatibility.experimentDefinitionId,
-      experimentDefinitionVersion: compatibility.experimentDefinitionVersion,
+      executionKind: compatibility
+        ? ("legacy_compatibility" as const)
+        : ("native_generic" as const),
+      runtimeAdapterId: compatibility?.runtimeAdapterId ?? null,
+      runtimeAdapterVersion: compatibility?.runtimeAdapterVersion ?? null,
+      engineId: compatibility?.engineId ?? null,
+      engineVersion: compatibility?.engineVersion ?? null,
+      experimentDefinitionId: compatibility?.experimentDefinitionId ?? null,
+      experimentDefinitionVersion:
+        compatibility?.experimentDefinitionVersion ?? null,
       chemistryModels: Object.freeze(
         state.provenance.resolvedChemistryModels.map(({ modelId, version }) =>
           Object.freeze({ modelId, version })
@@ -381,7 +467,8 @@ function createSession(
         count
       ])
     );
-    const actions = runtime.program.actions.map(({ permission }) => {
+    const actions = runtime.program.actions.map((binding) => {
+      const { permission } = binding;
       const attemptsUsed = attemptCounts.get(permission.id) ?? 0;
       const available =
         state.workflowStatus === "in_progress" &&
@@ -403,7 +490,44 @@ function createSession(
         available,
         attemptsUsed,
         maxAttempts: permission.maxAttempts ?? null,
-        authoredLimits: Object.freeze({ ...(permission.authoredLimits ?? {}) })
+        authoredLimits: Object.freeze({ ...(permission.authoredLimits ?? {}) }),
+        numericParameterBounds: Object.freeze(
+          binding.parameters.flatMap((parameter) => {
+            if (parameter.valueType !== "number") return [];
+            const authoredMinimum = parameter.authoredMinimumKey
+              ? (permission.authoredLimits?.[parameter.authoredMinimumKey] ??
+                null)
+              : null;
+            const authoredMaximum = parameter.authoredMaximumKey
+              ? (permission.authoredLimits?.[parameter.authoredMaximumKey] ??
+                null)
+              : null;
+            const registeredMinimum = parameter.minimum ?? null;
+            const registeredMaximum = parameter.maximum ?? null;
+            return [
+              Object.freeze({
+                parameterKey: parameter.key,
+                unitId: parameter.unitId ?? null,
+                registeredMinimum,
+                registeredMaximum,
+                authoredMinimum,
+                authoredMaximum,
+                effectiveMinimum:
+                  registeredMinimum === null
+                    ? authoredMinimum
+                    : authoredMinimum === null
+                      ? registeredMinimum
+                      : Math.max(registeredMinimum, authoredMinimum),
+                effectiveMaximum:
+                  registeredMaximum === null
+                    ? authoredMaximum
+                    : authoredMaximum === null
+                      ? registeredMaximum
+                      : Math.min(registeredMaximum, authoredMaximum)
+              })
+            ];
+          })
+        )
       });
     });
 
@@ -424,6 +548,7 @@ function createSession(
 
   return Object.freeze({
     mode: "setup_driven_v2" as const,
+    getWorkflow: () => runtime.program.workflow,
     getState: projectedState,
     getGenericState: runtime.getState,
     getInspection: inspection,

@@ -520,6 +520,38 @@ function validateParameters(
       const authoredMinimum = minimumKey
         ? binding.permission.authoredLimits?.[minimumKey]
         : undefined;
+      const details: Record<string, GenericLabRuntimeError["details"][string]> =
+        {
+          actionId: action.actionId,
+          parameterKey: definition.key,
+          submittedValue: supplied.value
+        };
+      if (definition.minimum !== undefined) {
+        details.registeredMinimum = definition.minimum;
+      }
+      if (definition.maximum !== undefined) {
+        details.registeredMaximum = definition.maximum;
+      }
+      if (authoredMinimum !== undefined) {
+        details.authoredMinimum = authoredMinimum;
+      }
+      if (authoredMaximum !== undefined) {
+        details.authoredMaximum = authoredMaximum;
+      }
+      const effectiveMinimum = Math.max(
+        definition.minimum ?? Number.NEGATIVE_INFINITY,
+        authoredMinimum ?? Number.NEGATIVE_INFINITY
+      );
+      const effectiveMaximum = Math.min(
+        definition.maximum ?? Number.POSITIVE_INFINITY,
+        authoredMaximum ?? Number.POSITIVE_INFINITY
+      );
+      if (Number.isFinite(effectiveMinimum)) {
+        details.effectiveMinimum = effectiveMinimum;
+      }
+      if (Number.isFinite(effectiveMaximum)) {
+        details.effectiveMaximum = effectiveMaximum;
+      }
       if (
         (definition.minimum !== undefined &&
           supplied.value < definition.minimum) ||
@@ -531,7 +563,7 @@ function validateParameters(
         fail(
           ERROR.parameterInvalid,
           `${definition.key} is outside the registered action bounds.`,
-          { actionId: action.actionId, parameterKey: definition.key }
+          details
         );
       }
     } else {

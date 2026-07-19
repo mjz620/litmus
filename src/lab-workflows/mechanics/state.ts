@@ -188,6 +188,46 @@ export function initializeLiquidEquipmentState(
         selected: false,
         added: false
       });
+    case "component.volumetric_pipette.v1": {
+      const capacityML = capacity(binding);
+      if (containedVolumeML > capacityML) {
+        fail(
+          `Initial volume exceeds ${binding.instanceId} capacity.`,
+          binding.instanceId
+        );
+      }
+      return createState(binding, {
+        capacityML,
+        availableML: containedVolumeML,
+        deliveredML: 0,
+        conditionedMaterialProfileId: null,
+        residualFilmPresent: false
+      });
+    }
+    case "component.volumetric_flask.v1": {
+      const capacityML = capacity(binding);
+      if (containedVolumeML > capacityML) {
+        fail(
+          `Initial volume exceeds ${binding.instanceId} capacity.`,
+          binding.instanceId
+        );
+      }
+      return createState(binding, {
+        capacityML,
+        totalVolumeML: containedVolumeML,
+        markErrorML: containedVolumeML - capacityML,
+        markToleranceML: binding.measurement?.toleranceML ?? 0,
+        filledToMark: false,
+        withinMarkTolerance: false,
+        mixed: false,
+        mixCount: 0
+      });
+    }
+    case "component.wash_bottle.v1":
+      return createState(binding, {
+        reagentInstanceId: exactMaterialAt(materialLedger, binding.instanceId),
+        availableML: containedVolumeML
+      });
     default:
       fail(
         `Equipment ${binding.equipmentDefinitionId} has no liquid initializer.`,

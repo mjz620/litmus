@@ -88,10 +88,10 @@ describe("Lab Composer supporting registries", () => {
       ]) {
         expect(componentRegistry.get(componentId).id).toBe(componentId);
       }
-      expect(engineRegistry.get(action.compatibleEngineIds[0]).id).toBe(
-        "engine.titration.v1"
-      );
-      const registeredReagentRoles = new Set(
+      for (const engineId of action.compatibleEngineIds) {
+        expect(engineRegistry.get(engineId).id).toBe(engineId);
+      }
+      const registeredReagentRoles = new Set<string>(
         reagentRegistry
           .list()
           .flatMap(({ allowedRoleIds }) => [...allowedRoleIds])
@@ -105,9 +105,9 @@ describe("Lab Composer supporting registries", () => {
       for (const componentId of reagent.compatibleContainerComponentIds) {
         expect(componentRegistry.get(componentId).id).toBe(componentId);
       }
-      expect(engineRegistry.get(reagent.compatibleEngineIds[0]).id).toBe(
-        "engine.titration.v1"
-      );
+      for (const engineId of reagent.compatibleEngineIds) {
+        expect(engineRegistry.get(engineId).id).toBe(engineId);
+      }
       for (const safetyId of reagent.safetyConstraintIds) {
         expect(safetyRegistry.get(safetyId).id).toBe(safetyId);
       }
@@ -138,9 +138,12 @@ describe("Lab Composer supporting registries", () => {
     }
   });
 
-  it("maps only current engine-backed action types", () => {
+  it("preserves engine-backed action types while native mechanics have no engine mapping", () => {
     expect(
-      actionRegistry.list().map(({ engineActionType }) => engineActionType)
+      actionRegistry
+        .list()
+        .filter(({ engineActionType }) => engineActionType !== null)
+        .map(({ engineActionType }) => engineActionType)
     ).toEqual([
       "rinse_burette",
       "fill_burette",
@@ -150,8 +153,11 @@ describe("Lab Composer supporting registries", () => {
       "read_meniscus"
     ]);
     expect(actionRegistry.has("action.set_flow_rate.v1")).toBe(false);
-    expect(actionRegistry.has("action.mix.v1")).toBe(false);
-    expect(actionRegistry.has("action.transfer_volume.v1")).toBe(false);
+    expect(actionRegistry.has("action.mix_solution.v1")).toBe(true);
+    expect(actionRegistry.has("action.transfer_liquid.v1")).toBe(true);
+    expect(
+      actionRegistry.get("action.transfer_liquid.v1").compatibleEngineIds
+    ).toEqual([]);
   });
 
   it("declares exact authored-limit and preset compatibility metadata", () => {

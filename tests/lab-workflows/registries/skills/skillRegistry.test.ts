@@ -25,6 +25,8 @@ describe("canonical Lab Composer skill registry", () => {
       "burette_conditioning",
       "stoichiometry",
       "significant_figures",
+      "volumetric_transfer",
+      "solution_dilution",
       "procedural_safety",
       "data_recording"
     ]);
@@ -34,6 +36,18 @@ describe("canonical Lab Composer skill registry", () => {
       "heat_transfer",
       "calorimetry_sign_convention"
     ]);
+  });
+
+  it("publishes a versioned snapshot for family-neutral verified skills", () => {
+    expect(skillRegistry.snapshotId).toBe("skills.2.0.0");
+    expect(skillRegistry.get("volumetric_transfer")).toMatchObject({
+      supportedFamilyIds: [],
+      availability: "verified"
+    });
+    expect(skillRegistry.get("solution_dilution")).toMatchObject({
+      supportedFamilyIds: [],
+      availability: "verified"
+    });
   });
 
   it("resolves every documented legacy alias to one canonical authoring ID", () => {

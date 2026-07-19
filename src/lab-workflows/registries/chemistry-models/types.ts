@@ -70,7 +70,7 @@ export interface ChemistryModelImplementationRegistration<
 }
 
 export interface ChemistryModelRegistrySnapshot {
-  readonly snapshotId: "chemistry-models.1.1.0";
+  readonly snapshotId: "chemistry-models.2.0.0";
   readonly entries: readonly ChemistryModelMetadataEntry[];
 }
 

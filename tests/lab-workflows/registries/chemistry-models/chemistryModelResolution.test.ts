@@ -174,7 +174,10 @@ describe("exact chemistry model provider resolution", () => {
 
   it("distinguishes a missing root provider from an unmet dependency", () => {
     expectResolutionError(
-      () => resolveChemistryModelProviders(["chemistry.material_ledger.v1"]),
+      () =>
+        resolveChemistryModelProviders(["chemistry.material_ledger.v1"], {
+          modelRegistry: createChemistryModelRegistry([])
+        }),
       {
         code: CHEMISTRY_MODEL_RESOLUTION_ERROR_CODES.missingProvider,
         capabilityId: "chemistry.material_ledger.v1"

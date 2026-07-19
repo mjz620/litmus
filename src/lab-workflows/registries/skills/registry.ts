@@ -25,14 +25,16 @@ export function deriveSkillAvailability(
 ): SkillAvailability {
   if (definition.restricted) return "restricted";
 
-  const familyVerified = definition.supportedFamilyIds.some((familyId) =>
-    engineRegistry
-      .list()
-      .some(
-        (engine) =>
-          engine.familyId === familyId && engine.availability === "verified"
-      )
-  );
+  const familyVerified =
+    definition.supportedFamilyIds.length === 0 ||
+    definition.supportedFamilyIds.some((familyId) =>
+      engineRegistry
+        .list()
+        .some(
+          (engine) =>
+            engine.familyId === familyId && engine.availability === "verified"
+        )
+    );
   const componentsVerified = definition.requiredComponentIds.every(
     (componentId) => componentRegistry.has(componentId)
   );
@@ -134,7 +136,7 @@ export function createSkillRegistry(
   }
 
   return Object.freeze({
-    snapshotId: "skills.1.0.0" as const,
+    snapshotId: "skills.2.0.0" as const,
     list: () => entries,
     get,
     resolve,

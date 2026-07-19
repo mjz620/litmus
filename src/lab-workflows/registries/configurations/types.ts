@@ -41,8 +41,13 @@ export type ConfigurationSchemaId =
   | "schema.equipment_configuration.erlenmeyer_flask.v1"
   | "schema.equipment_configuration.indicator_bottle.v1"
   | "schema.equipment_configuration.reagent_bottle.v1"
+  | "schema.equipment_configuration.volumetric_pipette.v1"
+  | "schema.equipment_configuration.volumetric_flask.v1"
+  | "schema.equipment_configuration.wash_bottle.v1"
   | "schema.layout_configuration.titration_bench.v1"
+  | "schema.layout_configuration.solution_preparation_bench.v1"
   | "schema.material_initialization.aqueous_solution.v1"
+  | "schema.material_initialization.bounded_concentration.v1"
   | "schema.material_initialization.indicator.v1"
   | "schema.material_initialization.pure_liquid.v1"
   | "schema.model_configuration.strong_acid_strong_base_25ml.v1"
@@ -59,7 +64,10 @@ export type QuantityPresetId =
   | "quantity-preset.phenolphthalein_1_drop.v1"
   | "quantity-preset.phenolphthalein_2_drops.v1"
   | "quantity-preset.sodium_hydroxide_0_100m_25ml.v1"
-  | "quantity-preset.sodium_hydroxide_0_100m_50ml.v1";
+  | "quantity-preset.sodium_hydroxide_0_100m_50ml.v1"
+  | "quantity-preset.sodium_chloride_1_000m_50ml.v1"
+  | "quantity-preset.sodium_chloride_solution_50ml.v1"
+  | "quantity-preset.distilled_water_250ml.v1";
 
 interface ConfigurationRegistryEntryBase {
   readonly id: string;

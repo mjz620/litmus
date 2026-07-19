@@ -223,6 +223,36 @@ describe("generic LabWorkflowSpec v2 runtime scaffold", () => {
     expect(ports.mechanicalAdapters[0].apply).not.toHaveBeenCalled();
   });
 
+  it("reports submitted and effective numeric bounds without weakening rejection", () => {
+    const runtime = assembleGenericLabRuntime(
+      validatedMechanicalWorkflow(),
+      GENERIC_TEST_CONFIG,
+      createTestGenericPorts()
+    );
+    const error = expectRuntimeError(
+      () =>
+        runtime.dispatch(
+          action({
+            parameters: [
+              { key: "reportedML", valueType: "number", value: 50.01 }
+            ]
+          })
+        ),
+      ERROR.parameterInvalid
+    );
+
+    expect(error.details).toEqual({
+      actionId: "action.read_volume.v1",
+      parameterKey: "reportedML",
+      submittedValue: 50.01,
+      registeredMinimum: 0,
+      registeredMaximum: 50,
+      effectiveMinimum: 0,
+      effectiveMaximum: 50
+    });
+    expect(runtime.getState().sequence).toBe(0);
+  });
+
   it("enforces deterministic precondition and safety ports before mechanical mutation", () => {
     for (const testCase of [
       {

@@ -3,6 +3,9 @@ import type { ReagentRegistryEntry } from "./types";
 const ENGINE = ["engine.titration.v1"] as const;
 const FAMILY = ["family.acid_base_titration.v1"] as const;
 const SAFETY = ["safety.virtual_titration_ppe_notice.v1"] as const;
+const SOLUTION_SAFETY = [
+  "safety.virtual_solution_preparation_ppe_notice.v1"
+] as const;
 
 export const REAGENT_REGISTRY_ENTRIES = [
   {
@@ -156,18 +159,88 @@ export const REAGENT_REGISTRY_ENTRIES = [
     ],
     initializationPresetSchemaId:
       "schema.material_initialization.pure_liquid.v1",
-    quantityPresetIds: ["quantity-preset.distilled_water_50ml.v1"],
+    quantityPresetIds: [
+      "quantity-preset.distilled_water_250ml.v1",
+      "quantity-preset.distilled_water_50ml.v1"
+    ],
     safetyPolicyIds: [],
     profileKind: "pure_liquid",
     concentrationM: null,
-    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleContainerComponentIds: [
+      "component.reagent_bottle.v1",
+      "component.wash_bottle.v1"
+    ],
     compatibleEngineIds: ENGINE,
     compatibleFamilyIds: FAMILY,
-    allowedRoleIds: ["rinse_solvent"],
+    allowedRoleIds: ["rinse_solvent", "diluent"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 250 }
+    ],
+    safetyConstraintIds: [],
+    availability: "verified"
+  },
+  {
+    id: "reagent.sodium_chloride_aqueous.v1",
+    version: "1.0.0",
+    displayName: "Sodium chloride solution",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.concentration_dilution.v1"],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.sodium_chloride_solution_50ml.v1"],
+    safetyPolicyIds: SOLUTION_SAFETY,
+    concentrationAuthoring: {
+      configurationSchemaId:
+        "schema.material_initialization.bounded_concentration.v1",
+      unitId: "unit.mol_per_l.v1",
+      minimumDecimalValue: "0.1",
+      maximumDecimalValue: "1",
+      maximumDecimalPlaces: 4,
+      requiredChemistryCapabilityId: "chemistry.concentration_dilution.v1",
+      safetyPolicyIds: SOLUTION_SAFETY
+    },
+    profileKind: "aqueous_solution",
+    concentrationM: null,
+    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: [],
+    allowedRoleIds: ["stock_solution"],
     requestedAmountLimits: [
       { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
     ],
-    safetyConstraintIds: [],
+    safetyConstraintIds: SOLUTION_SAFETY,
+    availability: "verified"
+  },
+  {
+    id: "reagent.sodium_chloride_1_000m.v1",
+    version: "1.0.0",
+    displayName: "1.000 M sodium chloride stock solution",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.concentration_dilution.v1"],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.sodium_chloride_1_000m_50ml.v1"],
+    safetyPolicyIds: SOLUTION_SAFETY,
+    profileKind: "aqueous_solution",
+    concentrationM: 1,
+    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: [],
+    allowedRoleIds: ["stock_solution"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ],
+    safetyConstraintIds: SOLUTION_SAFETY,
     availability: "verified"
   }
 ] as const satisfies readonly ReagentRegistryEntry[];

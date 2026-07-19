@@ -16,9 +16,7 @@ import {
   toLegacyCoachEvents,
   toLegacySemanticEvent
 } from "../../../src/lab-workflows/events";
-import {
-  assembleGenericLabRuntime
-} from "../../../src/lab-workflows/runtime/generic";
+import { assembleGenericLabRuntime } from "../../../src/lab-workflows/runtime/generic";
 import {
   GENERIC_TEST_CONFIG,
   READ_VOLUME_ACTION,
@@ -53,7 +51,9 @@ describe("semantic event envelope v2", () => {
     const first = envelopes();
     const second = envelopes();
     expect(first).toEqual(second);
-    expect(first.map(({ eventId, sequence }) => ({ eventId, sequence }))).toEqual([
+    expect(
+      first.map(({ eventId, sequence }) => ({ eventId, sequence }))
+    ).toEqual([
       { eventId: `${SESSION_ID}:event:0`, sequence: 0 },
       { eventId: `${SESSION_ID}:event:1`, sequence: 1 }
     ]);
@@ -69,9 +69,7 @@ describe("semantic event envelope v2", () => {
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first[0]?.payload)).toBe(true);
     expect(
-      semanticEventEnvelopeV2Schema.parse(
-        JSON.parse(JSON.stringify(first[0]))
-      )
+      semanticEventEnvelopeV2Schema.parse(JSON.parse(JSON.stringify(first[0])))
     ).toEqual(first[0]);
   });
 
@@ -102,9 +100,7 @@ describe("semantic event envelope v2", () => {
     const envelope = envelopes()[0]!;
     const experiment = {
       id: "test",
-      skills: [
-        { id: "meniscus_reading", label: "Read", description: "Read" }
-      ]
+      skills: [{ id: "meniscus_reading", label: "Read", description: "Read" }]
     };
     const model = newStudentModel(SESSION_ID, experiment);
     expect(applyEnvelopeEvidence(model, envelope)).toEqual(
@@ -188,7 +184,10 @@ describe("semantic event envelope v2", () => {
     );
     const initial = runtime.getState();
     expect(() =>
-      runtime.dispatch({ ...READ_VOLUME_ACTION, permissionId: "permission.invalid" })
+      runtime.dispatch({
+        ...READ_VOLUME_ACTION,
+        permissionId: "permission.invalid"
+      })
     ).toThrow();
     expect(runtime.getState()).toBe(initial);
     expect(runtime.getState().eventSequence).toBe(0);

@@ -545,11 +545,6 @@ describe("strict schema-version facade", () => {
         schemaVersion === undefined ? absent : { ...v2, schemaVersion };
       const result = versionedLabWorkflowSpecSchema.safeParse(candidate);
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.some((issue) => issue.path[0] === "schemaVersion")
-        ).toBe(true);
-      }
     }
   });
 

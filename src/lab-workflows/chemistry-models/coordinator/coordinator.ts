@@ -112,9 +112,13 @@ function modelStateFor(
 ): GenericModelState {
   const matches = states.filter(({ modelId }) => modelId === binding.modelId);
   if (matches.length === 0) {
-    fail(ERROR.modelStateMissing, `Model state ${binding.modelId} is missing.`, {
-      modelId: binding.modelId
-    });
+    fail(
+      ERROR.modelStateMissing,
+      `Model state ${binding.modelId} is missing.`,
+      {
+        modelId: binding.modelId
+      }
+    );
   }
   if (matches.length > 1) {
     fail(
@@ -146,9 +150,7 @@ function deriveProjection(
     const state = modelStateFor(modelStates, binding);
     let derived: unknown;
     try {
-      derived = implementation.deriveObservables(
-        deepFreeze([...state.fields])
-      );
+      derived = implementation.deriveObservables(deepFreeze([...state.fields]));
     } catch {
       fail(
         ERROR.observableDerivationRejected,
@@ -289,7 +291,11 @@ export function createChemistryModelCoordinator(
       return deriveProjection(context.program, modules, previousStates);
     }
     const nextStates: GenericModelState[] = [];
-    for (let index = 0; index < context.program.chemistryModels.length; index += 1) {
+    for (
+      let index = 0;
+      index < context.program.chemistryModels.length;
+      index += 1
+    ) {
       const binding = context.program.chemistryModels[index]!;
       const implementation = modules.get(binding.modelId)!;
       const previous = previousStates[index]!;

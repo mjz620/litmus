@@ -62,7 +62,7 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "capability.transfer_liquid.v1",
     "Transfer liquid",
     "Moves a bounded quantity between compatible containers.",
-    "declared"
+    "verified"
   ),
   equipment(
     "capability.measure_volume.v1",
@@ -80,7 +80,7 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "capability.mix.v1",
     "Mix",
     "Supports a deterministic mechanical mixing operation.",
-    "declared"
+    "verified"
   ),
   equipment(
     "capability.mount.v1",
@@ -98,7 +98,7 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "capability.fill_to_mark.v1",
     "Fill to mark",
     "Supports filling a volumetric vessel to its registered calibration mark.",
-    "declared"
+    "verified"
   ),
   chemistry(
     "chemistry.material_ledger.v1",
@@ -121,7 +121,8 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
   chemistry(
     "chemistry.concentration_dilution.v1",
     "Concentration and dilution",
-    "Derives concentration changes for supported dilution transitions."
+    "Derives concentration changes for supported dilution transitions.",
+    "verified"
   ),
   chemistry(
     "chemistry.acid_base_equilibrium.v1",

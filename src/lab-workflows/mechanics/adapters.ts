@@ -310,6 +310,263 @@ function read(
   return { equipment: context.equipment, materialAction: null, events: [] };
 }
 
+function transferLiquid(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition {
+  const source = context.source;
+  const target = context.targets[0] ?? null;
+  if (!source || !target || context.targets.length !== 1) {
+    fail(
+      ERROR.invalidConnection,
+      "Liquid transfer requires one source and one target."
+    );
+  }
+  const sourceIsBottle =
+    source.equipmentDefinitionId === "component.reagent_bottle.v1";
+  const sourceIsPipette =
+    source.equipmentDefinitionId === "component.volumetric_pipette.v1";
+  const targetIsPipette =
+    target.equipmentDefinitionId === "component.volumetric_pipette.v1";
+  const targetIsFlask =
+    target.equipmentDefinitionId === "component.volumetric_flask.v1";
+  if (
+    (!sourceIsBottle || !targetIsPipette) &&
+    (!sourceIsPipette || !targetIsFlask)
+  ) {
+    fail(
+      ERROR.invalidConnection,
+      "That liquid-transfer connection is not registered.",
+      {
+        actionId: context.action.actionId
+      }
+    );
+  }
+
+  const amount = numberParameter(context.action.parameters, "volumeML");
+  const material = sourceLiquid(context, source.instanceId);
+  const availableAtSource = materialAmountAt(
+    context.materialLedger,
+    material.materialInstanceId,
+    source.instanceId
+  );
+  if (
+    quantityToIntegerUnits(amount, "unit.ml.v1") >
+    quantityToIntegerUnits(availableAtSource, "unit.ml.v1")
+  ) {
+    fail(ERROR.materialUnavailable, "Transfer exceeds source availability.", {
+      requestedML: amount,
+      availableML: availableAtSource
+    });
+  }
+
+  const targetVolumeKey = targetIsPipette ? "availableML" : "totalVolumeML";
+  const targetVolumeML = numericStateField(target, targetVolumeKey);
+  const targetCapacityML = numericStateField(target, "capacityML");
+  if (
+    quantityToIntegerUnits(targetVolumeML + amount, "unit.ml.v1") >
+    quantityToIntegerUnits(targetCapacityML, "unit.ml.v1")
+  ) {
+    fail(ERROR.invalidParameter, "Transfer exceeds target capacity.", {
+      requestedML: amount,
+      availableCapacityML: targetCapacityML - targetVolumeML
+    });
+  }
+
+  const replacements: GenericEquipmentState[] = [];
+  if (sourceIsPipette) {
+    replacements.push(
+      withStateFields(source, {
+        availableML: numericStateField(source, "availableML") - amount,
+        deliveredML: numericStateField(source, "deliveredML") + amount
+      })
+    );
+  }
+  replacements.push(
+    targetIsPipette
+      ? withStateFields(target, { availableML: targetVolumeML + amount })
+      : withStateFields(target, {
+          totalVolumeML: targetVolumeML + amount,
+          markErrorML: targetVolumeML + amount - targetCapacityML,
+          filledToMark: false,
+          withinMarkTolerance: false,
+          mixed: false
+        })
+  );
+
+  return {
+    equipment: replaceEquipment(context.equipment, replacements),
+    materialAction: executedTransfer(
+      context,
+      material,
+      amount,
+      source.instanceId,
+      target.instanceId
+    ),
+    events: [
+      {
+        type: "transfer_liquid",
+        tSim: 0,
+        observation: { volumeML: amount },
+        flags: [],
+        evidence: []
+      }
+    ]
+  };
+}
+
+function rinseTransferDevice(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition {
+  const { source, target } = assertConnection(
+    context,
+    "component.reagent_bottle.v1",
+    "component.volumetric_pipette.v1"
+  );
+  if (!target)
+    fail(ERROR.invalidConnection, "Pipette rinse target is missing.");
+  if (numericStateField(target, "availableML") !== 0) {
+    fail(
+      ERROR.invalidParameter,
+      "The pipette must be empty before conditioning."
+    );
+  }
+  const material = sourceLiquid(context, source.instanceId);
+  return {
+    equipment: replaceEquipment(context.equipment, [
+      withStateFields(target, {
+        conditionedMaterialProfileId: material.materialProfileId,
+        residualFilmPresent: true
+      })
+    ]),
+    materialAction: null,
+    events: [
+      {
+        type: "rinse_transfer_device",
+        tSim: 0,
+        observation: { materialProfileId: material.materialProfileId },
+        flags: [],
+        evidence: []
+      }
+    ]
+  };
+}
+
+function fillToMark(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition {
+  const { source, target } = assertConnection(
+    context,
+    "component.wash_bottle.v1",
+    "component.volumetric_flask.v1"
+  );
+  if (!target)
+    fail(ERROR.invalidConnection, "Volumetric flask target is missing.");
+  const material = sourceLiquid(context, source.instanceId);
+  if (material.materialProfileId !== "reagent.distilled_water.v1") {
+    fail(
+      ERROR.materialUnavailable,
+      "Fill-to-mark requires registered distilled water."
+    );
+  }
+  const finalVolumeML = numberParameter(
+    context.action.parameters,
+    "finalVolumeML"
+  );
+  const currentVolumeML = numericStateField(target, "totalVolumeML");
+  const markVolumeML = numericStateField(target, "capacityML");
+  if (finalVolumeML <= currentVolumeML || finalVolumeML > markVolumeML) {
+    fail(
+      ERROR.invalidParameter,
+      "Final volume must increase the flask contents without exceeding capacity.",
+      { finalVolumeML, currentVolumeML, markVolumeML }
+    );
+  }
+  const amount = finalVolumeML - currentVolumeML;
+  const availableML = materialAmountAt(
+    context.materialLedger,
+    material.materialInstanceId,
+    source.instanceId
+  );
+  if (
+    quantityToIntegerUnits(amount, "unit.ml.v1") >
+    quantityToIntegerUnits(availableML, "unit.ml.v1")
+  ) {
+    fail(
+      ERROR.materialUnavailable,
+      "Fill-to-mark exceeds diluent availability.",
+      {
+        requestedML: amount,
+        availableML
+      }
+    );
+  }
+  const markErrorML = finalVolumeML - markVolumeML;
+  const toleranceML = numericStateField(target, "markToleranceML");
+  const withinTolerance = Math.abs(markErrorML) <= toleranceML;
+  return {
+    equipment: replaceEquipment(context.equipment, [
+      withStateFields(source, { availableML: availableML - amount }),
+      withStateFields(target, {
+        totalVolumeML: finalVolumeML,
+        markErrorML,
+        filledToMark: true,
+        withinMarkTolerance: withinTolerance,
+        mixed: false
+      })
+    ]),
+    materialAction: executedTransfer(
+      context,
+      material,
+      amount,
+      source.instanceId,
+      target.instanceId
+    ),
+    events: [
+      {
+        type: "fill_to_mark",
+        tSim: 0,
+        observation: {
+          finalVolumeML,
+          markVolumeML,
+          markErrorML,
+          withinTolerance
+        },
+        flags: [],
+        evidence: []
+      }
+    ]
+  };
+}
+
+function mixSolution(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition {
+  const { source } = assertConnection(context, "component.volumetric_flask.v1");
+  if (numericStateField(source, "totalVolumeML") <= 0) {
+    fail(ERROR.materialUnavailable, "The volumetric flask is empty.");
+  }
+  const inversions = numberParameter(context.action.parameters, "inversions");
+  if (!Number.isInteger(inversions)) {
+    fail(ERROR.invalidParameter, "Inversions must be a whole number.");
+  }
+  const mixCount = numericStateField(source, "mixCount") + inversions;
+  return {
+    equipment: replaceEquipment(context.equipment, [
+      withStateFields(source, { mixed: true, mixCount })
+    ]),
+    materialAction: null,
+    events: [
+      {
+        type: "mix_solution",
+        tSim: 0,
+        observation: { inversions, mixCount },
+        flags: [],
+        evidence: []
+      }
+    ]
+  };
+}
+
 function checkPreconditions(
   context: Readonly<GenericMechanicalContext>
 ): GenericPortCheck {
@@ -378,6 +635,49 @@ function checkPreconditions(
         }
         break;
       }
+      case "precondition.equipment.pipette_empty_before_rinse.v1": {
+        const target = context.targets[0];
+        if (!target || numericStateField(target, "availableML") !== 0) {
+          return reject(
+            precondition.id,
+            "The pipette must be empty before conditioning."
+          );
+        }
+        break;
+      }
+      case "precondition.equipment.source_has_transfer_volume.v1": {
+        const amount = numberParameter(context.action.parameters, "volumeML");
+        if (
+          !context.source ||
+          numericStateField(context.source, "availableML") < amount
+        ) {
+          return reject(
+            precondition.id,
+            "The source lacks the requested transfer volume."
+          );
+        }
+        break;
+      }
+      case "precondition.equipment.target_has_transfer_capacity.v1": {
+        const target = context.targets[0];
+        const amount = numberParameter(context.action.parameters, "volumeML");
+        if (
+          !target ||
+          numericStateField(target, "totalVolumeML") + amount >
+            numericStateField(target, "capacityML")
+        ) {
+          return reject(precondition.id, "The target lacks transfer capacity.");
+        }
+        break;
+      }
+      case "precondition.equipment.volumetric_flask_has_liquid.v1":
+        if (
+          !context.source ||
+          numericStateField(context.source, "totalVolumeML") <= 0
+        ) {
+          return reject(precondition.id, "The volumetric flask is empty.");
+        }
+        break;
       default:
         return reject(
           precondition.id,
@@ -461,6 +761,81 @@ export const REAGENT_BOTTLE_MECHANICAL_ADAPTER = initializerAdapter(
 export const INDICATOR_BOTTLE_MECHANICAL_ADAPTER = initializerAdapter(
   "mechanical-adapter.indicator_bottle.v1",
   "component.indicator_bottle.v1"
+);
+
+export const VOLUMETRIC_PIPETTE_MECHANICAL_ADAPTER: GenericMechanicalAdapterPort =
+  Object.freeze({
+    adapterId: "mechanical-adapter.volumetric_pipette.v1",
+    adapterVersion: "1.0.0",
+    supportedEquipmentDefinitionIds: Object.freeze([
+      "component.volumetric_pipette.v1"
+    ]),
+    supportedActionIds: Object.freeze([
+      "action.rinse_transfer_device.v1",
+      "action.transfer_liquid.v1"
+    ]),
+    supportedPreconditionIds: Object.freeze([
+      "precondition.equipment.pipette_empty_before_rinse.v1",
+      "precondition.equipment.source_has_transfer_volume.v1",
+      "precondition.equipment.target_has_transfer_capacity.v1"
+    ]),
+    initializeEquipment: initializeLiquidEquipmentState,
+    checkPreconditions,
+    apply(context: Readonly<GenericMechanicalContext>) {
+      switch (context.action.actionId) {
+        case "action.rinse_transfer_device.v1":
+          return rinseTransferDevice(context);
+        case "action.transfer_liquid.v1":
+          return transferLiquid(context);
+        default:
+          fail(
+            ERROR.unsupportedAction,
+            `Unsupported action ${context.action.actionId}.`,
+            {
+              actionId: context.action.actionId
+            }
+          );
+      }
+    }
+  });
+
+export const VOLUMETRIC_FLASK_MECHANICAL_ADAPTER: GenericMechanicalAdapterPort =
+  Object.freeze({
+    adapterId: "mechanical-adapter.volumetric_flask.v1",
+    adapterVersion: "1.0.0",
+    supportedEquipmentDefinitionIds: Object.freeze([
+      "component.volumetric_flask.v1"
+    ]),
+    supportedActionIds: Object.freeze([
+      "action.fill_to_mark.v1",
+      "action.mix_solution.v1"
+    ]),
+    supportedPreconditionIds: Object.freeze([
+      "precondition.equipment.volumetric_flask_has_liquid.v1"
+    ]),
+    initializeEquipment: initializeLiquidEquipmentState,
+    checkPreconditions,
+    apply(context: Readonly<GenericMechanicalContext>) {
+      switch (context.action.actionId) {
+        case "action.fill_to_mark.v1":
+          return fillToMark(context);
+        case "action.mix_solution.v1":
+          return mixSolution(context);
+        default:
+          fail(
+            ERROR.unsupportedAction,
+            `Unsupported action ${context.action.actionId}.`,
+            {
+              actionId: context.action.actionId
+            }
+          );
+      }
+    }
+  });
+
+export const WASH_BOTTLE_MECHANICAL_ADAPTER = initializerAdapter(
+  "mechanical-adapter.wash_bottle.v1",
+  "component.wash_bottle.v1"
 );
 
 export function currentProjectedVolumeML(

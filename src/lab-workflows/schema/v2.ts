@@ -22,6 +22,7 @@ import {
 } from "./conditions";
 
 export const LAB_WORKFLOW_SCHEMA_VERSION_V2 = "2.0.0" as const;
+export const LAB_WORKFLOW_SCHEMA_VERSION_V2_1 = "2.1.0" as const;
 export const LEGACY_RUNTIME_ADAPTER_IDS = Object.freeze([
   "runtime-adapter.titration.v1"
 ] as const);
@@ -94,6 +95,25 @@ export const materialBindingV2Schema = z.strictObject({
   materialProfileId: registryIdSchema,
   containerInstanceId: workflowLocalIdSchema,
   quantityPresetId: registryIdSchema
+});
+
+export const canonicalConcentrationDecimalSchema = z
+  .string()
+  .min(1)
+  .max(32)
+  .regex(/^(0|[1-9]\d*)(?:\.\d*[1-9])?$/);
+
+export const boundedConcentrationInitializationV2_1Schema = z.strictObject({
+  kind: z.literal("bounded_concentration"),
+  configurationSchemaId: registryIdSchema,
+  concentration: z.strictObject({
+    decimalValue: canonicalConcentrationDecimalSchema,
+    unitId: registryIdSchema
+  })
+});
+
+export const materialBindingV2_1Schema = materialBindingV2Schema.extend({
+  initialization: boundedConcentrationInitializationV2_1Schema.optional()
 });
 
 export const physicalPlacementV2Schema = z.strictObject({
@@ -241,9 +261,7 @@ export const resolvedChemistryModelV2Schema = z.strictObject({
     .max(LIMITS.referenceCount)
 });
 
-export const validationResultV2Schema = z.strictObject({
-  artifactSchemaVersion: z.literal("2.0.0"),
-  validatedSchemaVersion: z.literal("2.0.0"),
+const validationResultShapeV2 = {
   validatorVersion: semanticVersionSchema,
   checkedAt: z.string().datetime({ offset: true }),
   canonicalSpecHash: sha256HashSchema,
@@ -260,10 +278,26 @@ export const validationResultV2Schema = z.strictObject({
   assignmentEligible: z.boolean(),
   issues: z.array(validationIssueSchema).max(LIMITS.validationIssueCount),
   passedCheckIds: referenceListSchema
+};
+
+export const validationResultV2_0Schema = z.strictObject({
+  artifactSchemaVersion: z.literal("2.0.0"),
+  validatedSchemaVersion: z.literal("2.0.0"),
+  ...validationResultShapeV2
 });
 
-const labWorkflowBaseShapeV2 = {
-  schemaVersion: z.literal(LAB_WORKFLOW_SCHEMA_VERSION_V2),
+export const validationResultV2_1Schema = z.strictObject({
+  artifactSchemaVersion: z.literal("2.1.0"),
+  validatedSchemaVersion: z.literal("2.1.0"),
+  ...validationResultShapeV2
+});
+
+export const validationResultV2Schema = z.discriminatedUnion(
+  "validatedSchemaVersion",
+  [validationResultV2_0Schema, validationResultV2_1Schema]
+);
+
+const labWorkflowSharedShapeV2 = {
   id: registryIdSchema,
   revision: z.number().finite().int().min(1).max(1_000_000),
   sourceRequest: longTextSchema,
@@ -271,7 +305,6 @@ const labWorkflowBaseShapeV2 = {
   catalog: labCatalogV2Schema.optional(),
   objectiveIds: referenceListSchema,
   equipment: z.array(equipmentInstanceSpecV2Schema).max(LIMITS.equipmentCount),
-  materials: z.array(materialBindingV2Schema).max(LIMITS.materialCount),
   layout: physicalLayoutSpecV2Schema,
   requiredChemistryCapabilityIds: z
     .array(z.enum(CHEMISTRY_CAPABILITY_IDS))
@@ -290,50 +323,104 @@ const labWorkflowBaseShapeV2 = {
   provenance: migrationProvenanceV2Schema.optional()
 };
 
-export const labWorkflowDraftV2Schema = z.strictObject({
-  ...labWorkflowBaseShapeV2,
+const labWorkflowBaseShapeV2_0 = {
+  schemaVersion: z.literal(LAB_WORKFLOW_SCHEMA_VERSION_V2),
+  ...labWorkflowSharedShapeV2,
+  materials: z.array(materialBindingV2Schema).max(LIMITS.materialCount)
+};
+
+const labWorkflowBaseShapeV2_1 = {
+  schemaVersion: z.literal(LAB_WORKFLOW_SCHEMA_VERSION_V2_1),
+  ...labWorkflowSharedShapeV2,
+  materials: z.array(materialBindingV2_1Schema).max(LIMITS.materialCount)
+};
+
+export const labWorkflowDraftV2_0Schema = z.strictObject({
+  ...labWorkflowBaseShapeV2_0,
   supportStatus: z.literal("draft_unvalidated"),
   validation: z.null(),
   judgeCritique: z.null()
 });
 
-export const validatedLabWorkflowSpecV2Schema = z.strictObject({
-  ...labWorkflowBaseShapeV2,
+export const labWorkflowDraftV2_1Schema = z.strictObject({
+  ...labWorkflowBaseShapeV2_1,
+  supportStatus: z.literal("draft_unvalidated"),
+  validation: z.null(),
+  judgeCritique: z.null()
+});
+
+export const labWorkflowDraftV2Schema = z.discriminatedUnion("schemaVersion", [
+  labWorkflowDraftV2_0Schema,
+  labWorkflowDraftV2_1Schema
+]);
+
+export const validatedLabWorkflowSpecV2_0Schema = z.strictObject({
+  ...labWorkflowBaseShapeV2_0,
   supportStatus: validatedWorkflowSupportStatusSchema,
-  validation: validationResultV2Schema,
+  validation: validationResultV2_0Schema,
   judgeCritique: judgeCritiqueSchema.nullable()
 });
 
-export const labWorkflowSpecV2Schema = z.discriminatedUnion("supportStatus", [
-  labWorkflowDraftV2Schema,
-  validatedLabWorkflowSpecV2Schema
+export const validatedLabWorkflowSpecV2_1Schema = z.strictObject({
+  ...labWorkflowBaseShapeV2_1,
+  supportStatus: validatedWorkflowSupportStatusSchema,
+  validation: validationResultV2_1Schema,
+  judgeCritique: judgeCritiqueSchema.nullable()
+});
+
+export const validatedLabWorkflowSpecV2Schema = z.discriminatedUnion(
+  "schemaVersion",
+  [validatedLabWorkflowSpecV2_0Schema, validatedLabWorkflowSpecV2_1Schema]
+);
+
+export const labWorkflowSpecV2_0Schema = z.discriminatedUnion("supportStatus", [
+  labWorkflowDraftV2_0Schema,
+  validatedLabWorkflowSpecV2_0Schema
+]);
+
+export const labWorkflowSpecV2_1Schema = z.discriminatedUnion("supportStatus", [
+  labWorkflowDraftV2_1Schema,
+  validatedLabWorkflowSpecV2_1Schema
+]);
+
+export const labWorkflowSpecV2Schema = z.union([
+  labWorkflowSpecV2_0Schema,
+  labWorkflowSpecV2_1Schema
 ]);
 
 /**
  * Strict schema-version facades. Existing unversioned exports stay pinned to
  * v1 until version-aware hashing and validation land in LC2-106/107.
  */
-export const versionedLabWorkflowDraftSchema = z.discriminatedUnion(
-  "schemaVersion",
-  [labWorkflowDraftV1Schema, labWorkflowDraftV2Schema]
-);
+export const versionedLabWorkflowDraftSchema = z.union([
+  labWorkflowDraftV1Schema,
+  labWorkflowDraftV2_0Schema,
+  labWorkflowDraftV2_1Schema
+]);
 
-export const versionedValidatedLabWorkflowSpecSchema = z.discriminatedUnion(
-  "schemaVersion",
-  [validatedLabWorkflowSpecV1Schema, validatedLabWorkflowSpecV2Schema]
-);
+export const versionedValidatedLabWorkflowSpecSchema = z.union([
+  validatedLabWorkflowSpecV1Schema,
+  validatedLabWorkflowSpecV2_0Schema,
+  validatedLabWorkflowSpecV2_1Schema
+]);
 
-export const versionedLabWorkflowSpecSchema = z.discriminatedUnion(
-  "schemaVersion",
-  [labWorkflowSpecV1Schema, labWorkflowSpecV2Schema]
-);
+export const versionedLabWorkflowSpecSchema = z.union([
+  labWorkflowSpecV1Schema,
+  labWorkflowSpecV2_0Schema,
+  labWorkflowSpecV2_1Schema
+]);
 
 export type LabMetadataV2 = z.infer<typeof labMetadataV2Schema>;
 export type LabCatalogV2 = z.infer<typeof labCatalogV2Schema>;
 export type EquipmentInstanceSpecV2 = z.infer<
   typeof equipmentInstanceSpecV2Schema
 >;
-export type MaterialBindingV2 = z.infer<typeof materialBindingV2Schema>;
+export type MaterialBindingV2_0 = z.infer<typeof materialBindingV2Schema>;
+export type MaterialBindingV2_1 = z.infer<typeof materialBindingV2_1Schema>;
+export type MaterialBindingV2 = MaterialBindingV2_0 | MaterialBindingV2_1;
+export type BoundedConcentrationInitializationV2_1 = z.infer<
+  typeof boundedConcentrationInitializationV2_1Schema
+>;
 export type PhysicalPlacementV2 = z.infer<typeof physicalPlacementV2Schema>;
 export type PhysicalLayoutSpecV2 = z.infer<typeof physicalLayoutSpecV2Schema>;
 export type PermittedActionSpecV2 = z.infer<typeof permittedActionSpecV2Schema>;
@@ -344,12 +431,24 @@ export type LegacyCompatibilityDescriptorV2 = z.infer<
   typeof legacyCompatibilityDescriptorV2Schema
 >;
 export type MigrationProvenanceV2 = z.infer<typeof migrationProvenanceV2Schema>;
-export type ValidationResultV2 = z.infer<typeof validationResultV2Schema>;
-export type LabWorkflowDraftV2 = z.infer<typeof labWorkflowDraftV2Schema>;
-export type ValidatedLabWorkflowSpecV2 = z.infer<
-  typeof validatedLabWorkflowSpecV2Schema
+export type ValidationResultV2_0 = z.infer<typeof validationResultV2_0Schema>;
+export type ValidationResultV2_1 = z.infer<typeof validationResultV2_1Schema>;
+export type ValidationResultV2 = ValidationResultV2_0 | ValidationResultV2_1;
+export type LabWorkflowDraftV2_0 = z.infer<typeof labWorkflowDraftV2_0Schema>;
+export type LabWorkflowDraftV2_1 = z.infer<typeof labWorkflowDraftV2_1Schema>;
+export type LabWorkflowDraftV2 = LabWorkflowDraftV2_0 | LabWorkflowDraftV2_1;
+export type ValidatedLabWorkflowSpecV2_0 = z.infer<
+  typeof validatedLabWorkflowSpecV2_0Schema
 >;
-export type LabWorkflowSpecV2 = z.infer<typeof labWorkflowSpecV2Schema>;
+export type ValidatedLabWorkflowSpecV2_1 = z.infer<
+  typeof validatedLabWorkflowSpecV2_1Schema
+>;
+export type ValidatedLabWorkflowSpecV2 =
+  | ValidatedLabWorkflowSpecV2_0
+  | ValidatedLabWorkflowSpecV2_1;
+export type LabWorkflowSpecV2_0 = z.infer<typeof labWorkflowSpecV2_0Schema>;
+export type LabWorkflowSpecV2_1 = z.infer<typeof labWorkflowSpecV2_1Schema>;
+export type LabWorkflowSpecV2 = LabWorkflowSpecV2_0 | LabWorkflowSpecV2_1;
 export type VersionedLabWorkflowDraft = z.infer<
   typeof versionedLabWorkflowDraftSchema
 >;

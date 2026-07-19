@@ -66,9 +66,7 @@ describe("generic liquid runtime integration", () => {
       status: "runnable",
       runnable: true
     });
-    expect(validation.issues).toEqual([
-      expect.objectContaining({ code: "validation.runtime_unavailable.v2" })
-    ]);
+    expect(validation.issues).toEqual([]);
     const runtimePorts = ports();
     const runtime = assembleGenericLabRuntime(
       validation.spec,

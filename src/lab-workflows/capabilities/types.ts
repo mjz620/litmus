@@ -30,7 +30,7 @@ export type CapabilityDefinition =
   | ChemistryCapabilityDefinition;
 
 export interface CapabilityRegistrySnapshot {
-  readonly snapshotId: "capabilities.1.1.0";
+  readonly snapshotId: "capabilities.2.0.0";
   readonly entries: readonly CapabilityDefinition[];
 }
 

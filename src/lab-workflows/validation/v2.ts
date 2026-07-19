@@ -4,6 +4,10 @@ import { LEGACY_TITRATION_RUNTIME_ADAPTER } from "../adapters/titration/metadata
 import { capabilityRegistry, type CapabilityRegistry } from "../capabilities";
 import { hashLabWorkflowSpec, labWorkflowHashMatches } from "../hash";
 import {
+  BoundedConcentrationError,
+  canonicalizeBoundedConcentrationDecimal
+} from "../material-initialization";
+import {
   actionEventContractRegistry,
   actionParameterSchemaRegistry,
   actionRegistry,
@@ -48,6 +52,11 @@ import {
   type ReagentRegistryEntry
 } from "../registries/reagents";
 import { safetyRegistry, type SafetyRegistryEntry } from "../registries/safety";
+import {
+  scenePlacementRegistry,
+  scenePlacementsOverlap,
+  type VerifiedScenePlacement
+} from "../registries/scene-placements";
 import { skillRegistry, type SkillRegistry } from "../registries/skills";
 import {
   validationIssueSchema,
@@ -63,13 +72,14 @@ import {
   labWorkflowSpecV2Schema,
   validatedLabWorkflowSpecV2Schema,
   validationResultV2Schema,
+  validationResultV2_0Schema,
   type LabWorkflowDraftV2,
   type LabWorkflowSpecV2,
   type ValidatedLabWorkflowSpecV2,
   type ValidationResultV2
 } from "../schema/v2";
 
-export const LAB_WORKFLOW_VALIDATOR_VERSION_V2 = "2.0.0" as const;
+export const LAB_WORKFLOW_VALIDATOR_VERSION_V2 = "2.2.0" as const;
 
 export const WORKFLOW_VALIDATION_CHECK_IDS_V2 = Object.freeze({
   schema: "check.schema.v2",
@@ -104,7 +114,12 @@ export const WORKFLOW_VALIDATION_ISSUE_CODES_V2 = Object.freeze({
   materialUsageIncompatible: "validation.material_usage_incompatible.v2",
   materialContainerIncompatible:
     "validation.material_container_incompatible.v2",
+  materialContainerExclusive: "validation.material_container_exclusive.v2",
   quantityIncompatible: "validation.quantity_incompatible.v2",
+  materialInitializationMissing:
+    "validation.material_initialization_missing.v2",
+  materialInitializationInvalid:
+    "validation.material_initialization_invalid.v2",
   capacityExceeded: "validation.capacity_exceeded.v2",
   actionSourceIncompatible: "validation.action_source_incompatible.v2",
   actionTargetIncompatible: "validation.action_target_incompatible.v2",
@@ -174,6 +189,7 @@ export interface LabWorkflowV2RegistryContext {
   readonly skills: SkillRegistry;
   readonly safety: SupportingRegistry<SafetyRegistryEntry>;
   readonly engines: SupportingRegistry<EngineRegistryEntry>;
+  readonly scenePlacements: SupportingRegistry<VerifiedScenePlacement>;
 }
 
 export const PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES: LabWorkflowV2RegistryContext =
@@ -192,7 +208,8 @@ export const PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES: LabWorkflowV2RegistryContext
     eventTypes: eventTypeRegistry,
     skills: skillRegistry,
     safety: safetyRegistry,
-    engines: engineRegistry
+    engines: engineRegistry,
+    scenePlacements: scenePlacementRegistry
   });
 
 export interface LabWorkflowV2ValidationOptions {
@@ -451,7 +468,8 @@ function registrySnapshots(
     eventTypes: registries.eventTypes.snapshotId,
     skills: registries.skills.snapshotId,
     safety: registries.safety.snapshotId,
-    engines: registries.engines.snapshotId
+    engines: registries.engines.snapshotId,
+    scenePlacements: registries.scenePlacements.snapshotId
   });
 }
 
@@ -541,6 +559,12 @@ function validateEquipment(context: ValidationContext): void {
   const components = mapById(context.registries.components.list());
   const capabilities = mapById(context.registries.capabilities.listEquipment());
   const configEntries = mapById(context.registries.configurations.list());
+  const scenePlacements = mapById(context.registries.scenePlacements.list());
+  const resolvedScenePlacements: {
+    readonly index: number;
+    readonly equipmentInstanceId: string;
+    readonly placement: Readonly<VerifiedScenePlacement>;
+  }[] = [];
   const layoutSchema = resolveConfiguration(
     context,
     spec.layout.configurationSchemaId,
@@ -753,7 +777,110 @@ function validateEquipment(context: ValidationContext): void {
         );
       }
     }
+    const scenePlacement = scenePlacements.get(placement.placementSlotId);
+    if (!scenePlacement) {
+      addIssue(
+        context,
+        3,
+        CHECK.equipment,
+        ISSUE.layoutIncompatible,
+        `${path}.placementSlotId`,
+        `${placement.placementSlotId} has no verified 3D scene pose.`,
+        {
+          registryId: placement.placementSlotId,
+          suggestions: context.registries.scenePlacements
+            .list()
+            .filter(
+              (candidate) =>
+                candidate.equipmentDefinitionId ===
+                equipment.equipmentDefinitionId
+            )
+            .map(({ id }) => id)
+        }
+      );
+    } else if (
+      entry &&
+      (scenePlacement.equipmentDefinitionId !== entry.id ||
+        scenePlacement.visualAdapterDefinitionId !==
+          entry.visualAdapterDefinitionId)
+    ) {
+      addIssue(
+        context,
+        3,
+        CHECK.equipment,
+        ISSUE.layoutIncompatible,
+        `${path}.placementSlotId`,
+        `${scenePlacement.id} does not match the equipment visual adapter.`,
+        { registryId: scenePlacement.id }
+      );
+    } else {
+      resolvedScenePlacements.push({
+        index,
+        equipmentInstanceId: placement.equipmentInstanceId,
+        placement: scenePlacement
+      });
+    }
   });
+
+  for (
+    let leftIndex = 0;
+    leftIndex < resolvedScenePlacements.length;
+    leftIndex += 1
+  ) {
+    const left = resolvedScenePlacements[leftIndex];
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < resolvedScenePlacements.length;
+      rightIndex += 1
+    ) {
+      const right = resolvedScenePlacements[rightIndex];
+      const sameAlignedAssembly =
+        left.placement.assemblyId !== null &&
+        left.placement.assemblyId === right.placement.assemblyId &&
+        left.placement.anchorId === right.placement.anchorId &&
+        left.placement.equipmentDefinitionId !==
+          right.placement.equipmentDefinitionId;
+      if (
+        !sameAlignedAssembly &&
+        scenePlacementsOverlap(left.placement, right.placement)
+      ) {
+        addIssue(
+          context,
+          3,
+          CHECK.equipment,
+          ISSUE.layoutIncompatible,
+          `layout.placements[${right.index}].placementSlotId`,
+          `${right.placement.displayName} overlaps ${left.placement.displayName}.`,
+          { registryId: right.placement.id }
+        );
+      }
+    }
+  }
+
+  const assemblyAnchors = new Map<string, Set<string>>();
+  for (const resolved of resolvedScenePlacements) {
+    if (!resolved.placement.assemblyId) continue;
+    const anchors =
+      assemblyAnchors.get(resolved.placement.assemblyId) ?? new Set();
+    anchors.add(resolved.placement.anchorId);
+    assemblyAnchors.set(resolved.placement.assemblyId, anchors);
+  }
+  for (const [assemblyId, anchors] of assemblyAnchors) {
+    if (anchors.size <= 1) continue;
+    const mismatch = resolvedScenePlacements.find(
+      ({ placement }) => placement.assemblyId === assemblyId
+    );
+    if (!mismatch) continue;
+    addIssue(
+      context,
+      3,
+      CHECK.equipment,
+      ISSUE.layoutIncompatible,
+      `layout.placements[${mismatch.index}].placementSlotId`,
+      "Linked equipment must use the same verified workstation anchor.",
+      { registryId: mismatch.placement.id }
+    );
+  }
 }
 
 function validateMaterials(context: ValidationContext): void {
@@ -802,6 +929,91 @@ function validateMaterials(context: ValidationContext): void {
         `${profile.id} cannot be used as a material binding.`,
         { registryId: profile.id }
       );
+    }
+    const authoredInitialization =
+      context.spec.schemaVersion === "2.1.0"
+        ? context.spec.materials[index]?.initialization
+        : undefined;
+    const concentrationContract = profile.concentrationAuthoring;
+    if (concentrationContract && !authoredInitialization) {
+      addIssue(
+        context,
+        4,
+        CHECK.materials,
+        ISSUE.materialInitializationMissing,
+        `${path}.initialization`,
+        `${profile.displayName} requires a bounded concentration.`,
+        { registryId: concentrationContract.configurationSchemaId }
+      );
+    } else if (!concentrationContract && authoredInitialization) {
+      addIssue(
+        context,
+        4,
+        CHECK.materials,
+        ISSUE.materialInitializationInvalid,
+        `${path}.initialization`,
+        `${profile.id} does not allow an authored concentration.`,
+        { registryId: profile.id }
+      );
+    } else if (concentrationContract && authoredInitialization) {
+      const initializationSchema = configs.get(
+        authoredInitialization.configurationSchemaId
+      );
+      if (
+        authoredInitialization.configurationSchemaId !==
+          concentrationContract.configurationSchemaId ||
+        authoredInitialization.concentration.unitId !==
+          concentrationContract.unitId ||
+        !initializationSchema ||
+        initializationSchema.category !== "configuration_schema" ||
+        initializationSchema.scope !== "material_initialization" ||
+        initializationSchema.availability !== "verified"
+      ) {
+        addIssue(
+          context,
+          4,
+          CHECK.materials,
+          ISSUE.materialInitializationInvalid,
+          `${path}.initialization`,
+          "The concentration schema or unit does not match the registered material profile.",
+          { registryId: authoredInitialization.configurationSchemaId }
+        );
+      } else {
+        try {
+          const normalized = canonicalizeBoundedConcentrationDecimal(
+            authoredInitialization.concentration.decimalValue,
+            concentrationContract
+          );
+          if (
+            normalized.canonicalDecimalValue !==
+            authoredInitialization.concentration.decimalValue
+          ) {
+            addIssue(
+              context,
+              4,
+              CHECK.materials,
+              ISSUE.materialInitializationInvalid,
+              `${path}.initialization.concentration.decimalValue`,
+              `Store the canonical decimal ${normalized.canonicalDecimalValue}.`,
+              { registryId: profile.id }
+            );
+          }
+        } catch (error) {
+          if (!(error instanceof BoundedConcentrationError)) throw error;
+          addIssue(
+            context,
+            4,
+            CHECK.materials,
+            ISSUE.materialInitializationInvalid,
+            `${path}.initialization.concentration.decimalValue`,
+            error.message,
+            {
+              registryId: profile.id,
+              safetyRelated: error.code === "bounded_concentration.range"
+            }
+          );
+        }
+      }
     }
     profile.providedChemistryCapabilityIds.forEach((id) => {
       if (!requiredChemistry.has(id)) {
@@ -902,6 +1114,54 @@ function validateMaterials(context: ValidationContext): void {
         { registryId: profile.initializationPresetSchemaId }
       );
     }
+  });
+
+  // A container holds at most one reagent, and a reagent lives in at most one
+  // container. Two reagents in one container (e.g. acid in the base's burette)
+  // or one reagent split across containers is chemically contradictory and must
+  // not reach a runnable/previewable state, even for an imported or edited draft.
+  const reagentsByContainer = new Map<string, Set<string>>();
+  const containersByReagent = new Map<string, Set<string>>();
+  context.spec.materials.forEach((material, index) => {
+    const path = `materials[${index}]`;
+    const containerReagents =
+      reagentsByContainer.get(material.containerInstanceId) ??
+      new Set<string>();
+    if (
+      containerReagents.size > 0 &&
+      !containerReagents.has(material.materialProfileId)
+    ) {
+      addIssue(
+        context,
+        4,
+        CHECK.materials,
+        ISSUE.materialContainerExclusive,
+        `${path}.containerInstanceId`,
+        `${material.containerInstanceId} holds more than one reagent.`,
+        { registryId: material.containerInstanceId, safetyRelated: true }
+      );
+    }
+    containerReagents.add(material.materialProfileId);
+    reagentsByContainer.set(material.containerInstanceId, containerReagents);
+
+    const reagentContainers =
+      containersByReagent.get(material.materialProfileId) ?? new Set<string>();
+    if (
+      reagentContainers.size > 0 &&
+      !reagentContainers.has(material.containerInstanceId)
+    ) {
+      addIssue(
+        context,
+        4,
+        CHECK.materials,
+        ISSUE.materialContainerExclusive,
+        `${path}.materialProfileId`,
+        `${material.materialProfileId} is placed in more than one container.`,
+        { registryId: material.materialProfileId }
+      );
+    }
+    reagentContainers.add(material.containerInstanceId);
+    containersByReagent.set(material.materialProfileId, reagentContainers);
   });
 }
 
@@ -1719,8 +1979,8 @@ function conditionReachable(
         condition.evidenceRuleIds.every((id) => context.ruleById.has(id))
       );
     }
-    case "observable_within_tolerance":
-      return (
+    case "observable_within_tolerance": {
+      const observableResolved =
         resolveConfiguration(
           context,
           condition.observableId,
@@ -1728,7 +1988,8 @@ function conditionReachable(
           "observable",
           7,
           CHECK.rules
-        ) !== null &&
+        ) !== null;
+      const unitResolved =
         resolveConfiguration(
           context,
           condition.unitId,
@@ -1736,8 +1997,36 @@ function conditionReachable(
           "unit",
           7,
           CHECK.rules
-        ) !== null
-      );
+        ) !== null;
+      let boundsPlausible = true;
+      if (condition.minimum > condition.maximum) {
+        addIssue(
+          context,
+          7,
+          CHECK.rules,
+          ISSUE.ruleConditionInvalid,
+          `${path}.minimum`,
+          `The lowest accepted value ${condition.minimum} is greater than the highest ${condition.maximum}.`
+        );
+        boundsPlausible = false;
+      }
+      // The supported measurements (e.g. a burette reading in mL) are physical
+      // quantities that cannot be negative. A negative accepted range can never
+      // be satisfied by a student, so it must not reach a runnable state.
+      if (condition.minimum < 0 || condition.maximum < 0) {
+        addIssue(
+          context,
+          7,
+          CHECK.rules,
+          ISSUE.ruleConditionInvalid,
+          `${path}.minimum`,
+          "A measured result cannot be negative.",
+          { safetyRelated: true }
+        );
+        boundsPlausible = false;
+      }
+      return observableResolved && unitResolved && boundsPlausible;
+    }
     case "event_flag": {
       const flag = context.registries.eventFlags
         .list()
@@ -1963,6 +2252,18 @@ function validateRubric(context: ValidationContext): void {
   );
   context.spec.rubric.criteria.forEach((criterion, index) => {
     const path = `rubric.criteria[${index}]`;
+    // A grading item must be worth more than zero points, otherwise full credit
+    // equals no credit and the rubric row can never award anything.
+    if (criterion.maxPoints <= 0) {
+      addIssue(
+        context,
+        8,
+        CHECK.rubric,
+        ISSUE.rubricInvalid,
+        `${path}.maxPoints`,
+        "A grading item must be worth more than zero points."
+      );
+    }
     criterion.objectiveIds.forEach((id, objectiveIndex) => {
       if (!context.spec.objectiveIds.includes(id))
         addIssue(
@@ -2341,6 +2642,25 @@ function validateSafety(context: ValidationContext): void {
           { registryId: policyId, safetyRelated: true }
         );
     }
+    if (material?.concentrationAuthoring) {
+      for (const policyId of material.concentrationAuthoring.safetyPolicyIds) {
+        const bound = context.spec.safetyBindings.some(
+          (binding) =>
+            binding.safetyPolicyId === policyId &&
+            binding.materialInstanceIds.includes(instanceId)
+        );
+        if (!bound)
+          addIssue(
+            context,
+            10,
+            CHECK.safety,
+            ISSUE.safetyBindingInvalid,
+            "safetyBindings",
+            `The authored concentration for ${instanceId} requires its registered solution-preparation safety binding.`,
+            { registryId: policyId, safetyRelated: true }
+          );
+      }
+    }
   }
   context.spec.safetyBindings.forEach((binding, index) => {
     const path = `safetyBindings[${index}]`;
@@ -2451,8 +2771,13 @@ function createDraft(parsed: LabWorkflowSpecV2): LabWorkflowDraftV2 {
 
 function hasExactPreviewRuntime(spec: LabWorkflowDraftV2): boolean {
   const compatibility = spec.compatibility;
+  // Native definitions compile only after every exact equipment, action,
+  // mechanics, model, safety, and rule reference above has passed hard
+  // validation. The production capability ports execute those compiled
+  // contracts directly; they do not require a family or engine dispatcher.
+  if (!compatibility) return true;
   return (
-    compatibility?.runtimeAdapterId === LEGACY_TITRATION_RUNTIME_ADAPTER.id &&
+    compatibility.runtimeAdapterId === LEGACY_TITRATION_RUNTIME_ADAPTER.id &&
     compatibility.runtimeAdapterVersion ===
       LEGACY_TITRATION_RUNTIME_ADAPTER.version &&
     compatibility.engineId === LEGACY_TITRATION_RUNTIME_ADAPTER.engineId
@@ -2463,7 +2788,7 @@ export function validateLabWorkflowSpecV2(
   input: unknown,
   options: LabWorkflowV2ValidationOptions
 ): LabWorkflowV2ValidationOutcome {
-  validationResultV2Schema.shape.checkedAt.parse(options.checkedAt);
+  validationResultV2_0Schema.shape.checkedAt.parse(options.checkedAt);
   const parsed = labWorkflowSpecV2Schema.safeParse(input);
   if (!parsed.success) {
     const issues = parsed.error.issues
@@ -2566,8 +2891,8 @@ export function validateLabWorkflowSpecV2(
     );
   const models = [...context.resolvedChemistryModels];
   const validation = validationResultV2Schema.parse({
-    artifactSchemaVersion: "2.0.0",
-    validatedSchemaVersion: "2.0.0",
+    artifactSchemaVersion: spec.schemaVersion,
+    validatedSchemaVersion: spec.schemaVersion,
     validatorVersion: LAB_WORKFLOW_VALIDATOR_VERSION_V2,
     checkedAt: options.checkedAt,
     canonicalSpecHash,

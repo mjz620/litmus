@@ -4,11 +4,12 @@ import { capabilityRegistry } from "../../../../src/lab-workflows/capabilities";
 import { componentRegistry } from "../../../../src/lab-workflows/registries/components";
 
 describe("verified component entry metadata", () => {
-  it("pins every component to the implemented titration family and core tier", () => {
+  it("pins every component to a verified capability surface and core tier", () => {
     for (const entry of componentRegistry.list()) {
-      expect(entry.compatibleFamilyIds).toEqual([
-        "family.acid_base_titration.v1"
-      ]);
+      expect(
+        entry.compatibleFamilyIds.length === 0 ||
+          entry.compatibleFamilyIds.includes("family.acid_base_titration.v1")
+      ).toBe(true);
       expect(entry.performanceTier).toBe("core");
       expect(entry.displayName.length).toBeGreaterThan(0);
       expect(entry.capabilityIds.length).toBeGreaterThan(0);
@@ -22,9 +23,7 @@ describe("verified component entry metadata", () => {
         /^visual-adapter\..+\.v1$/
       );
       expect(entry.mechanicalAdapterId).toMatch(/^mechanical-adapter\..+\.v1$/);
-      expect(entry.safetyConstraintIds).toContain(
-        "safety.virtual_titration_ppe_notice.v1"
-      );
+      expect(Array.isArray(entry.safetyConstraintIds)).toBe(true);
       expect(entry.allowedRoleIds.length).toBeGreaterThan(0);
       expect(entry.stateSchema.fields.length).toBeGreaterThan(0);
       expect(
@@ -90,7 +89,9 @@ describe("verified component entry metadata", () => {
     ]);
     expect(reagentBottle.allowedActionIds).toEqual([
       "action.rinse.v1",
-      "action.fill.v1"
+      "action.fill.v1",
+      "action.rinse_transfer_device.v1",
+      "action.transfer_liquid.v1"
     ]);
     expect(indicatorBottle.allowedActionIds).toEqual([
       "action.select_indicator.v1"
@@ -102,15 +103,40 @@ describe("verified component entry metadata", () => {
     expect(reagentBottle.capabilityIds).not.toContain(
       "capability.measure_volume.v1"
     );
+    expect(reagentBottle.safetyConstraintIds).toEqual([]);
     expect(indicatorBottle.capabilityIds).not.toContain(
       "capability.measure_volume.v1"
     );
   });
 
-  it("keeps planned component families out of the verified registry", () => {
+  it("registers the exact solution-preparation equipment without a family runtime", () => {
+    expect(
+      componentRegistry.get("component.volumetric_pipette.v1")
+    ).toMatchObject({
+      measurement: { capacityML: 10, toleranceML: 0.02 },
+      compatibleFamilyIds: [],
+      mechanicalAdapterId: "mechanical-adapter.volumetric_pipette.v1"
+    });
+    expect(
+      componentRegistry.get("component.volumetric_flask.v1")
+    ).toMatchObject({
+      measurement: { capacityML: 100, toleranceML: 0.08 },
+      compatibleFamilyIds: [],
+      allowedActionIds: [
+        "action.transfer_liquid.v1",
+        "action.fill_to_mark.v1",
+        "action.mix_solution.v1"
+      ]
+    });
+    expect(componentRegistry.get("component.wash_bottle.v1")).toMatchObject({
+      measurement: { capacityML: 250, quantitative: false },
+      compatibleFamilyIds: []
+    });
+  });
+
+  it("keeps unrelated planned component families out of the verified registry", () => {
     for (const id of [
       "component.beaker.v1",
-      "component.pipette.v1",
       "component.graduated_cylinder.v1",
       "component.balance.v1",
       "component.thermometer.v1",

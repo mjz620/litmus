@@ -2,6 +2,8 @@ import type { ComponentRegistryEntry } from "./types";
 
 const TITRATION_FAMILY_ID = "family.acid_base_titration.v1";
 const TITRATION_SAFETY_NOTICE_ID = "safety.virtual_titration_ppe_notice.v1";
+const SOLUTION_PREPARATION_SAFETY_NOTICE_ID =
+  "safety.virtual_solution_preparation_ppe_notice.v1";
 
 export const COMPONENT_REGISTRY_ENTRIES = [
   {
@@ -213,7 +215,7 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     mechanicalAdapterId: "mechanical-adapter.reagent_bottle.v1",
     mechanicalAdapterAvailability: "verified",
     purpose:
-      "Identify the verified titrant source used to prepare the titration burette.",
+      "Hold an exact registered liquid source for a compatible transfer or dispensing action.",
     stateSchema: {
       schemaVersion: "1.0.0",
       additionalProperties: false,
@@ -235,8 +237,13 @@ export const COMPONENT_REGISTRY_ENTRIES = [
         }
       ]
     },
-    allowedActionIds: ["action.rinse.v1", "action.fill.v1"],
-    allowedRoleIds: ["titrant_source"],
+    allowedActionIds: [
+      "action.rinse.v1",
+      "action.fill.v1",
+      "action.rinse_transfer_device.v1",
+      "action.transfer_liquid.v1"
+    ],
+    allowedRoleIds: ["titrant_source", "stock_solution_source"],
     emittedEventTypes: ["rinse_burette", "fill_burette", "refill_burette"],
     measurement: null,
     visualAdapterId: "WashStation",
@@ -245,7 +252,7 @@ export const COMPONENT_REGISTRY_ENTRIES = [
       "Provide keyboard-equivalent liquid and funnel selection controls.",
       "Announce the selected preparation setup before confirmation."
     ],
-    safetyConstraintIds: [TITRATION_SAFETY_NOTICE_ID],
+    safetyConstraintIds: [],
     compatibleFamilyIds: [TITRATION_FAMILY_ID],
     performanceTier: "core"
   },
@@ -306,6 +313,273 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     ],
     safetyConstraintIds: [TITRATION_SAFETY_NOTICE_ID],
     compatibleFamilyIds: [TITRATION_FAMILY_ID],
+    performanceTier: "core"
+  },
+  {
+    id: "component.volumetric_pipette.v1",
+    version: "1.0.0",
+    displayName: "10 mL volumetric pipette",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.dispense_liquid.v1",
+      "capability.transfer_liquid.v1",
+      "capability.measure_volume.v1",
+      "capability.rinse.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.volumetric_pipette.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.volumetric_pipette.10ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.volumetric_pipette.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.volumetric_pipette.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Condition, measure, and deliver one bounded aliquot from a verified liquid source.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "capacityML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered calibrated delivery capacity."
+        },
+        {
+          key: "availableML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Liquid currently held by the pipette."
+        },
+        {
+          key: "deliveredML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Cumulative volume delivered from the pipette."
+        },
+        {
+          key: "conditionedMaterialProfileId",
+          valueType: "string",
+          nullable: true,
+          runtimeOwned: true,
+          description:
+            "Exact material profile used for the latest conditioning rinse."
+        },
+        {
+          key: "residualFilmPresent",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description:
+            "Whether a code-owned conditioning film remains on the walls."
+        }
+      ]
+    },
+    allowedActionIds: [
+      "action.rinse_transfer_device.v1",
+      "action.transfer_liquid.v1"
+    ],
+    allowedRoleIds: ["aliquot_transfer"],
+    emittedEventTypes: ["rinse_transfer_device", "transfer_liquid"],
+    measurement: {
+      kind: "volumetric_transfer",
+      unitId: "unit.ml.v1",
+      capacityML: 10,
+      graduationIncrementML: 10,
+      reportIncrementML: 0.01,
+      toleranceML: 0.02,
+      quantitative: true,
+      description:
+        "Verified 10.00 mL transfer pipette with a 0.02 mL delivery tolerance."
+    },
+    visualAdapterId: "VolumetricPipette",
+    accessibilityRequirements: [
+      "Provide keyboard actions for conditioning, aspirating, and delivering.",
+      "Expose current fill and conditioning state as text.",
+      "Do not rely on the calibration mark alone to communicate readiness."
+    ],
+    safetyConstraintIds: [SOLUTION_PREPARATION_SAFETY_NOTICE_ID],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
+  },
+  {
+    id: "component.volumetric_flask.v1",
+    version: "1.0.0",
+    displayName: "100 mL volumetric flask",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.fill_to_mark.v1",
+      "capability.mix.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.volumetric_flask.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.volumetric_flask.100ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.volumetric_flask.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.volumetric_flask.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Receive a measured aliquot, fill to a verified calibration mark, and mix the prepared solution.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "capacityML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered flask capacity and calibration-mark volume."
+        },
+        {
+          key: "totalVolumeML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Total liquid volume in the flask."
+        },
+        {
+          key: "markErrorML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description:
+            "Signed difference between current volume and the calibration mark."
+        },
+        {
+          key: "markToleranceML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description:
+            "Registered absolute tolerance around the calibration mark."
+        },
+        {
+          key: "filledToMark",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether a fill-to-mark action has been completed."
+        },
+        {
+          key: "withinMarkTolerance",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description:
+            "Whether the submitted final volume is within registered tolerance."
+        },
+        {
+          key: "mixed",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether the contents have been mechanically mixed."
+        },
+        {
+          key: "mixCount",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Cumulative bounded mixing operations."
+        }
+      ]
+    },
+    allowedActionIds: [
+      "action.transfer_liquid.v1",
+      "action.fill_to_mark.v1",
+      "action.mix_solution.v1"
+    ],
+    allowedRoleIds: ["dilution_vessel"],
+    emittedEventTypes: ["transfer_liquid", "fill_to_mark", "mix_solution"],
+    measurement: {
+      kind: "volumetric_containment",
+      unitId: "unit.ml.v1",
+      capacityML: 100,
+      graduationIncrementML: 100,
+      reportIncrementML: 0.01,
+      toleranceML: 0.08,
+      quantitative: true,
+      description:
+        "Verified 100.00 mL volumetric flask with a 0.08 mL mark tolerance."
+    },
+    visualAdapterId: "VolumetricFlask",
+    accessibilityRequirements: [
+      "Expose current volume, mark error, and mixed state as text.",
+      "Provide keyboard actions for fill-to-mark and mixing.",
+      "Pair the calibration mark with a non-visual tolerance status."
+    ],
+    safetyConstraintIds: [SOLUTION_PREPARATION_SAFETY_NOTICE_ID],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
+  },
+  {
+    id: "component.wash_bottle.v1",
+    version: "1.0.0",
+    displayName: "Distilled-water wash bottle",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.wash_bottle.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.wash_bottle.250ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.wash_bottle.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.wash_bottle.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Supply verified distilled water for a bounded fill-to-mark operation.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "reagentInstanceId",
+          valueType: "string",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Exact distilled-water binding supplied by assembly."
+        },
+        {
+          key: "availableML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Distilled water remaining in the bottle."
+        }
+      ]
+    },
+    allowedActionIds: ["action.fill_to_mark.v1"],
+    allowedRoleIds: ["diluent_source"],
+    emittedEventTypes: ["fill_to_mark"],
+    measurement: {
+      kind: "approximate_volume",
+      unitId: "unit.ml.v1",
+      capacityML: 250,
+      graduationIncrementML: 50,
+      reportIncrementML: 10,
+      toleranceML: 10,
+      quantitative: false,
+      description:
+        "A 250 mL supply bottle; its markings are not used for quantitative delivery."
+    },
+    visualAdapterId: "WashBottle",
+    accessibilityRequirements: [
+      "Expose the exact bound material identity and remaining volume as text.",
+      "Provide a keyboard fill-to-mark path.",
+      "Do not present the bottle as a precision measuring device."
+    ],
+    safetyConstraintIds: [SOLUTION_PREPARATION_SAFETY_NOTICE_ID],
+    compatibleFamilyIds: [],
     performanceTier: "core"
   }
 ] as const satisfies readonly ComponentRegistryEntry[];

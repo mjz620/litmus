@@ -1,4 +1,8 @@
-import { applyEvidence, type SemanticEvent, type StudentModel } from "../../experiments/shared";
+import {
+  applyEvidence,
+  type SemanticEvent,
+  type StudentModel
+} from "../../experiments/shared";
 import type {
   CheckpointCompatibleEvent,
   SemanticEventEnvelopeV2

@@ -44,7 +44,8 @@ function entry(
 function schema(
   id: ConfigurationSchemaId,
   scope: ConfigurationScope,
-  description: string
+  description: string,
+  availability: ConfigurationAvailability = "declared"
 ): ConfigurationSchemaRegistryEntry {
   return {
     id,
@@ -55,7 +56,7 @@ function schema(
     compatibleActionIds: [],
     compatibleComponentIds: [],
     adapterKey: null,
-    availability: "declared",
+    availability,
     scope,
     schemaId: null,
     strict: true
@@ -152,9 +153,83 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "component_config.reagent_bottle.stock_solution.v1",
+    "component_configuration",
+    "Verified liquid stock-solution source bottle.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.reagent_bottle.v1"
+    }
+  ),
+  entry(
+    "component_config.volumetric_pipette.10ml.v1",
+    "component_configuration",
+    "Verified 10.00 mL volumetric transfer-pipette configuration.",
+    {
+      compatibleComponentIds: ["component.volumetric_pipette.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.volumetric_pipette.v1"
+    }
+  ),
+  entry(
+    "component_config.volumetric_flask.100ml.v1",
+    "component_configuration",
+    "Verified 100.00 mL volumetric-flask configuration.",
+    {
+      compatibleComponentIds: ["component.volumetric_flask.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.volumetric_flask.v1"
+    }
+  ),
+  entry(
+    "component_config.wash_bottle.250ml.v1",
+    "component_configuration",
+    "Verified 250 mL distilled-water supply bottle configuration.",
+    {
+      compatibleComponentIds: ["component.wash_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.wash_bottle.v1"
+    }
+  ),
+  entry(
     "placement.bench_center_stand.v1",
     "placement",
     "Burette stand placement backed by the current titration bench.",
+    {
+      compatibleComponentIds: ["component.burette.v1"],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.bench_center_stand_reversed.v1",
+    "placement",
+    "Burette stand at the center station with the verified reversed control orientation.",
+    {
+      compatibleComponentIds: ["component.burette.v1"],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.bench_left_stand.v1",
+    "placement",
+    "Burette stand at the verified left dispensing station.",
+    {
+      compatibleComponentIds: ["component.burette.v1"],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.bench_left_stand_reversed.v1",
+    "placement",
+    "Burette stand at the verified left station with reversed controls.",
     {
       compatibleComponentIds: ["component.burette.v1"],
       scope: "layout",
@@ -172,9 +247,29 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "placement.under_left_burette.v1",
+    "placement",
+    "Receiving flask beneath the verified left burette station.",
+    {
+      compatibleComponentIds: ["component.erlenmeyer_flask.v1"],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
     "placement.indicator_shelf.v1",
     "placement",
     "Indicator shelf placement backed by the current titration bench.",
+    {
+      compatibleComponentIds: ["component.indicator_bottle.v1"],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.indicator_shelf_right.v1",
+    "placement",
+    "Indicator shelf at the verified right-side bench anchor.",
     {
       compatibleComponentIds: ["component.indicator_bottle.v1"],
       scope: "layout",
@@ -190,6 +285,61 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
       compatibleFamilyIds: [],
       scope: "layout",
       schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.reagent_station_left.v1",
+    "placement",
+    "Liquid-source supplies at the verified left-side bench anchor.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.titration_bench.v1"
+    }
+  ),
+  entry(
+    "placement.solution_pipette_stand.v1",
+    "placement",
+    "Pipette stand on the verified solution-preparation bench.",
+    {
+      compatibleComponentIds: ["component.volumetric_pipette.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.solution_preparation_bench.v1"
+    }
+  ),
+  entry(
+    "placement.solution_flask_center.v1",
+    "placement",
+    "Volumetric flask at the verified center preparation station.",
+    {
+      compatibleComponentIds: ["component.volumetric_flask.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.solution_preparation_bench.v1"
+    }
+  ),
+  entry(
+    "placement.solution_stock_right.v1",
+    "placement",
+    "Stock-solution bottle on the verified right preparation station.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.solution_preparation_bench.v1"
+    }
+  ),
+  entry(
+    "placement.solution_wash_left.v1",
+    "placement",
+    "Distilled-water bottle on the verified left preparation station.",
+    {
+      compatibleComponentIds: ["component.wash_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.solution_preparation_bench.v1"
     }
   ),
   entry(
@@ -223,6 +373,24 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "observable",
     "Engine-owned indication that the configured indicator endpoint has been observed.",
     { adapterKey: "endpointObserved" }
+  ),
+  entry(
+    "observable.solution_concentration_m.v1",
+    "observable",
+    "Deterministic concentration of the bounded volumetric-flask solution, reported to 0.000001 mol/L.",
+    {
+      adapterKey: "solutionConcentrationM",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
+    "observable.solution_volume_ml.v1",
+    "observable",
+    "Conserved liquid volume in the bounded volumetric flask, reported to 0.000001 mL.",
+    {
+      adapterKey: "solutionVolumeML",
+      compatibleFamilyIds: []
+    }
   ),
   entry(
     "observation.reported_volume_ml.v1",
@@ -299,6 +467,9 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   ),
   entry("unit.ml.v1", "unit", "Milliliter volume unit."),
   entry("unit.drop.v1", "unit", "Bounded indicator drop-count unit."),
+  entry("unit.mol_per_l.v1", "unit", "Moles of solute per liter of solution.", {
+    compatibleFamilyIds: []
+  }),
   schema(
     "schema.equipment_configuration.burette.v1",
     "equipment",
@@ -320,14 +491,40 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Strict metadata contract for registered reagent-bottle configurations."
   ),
   schema(
+    "schema.equipment_configuration.volumetric_pipette.v1",
+    "equipment",
+    "Strict metadata contract for registered volumetric-pipette configurations."
+  ),
+  schema(
+    "schema.equipment_configuration.volumetric_flask.v1",
+    "equipment",
+    "Strict metadata contract for registered volumetric-flask configurations."
+  ),
+  schema(
+    "schema.equipment_configuration.wash_bottle.v1",
+    "equipment",
+    "Strict metadata contract for registered wash-bottle configurations."
+  ),
+  schema(
     "schema.layout_configuration.titration_bench.v1",
     "layout",
     "Strict metadata contract for bounded current titration-bench placements."
   ),
   schema(
+    "schema.layout_configuration.solution_preparation_bench.v1",
+    "layout",
+    "Strict metadata contract for bounded solution-preparation placements."
+  ),
+  schema(
     "schema.material_initialization.aqueous_solution.v1",
     "material_initialization",
     "Strict metadata contract for code-owned aqueous-solution initialization."
+  ),
+  schema(
+    "schema.material_initialization.bounded_concentration.v1",
+    "material_initialization",
+    "Strict canonical decimal concentration in a profile-owned unit, precision, support range, and safety policy.",
+    "verified"
   ),
   schema(
     "schema.material_initialization.indicator.v1",
@@ -392,5 +589,17 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   ]),
   quantity("quantity-preset.distilled_water_50ml.v1", 50, "unit.ml.v1", [
     "reagent.distilled_water.v1"
-  ])
+  ]),
+  quantity("quantity-preset.distilled_water_250ml.v1", 250, "unit.ml.v1", [
+    "reagent.distilled_water.v1"
+  ]),
+  quantity("quantity-preset.sodium_chloride_1_000m_50ml.v1", 50, "unit.ml.v1", [
+    "reagent.sodium_chloride_1_000m.v1"
+  ]),
+  quantity(
+    "quantity-preset.sodium_chloride_solution_50ml.v1",
+    50,
+    "unit.ml.v1",
+    ["reagent.sodium_chloride_aqueous.v1"]
+  )
 ] as const satisfies readonly ConfigurationRegistryEntry[];

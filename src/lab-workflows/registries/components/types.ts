@@ -7,31 +7,47 @@ export type ComponentRegistryId =
   | "component.burette.v1"
   | "component.erlenmeyer_flask.v1"
   | "component.reagent_bottle.v1"
-  | "component.indicator_bottle.v1";
+  | "component.indicator_bottle.v1"
+  | "component.volumetric_pipette.v1"
+  | "component.volumetric_flask.v1"
+  | "component.wash_bottle.v1";
 
 export type EquipmentStateSchemaId =
   | "schema.equipment_state.burette.v1"
   | "schema.equipment_state.erlenmeyer_flask.v1"
   | "schema.equipment_state.reagent_bottle.v1"
-  | "schema.equipment_state.indicator_bottle.v1";
+  | "schema.equipment_state.indicator_bottle.v1"
+  | "schema.equipment_state.volumetric_pipette.v1"
+  | "schema.equipment_state.volumetric_flask.v1"
+  | "schema.equipment_state.wash_bottle.v1";
 
 export type ComponentConfigurationPresetId =
   | "component_config.burette.50ml.v1"
   | "component_config.erlenmeyer.125ml.v1"
   | "component_config.indicator_dropper.v1"
-  | "component_config.reagent_bottle.titrant_source.v1";
+  | "component_config.reagent_bottle.titrant_source.v1"
+  | "component_config.reagent_bottle.stock_solution.v1"
+  | "component_config.volumetric_pipette.10ml.v1"
+  | "component_config.volumetric_flask.100ml.v1"
+  | "component_config.wash_bottle.250ml.v1";
 
 export type VisualAdapterDefinitionId =
   | "visual-adapter.burette.v1"
   | "visual-adapter.erlenmeyer_flask.v1"
   | "visual-adapter.reagent_bottle.v1"
-  | "visual-adapter.indicator_bottle.v1";
+  | "visual-adapter.indicator_bottle.v1"
+  | "visual-adapter.volumetric_pipette.v1"
+  | "visual-adapter.volumetric_flask.v1"
+  | "visual-adapter.wash_bottle.v1";
 
 export type MechanicalAdapterId =
   | "mechanical-adapter.burette.v1"
   | "mechanical-adapter.erlenmeyer_flask.v1"
   | "mechanical-adapter.reagent_bottle.v1"
-  | "mechanical-adapter.indicator_bottle.v1";
+  | "mechanical-adapter.indicator_bottle.v1"
+  | "mechanical-adapter.volumetric_pipette.v1"
+  | "mechanical-adapter.volumetric_flask.v1"
+  | "mechanical-adapter.wash_bottle.v1";
 
 export type ComponentStateValueType =
   | "boolean"
@@ -60,7 +76,11 @@ export interface ComponentStateSchema {
 }
 
 export interface MeasurementCapability {
-  readonly kind: "approximate_volume" | "volumetric_delivery";
+  readonly kind:
+    | "approximate_volume"
+    | "volumetric_delivery"
+    | "volumetric_transfer"
+    | "volumetric_containment";
   readonly unitId: "unit.ml.v1";
   readonly capacityML: number;
   readonly graduationIncrementML: number;
@@ -99,7 +119,10 @@ export interface ComponentRegistryEntry {
     | "Burette"
     | "ErlenmeyerFlask"
     | "IndicatorShelf"
-    | "WashStation";
+    | "WashStation"
+    | "VolumetricPipette"
+    | "VolumetricFlask"
+    | "WashBottle";
   readonly accessibilityRequirements: readonly string[];
   readonly safetyConstraintIds: readonly string[];
   readonly compatibleFamilyIds: readonly string[];
@@ -107,13 +130,15 @@ export interface ComponentRegistryEntry {
 }
 
 export interface ComponentRegistrySnapshot {
-  readonly snapshotId: "components.2.1.0";
+  readonly snapshotId: "components.3.1.0";
   readonly entries: readonly ComponentRegistryEntry[];
 }
 
 export const LEGACY_COMPONENT_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "components.1.0.0",
-  "components.2.0.0"
+  "components.2.0.0",
+  "components.2.1.0",
+  "components.3.0.0"
 ] as const);
 
 export type ComponentRegistryErrorCode =

@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 const SNAPSHOT_ID: CapabilityRegistrySnapshot["snapshotId"] =
-  "capabilities.1.1.0";
+  "capabilities.2.0.0";
 
 export function createCapabilityRegistry(
   entries: readonly CapabilityDefinition[]

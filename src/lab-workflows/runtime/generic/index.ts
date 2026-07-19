@@ -14,6 +14,7 @@ export {
   type GenericLabRuntimeErrorDetail
 } from "./errors";
 export { assembleGenericLabRuntime } from "./runtime";
+export { createCapabilityGenericRuntimePorts } from "./productionPorts";
 export type { AssembleGenericLabRuntimeOptions } from "./runtime";
 export {
   GENERIC_LAB_RUNTIME_SCHEMA_VERSION,

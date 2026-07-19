@@ -502,7 +502,7 @@ describe("reusable liquid equipment mechanics", () => {
     expect(getLiquidMechanicalAdapter("mechanical-adapter.burette.v1")).toBe(
       BURETTE_MECHANICAL_ADAPTER
     );
-    expect(LIQUID_MECHANICAL_ADAPTERS).toHaveLength(4);
+    expect(LIQUID_MECHANICAL_ADAPTERS).toHaveLength(7);
     expectMechanicsError(
       () => getLiquidMechanicalAdapter("mechanical-adapter.burette.closest.v1"),
       ERROR.unknownAdapter

@@ -134,12 +134,13 @@ describe("serialized strict migrated titration v2 definition", () => {
         runnable: true,
         canonicalSpecHash: TITRATION_V2_EXPECTED_HASH,
         registrySnapshotIds: expect.objectContaining({
-          capabilities: "capabilities.1.1.0",
-          actions: "actions.2.0.0",
-          chemistryModels: "chemistry-models.1.1.0",
-          components: "components.2.1.0",
-          configurations: "configurations.2.3.0",
-          materials: "reagents.2.2.0"
+          capabilities: "capabilities.2.0.0",
+          actions: "actions.3.0.0",
+          chemistryModels: "chemistry-models.2.0.0",
+          components: "components.3.1.0",
+          configurations: "configurations.4.0.0",
+          scenePlacements: "scene-placements.2.0.0",
+          materials: "reagents.4.0.0"
         })
       },
       compatibility: {

@@ -83,14 +83,61 @@ const EXPECTED_ACTION_CONTRACTS = {
     mechanicalAdapterId: "mechanical-adapter.burette.v1",
     eventContractId: "event-contract.read_meniscus.v1",
     behavior: "discrete"
+  },
+  "action.rinse_transfer_device.v1": {
+    source: ["capability.contain_liquid.v1", "capability.dispense_liquid.v1"],
+    target: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.rinse.v1"
+    ],
+    parameterSchemaId: "schema.action_parameters.rinse_transfer_device.v1",
+    preconditionIds: ["precondition.equipment.pipette_empty_before_rinse.v1"],
+    mechanicalAdapterId: "mechanical-adapter.volumetric_pipette.v1",
+    eventContractId: "event-contract.rinse_transfer_device.v1",
+    behavior: "discrete"
+  },
+  "action.transfer_liquid.v1": {
+    source: ["capability.contain_liquid.v1", "capability.dispense_liquid.v1"],
+    target: ["capability.contain_liquid.v1", "capability.receive_liquid.v1"],
+    parameterSchemaId: "schema.action_parameters.transfer_liquid.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.volumetric_pipette.v1",
+    eventContractId: "event-contract.transfer_liquid.v1",
+    behavior: "discrete"
+  },
+  "action.fill_to_mark.v1": {
+    source: ["capability.contain_liquid.v1", "capability.dispense_liquid.v1"],
+    target: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.fill_to_mark.v1"
+    ],
+    parameterSchemaId: "schema.action_parameters.fill_to_mark.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.volumetric_flask.v1",
+    eventContractId: "event-contract.fill_to_mark.v1",
+    behavior: "continuous"
+  },
+  "action.mix_solution.v1": {
+    source: ["capability.contain_liquid.v1", "capability.mix.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.mix_solution.v1",
+    preconditionIds: ["precondition.equipment.volumetric_flask_has_liquid.v1"],
+    mechanicalAdapterId: "mechanical-adapter.volumetric_flask.v1",
+    eventContractId: "event-contract.mix_solution.v1",
+    behavior: "discrete"
   }
 } as const;
 
 describe("LC2-101 capability-based action contracts", () => {
   it("pins the new snapshot while retaining the legacy snapshot reference", () => {
-    expect(ACTION_REGISTRY_SNAPSHOT_ID).toBe("actions.2.0.0");
+    expect(ACTION_REGISTRY_SNAPSHOT_ID).toBe("actions.3.0.0");
     expect(actionRegistry.snapshotId).toBe(ACTION_REGISTRY_SNAPSHOT_ID);
-    expect(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS).toEqual(["actions.1.0.0"]);
+    expect(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS).toEqual([
+      "actions.1.0.0",
+      "actions.2.0.0"
+    ]);
     expect(Object.isFrozen(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS)).toBe(true);
   });
 
@@ -253,7 +300,10 @@ describe("LC2-101 capability-based action contracts", () => {
 
   it("preserves exact v1 action mappings and the legacy indicator alias", () => {
     expect(
-      actionRegistry.list().map(({ engineActionType }) => engineActionType)
+      actionRegistry
+        .list()
+        .filter(({ engineActionType }) => engineActionType !== null)
+        .map(({ engineActionType }) => engineActionType)
     ).toEqual([
       "rinse_burette",
       "fill_burette",
@@ -269,7 +319,13 @@ describe("LC2-101 capability-based action contracts", () => {
       emittedSemanticEventTypes: ["select_indicator"]
     });
     expect(
-      actionRegistry.list().filter(({ behavior }) => behavior === "continuous")
+      actionRegistry
+        .list()
+        .filter(
+          ({ behavior, compatibleEngineIds }) =>
+            behavior === "continuous" &&
+            compatibleEngineIds.includes("engine.titration.v1")
+        )
     ).toHaveLength(1);
     expect(actionRegistry.get("action.dispense.v1").behavior).toBe(
       "continuous"

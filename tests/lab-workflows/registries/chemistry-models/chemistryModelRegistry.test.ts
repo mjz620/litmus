@@ -22,21 +22,47 @@ const VERIFIED_MODEL = {
 } as const satisfies ChemistryModelMetadataEntry;
 
 describe("chemistry model metadata registry", () => {
-  it("publishes the exact compatibility-scoped legacy titration provider", () => {
+  it("publishes exact generic providers beside the compatibility-scoped legacy provider", () => {
     expect(CHEMISTRY_MODEL_REGISTRY_ENTRIES).toEqual([
+      expect.objectContaining({
+        id: "chemistry-model.shared_liquid_foundation.v1",
+        availability: "verified",
+        providedCapabilityIds: [
+          "chemistry.material_ledger.v1",
+          "chemistry.volume_conservation.v1",
+          "chemistry.solution_mixing.v1"
+        ],
+        requiredCapabilityIds: []
+      }),
+      expect.objectContaining({
+        id: "chemistry-model.concentration_dilution.v1",
+        availability: "verified",
+        providedCapabilityIds: [
+          "chemistry.concentration_dilution.v1",
+          "chemistry.instrument_observables.v1"
+        ],
+        requiredCapabilityIds: [
+          "chemistry.material_ledger.v1",
+          "chemistry.volume_conservation.v1",
+          "chemistry.solution_mixing.v1"
+        ]
+      }),
       expect.objectContaining({
         id: "chemistry-model.legacy_titration.v1",
         availability: "verified",
         compatibilityRuntimeAdapterId: "runtime-adapter.titration.v1"
       })
     ]);
-    expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.1.1.0");
-    expect(chemistryModelRegistry.list()).toHaveLength(1);
+    expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.2.0.0");
+    expect(chemistryModelRegistry.list()).toHaveLength(3);
     expect(chemistryModelRegistrySnapshot.entries).toBe(
       chemistryModelRegistry.list()
     );
     expect(
       chemistryModelRegistry.has("chemistry-model.legacy_titration.v1")
+    ).toBe(true);
+    expect(
+      chemistryModelRegistry.has("chemistry-model.concentration_dilution.v1")
     ).toBe(true);
   });
 

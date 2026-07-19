@@ -35,7 +35,7 @@ describe("capability registry", () => {
       "chemistry.indicator_response.v1",
       "chemistry.instrument_observables.v1"
     ]);
-    expect(capabilityRegistry.snapshotId).toBe("capabilities.1.1.0");
+    expect(capabilityRegistry.snapshotId).toBe("capabilities.2.0.0");
     expect(capabilityRegistrySnapshot.entries).toBe(capabilityRegistry.list());
     expectTypeOf<EquipmentCapabilityId>().not.toEqualTypeOf<ChemistryCapabilityId>();
   });
@@ -79,16 +79,22 @@ describe("capability registry", () => {
     );
   });
 
-  it("distinguishes verified current mechanics from declared future support", () => {
+  it("publishes verified current mechanics and bounded chemistry", () => {
     expect(capabilityRegistry.get("capability.rinse.v1").availability).toBe(
       "verified"
     );
     expect(
       capabilityRegistry.get("capability.transfer_liquid.v1").availability
-    ).toBe("declared");
+    ).toBe("verified");
+    expect(capabilityRegistry.get("capability.mix.v1").availability).toBe(
+      "verified"
+    );
+    expect(
+      capabilityRegistry.get("capability.fill_to_mark.v1").availability
+    ).toBe("verified");
     expect(
       capabilityRegistry.get("chemistry.concentration_dilution.v1").availability
-    ).toBe("declared");
+    ).toBe("verified");
     expect(
       capabilityRegistry.get("chemistry.acid_base_equilibrium.v1").availability
     ).toBe("verified");

@@ -29,7 +29,9 @@ type SuiteKind = GenericTraceSuiteCaseKind;
 
 function suiteWorkflow(kind: SuiteKind) {
   const draft = createRunnableMechanicalV2Draft();
-  const required = draft.rules.find(({ id }) => id === "rule.meniscus_observed")!;
+  const required = draft.rules.find(
+    ({ id }) => id === "rule.meniscus_observed"
+  )!;
   if (kind === "alternate_valid" || kind === "recoverable_mistake") {
     required.condition = {
       kind: "action_count_within_range",
@@ -90,35 +92,49 @@ function suiteWorkflow(kind: SuiteKind) {
   return validation.spec;
 }
 
-function suitePorts(kind: SuiteKind, workflow: ReturnType<typeof suiteWorkflow>): GenericRuntimePorts {
+function suitePorts(
+  kind: SuiteKind,
+  workflow: ReturnType<typeof suiteWorkflow>
+): GenericRuntimePorts {
   const ports = createTestGenericPorts();
   if (kind === "recoverable_mistake") {
-    vi.mocked(ports.mechanicalAdapters[0].apply).mockImplementation((context) => {
-      const reported = context.action.parameters.find(({ key }) => key === "reportedML");
-      const value = reported?.valueType === "number" ? reported.value : 12.35;
-      return {
-        equipment: context.equipment.map((equipment) => ({
-          ...equipment,
-          fields: equipment.fields.map((field) =>
-            field.key === "stopcockDetent"
-              ? { ...field, value: value === 12 ? "open" : "closed" }
-              : field
-          )
-        })),
-        materialAction: null,
-        events: [
-          {
-            type: "read_meniscus",
-            tSim: context.action.parameters.length,
-            observation: { reportedML: value, trueML: 12.35, errorML: value - 12.35 },
-            flags: [],
-            evidence: []
-          }
-        ]
-      };
-    });
+    vi.mocked(ports.mechanicalAdapters[0].apply).mockImplementation(
+      (context) => {
+        const reported = context.action.parameters.find(
+          ({ key }) => key === "reportedML"
+        );
+        const value = reported?.valueType === "number" ? reported.value : 12.35;
+        return {
+          equipment: context.equipment.map((equipment) => ({
+            ...equipment,
+            fields: equipment.fields.map((field) =>
+              field.key === "stopcockDetent"
+                ? { ...field, value: value === 12 ? "open" : "closed" }
+                : field
+            )
+          })),
+          materialAction: null,
+          events: [
+            {
+              type: "read_meniscus",
+              tSim: context.action.parameters.length,
+              observation: {
+                reportedML: value,
+                trueML: 12.35,
+                errorML: value - 12.35
+              },
+              flags: [],
+              evidence: []
+            }
+          ]
+        };
+      }
+    );
   }
-  return { ...ports, evaluator: createWorkflowEvaluator({ rules: workflow.rules }) };
+  return {
+    ...ports,
+    evaluator: createWorkflowEvaluator({ rules: workflow.rules })
+  };
 }
 
 function trace() {
@@ -197,7 +213,9 @@ describe("versioned generic normalized action replay", () => {
         ports: createTestGenericPorts()
       })
     ).toThrowError(
-      expect.objectContaining({ code: LAB_TRACE_ERROR_CODES.provenanceMismatch })
+      expect.objectContaining({
+        code: LAB_TRACE_ERROR_CODES.provenanceMismatch
+      })
     );
 
     const unknownAction = structuredClone(trace());
@@ -258,14 +276,23 @@ describe("versioned generic normalized action replay", () => {
       "tolerance_boundary"
     ] as const satisfies readonly GenericTraceSuiteCaseKind[];
     const workflows = new Map(kinds.map((kind) => [kind, suiteWorkflow(kind)]));
-    const actionsByKind: Record<SuiteKind, typeof READ_VOLUME_ACTION[]> = {
+    const actionsByKind: Record<SuiteKind, (typeof READ_VOLUME_ACTION)[]> = {
       valid: [READ_VOLUME_ACTION],
       alternate_valid: [
-        { ...READ_VOLUME_ACTION, parameters: [{ key: "reportedML", valueType: "number", value: 12.36 }] },
-        { ...READ_VOLUME_ACTION, parameters: [{ key: "reportedML", valueType: "number", value: 12.34 }] }
+        {
+          ...READ_VOLUME_ACTION,
+          parameters: [{ key: "reportedML", valueType: "number", value: 12.36 }]
+        },
+        {
+          ...READ_VOLUME_ACTION,
+          parameters: [{ key: "reportedML", valueType: "number", value: 12.34 }]
+        }
       ],
       recoverable_mistake: [
-        { ...READ_VOLUME_ACTION, parameters: [{ key: "reportedML", valueType: "number", value: 12 }] },
+        {
+          ...READ_VOLUME_ACTION,
+          parameters: [{ key: "reportedML", valueType: "number", value: 12 }]
+        },
         READ_VOLUME_ACTION
       ],
       terminal_mistake: [READ_VOLUME_ACTION],
@@ -276,11 +303,11 @@ describe("versioned generic normalized action replay", () => {
       return {
         kind,
         trace: createGenericLabActionTrace({
-        traceId: `trace.suite.${kind}`,
-        sessionId: `trace-suite-${index}`,
-        sessionSeed: `seed-${index}`,
-        workflow,
-        actions: actionsByKind[kind]
+          traceId: `trace.suite.${kind}`,
+          sessionId: `trace-suite-${index}`,
+          sessionSeed: `seed-${index}`,
+          workflow,
+          actions: actionsByKind[kind]
         })
       };
     });

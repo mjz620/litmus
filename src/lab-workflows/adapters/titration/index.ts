@@ -477,9 +477,11 @@ export function assertTitrationComponentAdapter(componentId: string): void {
   }
   const entry = componentRegistry.get(componentId);
   const expectedVisualAdapter: Readonly<
-    Record<
-      ComponentRegistryEntry["id"],
-      ComponentRegistryEntry["visualAdapterId"]
+    Partial<
+      Record<
+        ComponentRegistryEntry["id"],
+        ComponentRegistryEntry["visualAdapterId"]
+      >
     >
   > = {
     "component.burette.v1": "Burette",
@@ -487,7 +489,8 @@ export function assertTitrationComponentAdapter(componentId: string): void {
     "component.reagent_bottle.v1": "WashStation",
     "component.indicator_bottle.v1": "IndicatorShelf"
   };
-  if (entry.visualAdapterId !== expectedVisualAdapter[entry.id]) {
+  const expected = expectedVisualAdapter[entry.id];
+  if (!expected || entry.visualAdapterId !== expected) {
     contractMismatch("component", entry.id);
   }
 }

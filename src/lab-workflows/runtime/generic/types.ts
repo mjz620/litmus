@@ -17,11 +17,12 @@ import type {
 } from "../../registries/actions";
 import type { ComponentStateValueType } from "../../registries/components";
 import type {
-  MaterialBindingV2,
+  MaterialBindingV2_1,
   PermittedActionSpecV2,
   ValidatedLabWorkflowSpecV2,
   ValidationResultV2
 } from "../../schema/v2";
+import type { MaterialPhase } from "../../registries/reagents";
 import type { WorkflowDiagnosis, WorkflowRule } from "../../schema/conditions";
 import type { SemanticEventEnvelopeV2 } from "../../events";
 
@@ -167,8 +168,11 @@ export interface CompiledEquipmentBinding {
   readonly safetyPolicyIds: readonly string[];
 }
 
-export interface CompiledMaterialBinding extends MaterialBindingV2 {
+export interface CompiledMaterialBinding extends MaterialBindingV2_1 {
   readonly materialVersion: string;
+  readonly materialPhase: MaterialPhase;
+  readonly initialConcentrationM: number | null;
+  readonly initializationPresetSchemaId: string;
   readonly providedChemistryCapabilityIds: readonly string[];
   readonly requiredContainerCapabilityIds: readonly EquipmentCapabilityId[];
   readonly quantityAmount: number;

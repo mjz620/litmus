@@ -72,6 +72,44 @@ export const READ_VOLUME_ACTION_PARAMETERS = [
   }
 ] as const satisfies readonly ActionParameterDefinition[];
 
+export const TRANSFER_LIQUID_ACTION_PARAMETERS = [
+  {
+    key: "volumeML",
+    valueType: "number",
+    required: true,
+    unitId: "unit.ml.v1",
+    minimum: 0.01,
+    maximum: 100,
+    authoredMaximumKey: "maxTransferVolumeML"
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
+export const RINSE_TRANSFER_DEVICE_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+
+export const FILL_TO_MARK_ACTION_PARAMETERS = [
+  {
+    key: "finalVolumeML",
+    valueType: "number",
+    required: true,
+    unitId: "unit.ml.v1",
+    minimum: 0.01,
+    maximum: 1000,
+    authoredMinimumKey: "minFinalVolumeML",
+    authoredMaximumKey: "maxFinalVolumeML"
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
+export const MIX_SOLUTION_ACTION_PARAMETERS = [
+  {
+    key: "inversions",
+    valueType: "number",
+    required: true,
+    minimum: 1,
+    maximum: 20
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
 export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
   {
     id: "schema.action_parameters.rinse.v1",
@@ -124,11 +162,45 @@ export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
     additionalProperties: false,
     actionIds: ["action.read_volume.v1"],
     parameters: READ_VOLUME_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.transfer_liquid.v1",
+    version: "1.0.0",
+    description: "Bounded positive liquid transfer volume in milliliters.",
+    additionalProperties: false,
+    actionIds: ["action.transfer_liquid.v1"],
+    parameters: TRANSFER_LIQUID_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.rinse_transfer_device.v1",
+    version: "1.0.0",
+    description:
+      "No authored parameters; the exact source material determines conditioning identity.",
+    additionalProperties: false,
+    actionIds: ["action.rinse_transfer_device.v1"],
+    parameters: RINSE_TRANSFER_DEVICE_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.fill_to_mark.v1",
+    version: "1.0.0",
+    description:
+      "Bounded observed final volume used by the registered volumetric-vessel mechanic.",
+    additionalProperties: false,
+    actionIds: ["action.fill_to_mark.v1"],
+    parameters: FILL_TO_MARK_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.mix_solution.v1",
+    version: "1.0.0",
+    description: "Bounded positive count of volumetric-flask inversions.",
+    additionalProperties: false,
+    actionIds: ["action.mix_solution.v1"],
+    parameters: MIX_SOLUTION_ACTION_PARAMETERS
   }
 ] as const satisfies readonly ActionParameterSchemaEntry[];
 
 export const actionParameterSchemaRegistry = createSupportingRegistry(
   "action parameter schema",
-  "action-parameter-schemas.1.0.0",
+  "action-parameter-schemas.2.0.0",
   ACTION_PARAMETER_SCHEMA_ENTRIES
 );

@@ -1,16 +1,22 @@
 import { ACTION_REGISTRY_ENTRIES } from "./entries";
-import { createSupportingRegistry } from "./supportingRegistry";
+import {
+  createSupportingRegistry,
+  type SupportingRegistry
+} from "./supportingRegistry";
+import type { ActionRegistryEntry } from "./types";
 
-export const ACTION_REGISTRY_SNAPSHOT_ID = "actions.2.0.0" as const;
+export const ACTION_REGISTRY_SNAPSHOT_ID = "actions.3.0.0" as const;
 export const LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS = Object.freeze([
-  "actions.1.0.0"
+  "actions.1.0.0",
+  "actions.2.0.0"
 ] as const);
 
-export const actionRegistry = createSupportingRegistry(
-  "action",
-  ACTION_REGISTRY_SNAPSHOT_ID,
-  ACTION_REGISTRY_ENTRIES
-);
+export const actionRegistry: SupportingRegistry<ActionRegistryEntry> =
+  createSupportingRegistry(
+    "action",
+    ACTION_REGISTRY_SNAPSHOT_ID,
+    ACTION_REGISTRY_ENTRIES
+  );
 
 export { ACTION_REGISTRY_ENTRIES } from "./entries";
 export {
