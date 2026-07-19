@@ -156,16 +156,50 @@ describe("dispense gesture reducer", () => {
 
   it("never emits above the exact per-action allowance across frame partitions", () => {
     const events: DispenseGestureEvent[] = [
-      { type: "start", nowMS: 0, availableML: 0.5, minimumCommitML: 0.01 }
+      {
+        type: "start",
+        nowMS: 0,
+        availableML: 28,
+        minimumCommitML: 0.01,
+        maximumCommitML: 0.5
+      }
+    ];
+    for (let frame = 1; frame <= 80; frame += 1) {
+      events.push({ type: "tick", nowMS: frame * 16.67 });
+    }
+    const result = runTimeline(
+      createDispenseGestureState("open", 28, 0.01, 0.5),
+      events
+    );
+
+    expect(result.commits.length).toBeGreaterThanOrEqual(2);
+    for (const commit of result.commits) {
+      expect(commit.volumeML).toBeLessThanOrEqual(0.5);
+    }
+    expect(result.state.isHolding).toBe(true);
+    expect(result.state.remainingML).toBeGreaterThan(0);
+  });
+
+  it("still auto-closes when the true burette volume is exhausted", () => {
+    const events: DispenseGestureEvent[] = [
+      {
+        type: "start",
+        nowMS: 0,
+        availableML: 0.5,
+        minimumCommitML: 0.01,
+        maximumCommitML: 0.5
+      }
     ];
     for (let frame = 1; frame <= 40; frame += 1) {
       events.push({ type: "tick", nowMS: frame * 16.67 });
     }
-    const result = runTimeline(stateForDetent("open", 0.5, 0.01), events);
+    const result = runTimeline(
+      createDispenseGestureState("open", 0.5, 0.01, 0.5),
+      events
+    );
 
     expect(result.commits).toHaveLength(1);
     expect(result.commits[0]!.volumeML).toBe(0.5);
-    expect(result.commits[0]!.volumeML).toBeLessThanOrEqual(0.5);
     expect(result.state.remainingML).toBe(0);
     expect(result.state.isHolding).toBe(false);
   });

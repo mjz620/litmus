@@ -171,12 +171,10 @@ export function TitrationScene({
     projectedBurette?.availableML ?? state?.buretteAvailableML ?? 0;
   const physicalDispenseMinimumML =
     configuration.minDispenseVolumeML ?? DISPENSE_RESIDUE_ML;
-  const physicalDispenseAvailableML = state
-    ? Math.min(
-        visualBuretteAvailableML,
-        configuration.maxDispenseVolumeML ?? visualBuretteAvailableML
-      )
-    : 0;
+  // Keep true burette remaining as gesture capacity. Workflow maxVolumeMLPerAction
+  // is a per-commit ceiling (via maximumCommitML), not a fake empty-burette limit —
+  // capping availableML here made open-valve drag stop after one 0.5 mL chunk.
+  const physicalDispenseAvailableML = state ? visualBuretteAvailableML : 0;
   const physicalDispenseEnabled = Boolean(
     state &&
     deliveryAvailable &&
@@ -186,6 +184,7 @@ export function TitrationScene({
   const physicalDispense = useDispenseGesture({
     availableML: physicalDispenseAvailableML,
     minimumCommitML: physicalDispenseMinimumML,
+    maximumCommitML: configuration.maxDispenseVolumeML,
     enabled: physicalDispenseEnabled,
     onCommit: () => {
       const sounds = getLabSounds();
@@ -595,6 +594,7 @@ export function TitrationScene({
             <LabScene
               enabledEquipmentIds={configuration.selectableEquipmentIds}
               equipmentPoses={configuration.equipmentPoses}
+              equipmentFillFractions={configuration.equipmentFillFractions}
               buretteAvailableML={visualBuretteAvailableML}
               buretteCapacityML={visualBuretteCapacityML}
               flaskLiquidColor={flaskLiquidColor}

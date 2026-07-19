@@ -92,6 +92,7 @@ export function TitrationControls({
   const availableVolumeML = state?.buretteAvailableML ?? 0;
   const minimumManualDispenseML = minDispenseVolumeML ?? 0.01;
   const minimumGestureCommitML = minDispenseVolumeML ?? DISPENSE_RESIDUE_ML;
+  // Manual typed additions stay bounded by the per-action workflow max.
   const availableDispenseVolumeML = Math.min(
     availableVolumeML,
     maxDispenseVolumeML ?? availableVolumeML
@@ -100,12 +101,13 @@ export function TitrationControls({
   const indicatorAdded = state?.indicatorAdded ?? false;
   const hasAvailableTitrant = availableVolumeML > 0;
   const dispense = useDispenseGesture({
-    availableML: availableDispenseVolumeML,
+    availableML: availableVolumeML,
     minimumCommitML: minimumGestureCommitML,
+    maximumCommitML: maxDispenseVolumeML,
     enabled:
       deliveryPermissionAvailable &&
       indicatorAdded &&
-      availableDispenseVolumeML >= minimumGestureCommitML,
+      availableVolumeML >= minimumGestureCommitML,
     onCommit: () =>
       playDeliverySounds(useLabStore.getState().eventQueue.slice(-1)),
     onDetentChange: () => getLabSounds().playFromGesture("valve"),
@@ -131,7 +133,7 @@ export function TitrationControls({
     remainingFillCapacityML > 0 && !isDispensing && preparationReady;
   const canHoldDispense =
     indicatorAdded &&
-    availableDispenseVolumeML >= minimumGestureCommitML &&
+    availableVolumeML >= minimumGestureCommitML &&
     dispense.state.selectedDetent !== "closed";
   const conditioningStatus = state.buretteConditioned
     ? "Conditioned with titrant"
