@@ -245,7 +245,7 @@ function getEngineCapabilities(argumentsValue: unknown) {
   const engines = engineRegistry
     .list()
     .filter(({ familyId }) => familyId === parsed.data.familyId);
-  const engineIds = new Set(engines.map(({ id }) => id));
+  const engineIds = new Set<string>(engines.map(({ id }) => id));
   return Object.freeze({
     engines,
     actions: actionRegistry
