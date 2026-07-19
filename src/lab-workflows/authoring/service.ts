@@ -1,5 +1,10 @@
 import type { ZodError } from "zod";
 
+import { hashLabWorkflowSpec } from "../hash";
+import {
+  BoundedConcentrationError,
+  canonicalizeBoundedConcentrationDecimal
+} from "../material-initialization";
 import { materialSupportsContainerCapabilities } from "../registries/reagents";
 import type { ComponentRegistryEntry } from "../registries/components";
 import {
@@ -9,6 +14,7 @@ import {
   type LabWorkflowSpecV2
 } from "../schema/v2";
 import type { WorkflowCondition, WorkflowRule } from "../schema/conditions";
+import { migrateLabWorkflowV2_0ToV2_1 } from "../schema/migration";
 import { deepFreeze } from "../runtime/generic/utils";
 import {
   PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES,
@@ -19,6 +25,15 @@ import {
   type LabDraftCommand,
   type LabDraftCommandType
 } from "./commands";
+import {
+  labDraftRemovalTargetSchema,
+  type CompatibilityEffect,
+  type LabDraftRemovalImpact,
+  type LabDraftRemovalResolution,
+  type LabDraftRemovalTarget,
+  type RemovalReference,
+  type RemovalResolutionKind
+} from "./removal";
 
 export const LAB_DRAFT_COMMAND_ERROR_CODES = Object.freeze({
   commandInvalid: "authoring.command_invalid.v1",
@@ -31,7 +46,11 @@ export const LAB_DRAFT_COMMAND_ERROR_CODES = Object.freeze({
   dependencyExists: "authoring.dependency_exists.v1",
   boundsExceeded: "authoring.bounds_exceeded.v1",
   orderingCycle: "authoring.ordering_cycle.v1",
-  commandNotApplicable: "authoring.command_not_applicable.v1"
+  commandNotApplicable: "authoring.command_not_applicable.v1",
+  revisionConflict: "authoring.revision_conflict.v1",
+  removalPlanStale: "authoring.removal_plan_stale.v1",
+  removalResolutionNotAllowed: "authoring.removal_resolution_not_allowed.v1",
+  removalConfirmationRequired: "authoring.removal_confirmation_required.v1"
 } as const);
 
 export type LabDraftCommandErrorCode =
@@ -52,11 +71,42 @@ export interface LabDraftEditMetadata {
   readonly judgeCritiqueInvalidated: true;
 }
 
+export interface LabDraftTransactionEditMetadata {
+  readonly commandTypes: readonly LabDraftCommandType[];
+  readonly commandCount: number;
+  readonly revisionBefore: number;
+  readonly revisionAfter: number;
+  readonly validationInvalidated: true;
+  readonly judgeCritiqueInvalidated: true;
+}
+
 export type LabDraftCommandResult =
   | {
       readonly ok: true;
       readonly draft: Readonly<LabWorkflowDraftV2>;
       readonly edit: Readonly<LabDraftEditMetadata>;
+    }
+  | {
+      readonly ok: false;
+      readonly error: Readonly<LabDraftCommandErrorResult>;
+    };
+
+export type LabDraftTransactionResult =
+  | {
+      readonly ok: true;
+      readonly draft: Readonly<LabWorkflowDraftV2>;
+      readonly edit: Readonly<LabDraftTransactionEditMetadata>;
+    }
+  | {
+      readonly ok: false;
+      readonly failingCommandIndex: number | null;
+      readonly error: Readonly<LabDraftCommandErrorResult>;
+    };
+
+export type LabDraftRemovalInspectionResult =
+  | {
+      readonly ok: true;
+      readonly impact: Readonly<LabDraftRemovalImpact>;
     }
   | {
       readonly ok: false;
@@ -560,6 +610,444 @@ function dependencyPathsForObjective(
   return paths.sort();
 }
 
+function compareRemovalEntries(
+  left: { readonly path: string; readonly kind: string; readonly id: string },
+  right: { readonly path: string; readonly kind: string; readonly id: string }
+): number {
+  return (
+    left.path.localeCompare(right.path) ||
+    left.kind.localeCompare(right.kind) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function conditionReferencesEquipment(
+  condition: WorkflowCondition,
+  instanceId: string
+): boolean {
+  switch (condition.kind) {
+    case "equipment_state_equals":
+    case "equipment_capability_present":
+    case "forbidden_state_never_reached":
+      return condition.equipmentInstanceId === instanceId;
+    case "material_bound_to_container":
+      return condition.containerEquipmentInstanceId === instanceId;
+    case "action_observed":
+    case "action_count_within_range":
+      return (
+        condition.sourceEquipmentInstanceId === instanceId ||
+        condition.targetEquipmentInstanceIds.includes(instanceId)
+      );
+    default:
+      return false;
+  }
+}
+
+function conditionReferencesMaterial(
+  condition: WorkflowCondition,
+  instanceId: string
+): boolean {
+  return (
+    condition.kind === "material_bound_to_container" &&
+    condition.materialInstanceId === instanceId
+  );
+}
+
+function conditionReferencesRule(
+  condition: WorkflowCondition,
+  ruleId: string
+): boolean {
+  if (condition.kind === "rule_satisfied_before") {
+    return (
+      condition.predecessorRuleId === ruleId ||
+      condition.successorRuleId === ruleId
+    );
+  }
+  return (
+    condition.kind === "registered_completion_policy_satisfied" &&
+    condition.evidenceRuleIds.includes(ruleId)
+  );
+}
+
+function permissionMatchesCondition(
+  permission: LabWorkflowDraftV2["permittedActions"][number],
+  condition: WorkflowCondition
+): boolean {
+  if (
+    condition.kind !== "action_observed" &&
+    condition.kind !== "action_count_within_range"
+  ) {
+    return false;
+  }
+  return (
+    permission.actionId === condition.actionId &&
+    permission.sourceEquipmentInstanceId ===
+      condition.sourceEquipmentInstanceId &&
+    permission.targetEquipmentInstanceIds.length ===
+      condition.targetEquipmentInstanceIds.length &&
+    permission.targetEquipmentInstanceIds.every(
+      (instanceId, index) =>
+        condition.targetEquipmentInstanceIds[index] === instanceId
+    )
+  );
+}
+
+function requireRemovalTarget(
+  draft: LabWorkflowDraftV2,
+  target: LabDraftRemovalTarget,
+  registries: LabWorkflowV2RegistryContext
+): void {
+  switch (target.kind) {
+    case "objective":
+      requireObjective(
+        draft,
+        target.objectiveId,
+        "target.objectiveId",
+        registries
+      );
+      if (!draft.objectiveIds.includes(target.objectiveId)) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "target.objectiveId",
+          `Objective is not selected: ${target.objectiveId}`
+        );
+      }
+      return;
+    case "equipment":
+      equipmentAt(draft, target.instanceId, "target.instanceId", registries);
+      return;
+    case "rule":
+      requireRuleReference(draft, target.ruleId, "target.ruleId");
+      return;
+    case "material":
+      if (
+        !draft.materials.some(
+          ({ instanceId }) => instanceId === target.instanceId
+        )
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "target.instanceId",
+          `Unknown material binding: ${target.instanceId}`
+        );
+      }
+      return;
+    case "permitted_action":
+      if (
+        !draft.permittedActions.some(({ id }) => id === target.permissionId)
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "target.permissionId",
+          `Unknown permitted action: ${target.permissionId}`
+        );
+      }
+      return;
+    case "instruction":
+      if (!draft.instructions.some(({ id }) => id === target.instructionId)) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "target.instructionId",
+          `Unknown instruction: ${target.instructionId}`
+        );
+      }
+      return;
+    case "rubric_criterion":
+      if (!draft.rubric.criteria.some(({ id }) => id === target.criterionId)) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "target.criterionId",
+          `Unknown rubric criterion: ${target.criterionId}`
+        );
+      }
+      return;
+  }
+}
+
+function referencesForRemoval(
+  draft: LabWorkflowDraftV2,
+  target: LabDraftRemovalTarget
+): RemovalReference[] {
+  const references: RemovalReference[] = [];
+  const add = (kind: RemovalReference["kind"], id: string, path: string) =>
+    references.push({ kind, id, path });
+
+  switch (target.kind) {
+    case "objective":
+      draft.rules.forEach((rule, index) => {
+        if (rule.objectiveIds.includes(target.objectiveId))
+          add("workflow_rule", rule.id, `rules[${index}].objectiveIds`);
+      });
+      draft.rubric.criteria.forEach((criterion, index) => {
+        if (criterion.objectiveIds.includes(target.objectiveId))
+          add(
+            "rubric_criterion",
+            criterion.id,
+            `rubric.criteria[${index}].objectiveIds`
+          );
+      });
+      draft.coachPolicy.triggers.forEach((trigger, index) => {
+        if (trigger.objectiveIds.includes(target.objectiveId))
+          add(
+            "coach_trigger",
+            trigger.id,
+            `coachPolicy.triggers[${index}].objectiveIds`
+          );
+      });
+      draft.coachPolicy.adaptiveRetries.forEach((retry, index) => {
+        if (retry.targetObjectiveIds.includes(target.objectiveId))
+          add(
+            "adaptive_retry",
+            retry.id,
+            `coachPolicy.adaptiveRetries[${index}].targetObjectiveIds`
+          );
+      });
+      break;
+    case "equipment": {
+      const materialIds = draft.materials
+        .filter(
+          ({ containerInstanceId }) => containerInstanceId === target.instanceId
+        )
+        .map(({ instanceId }) => instanceId);
+      draft.materials.forEach((material, index) => {
+        if (material.containerInstanceId === target.instanceId)
+          add(
+            "material_binding",
+            material.instanceId,
+            `materials[${index}].containerInstanceId`
+          );
+      });
+      draft.layout.placements.forEach((placement, index) => {
+        if (placement.equipmentInstanceId === target.instanceId)
+          add(
+            "layout_placement",
+            placement.equipmentInstanceId,
+            `layout.placements[${index}]`
+          );
+      });
+      draft.permittedActions.forEach((permission, index) => {
+        if (
+          permission.sourceEquipmentInstanceId === target.instanceId ||
+          permission.targetEquipmentInstanceIds.includes(target.instanceId)
+        )
+          add("permitted_action", permission.id, `permittedActions[${index}]`);
+      });
+      draft.rules.forEach((rule, index) => {
+        if (
+          conditionReferencesEquipment(rule.condition, target.instanceId) ||
+          materialIds.some((id) =>
+            conditionReferencesMaterial(rule.condition, id)
+          )
+        )
+          add("workflow_rule", rule.id, `rules[${index}].condition`);
+      });
+      draft.safetyBindings.forEach((binding, index) => {
+        if (
+          binding.equipmentInstanceIds.includes(target.instanceId) ||
+          binding.materialInstanceIds.some((id) => materialIds.includes(id))
+        )
+          add(
+            "safety_binding",
+            binding.safetyPolicyId,
+            `safetyBindings[${index}]`
+          );
+      });
+      draft.presentation.instructionGuidance.forEach((guidance, index) => {
+        if (guidance.equipmentInstanceIds.includes(target.instanceId))
+          add(
+            "instruction_guidance",
+            guidance.instructionId,
+            `presentation.instructionGuidance[${index}].equipmentInstanceIds`
+          );
+      });
+      break;
+    }
+    case "rule":
+      draft.rules.forEach((rule, index) => {
+        if (
+          rule.id !== target.ruleId &&
+          conditionReferencesRule(rule.condition, target.ruleId)
+        )
+          add("workflow_rule", rule.id, `rules[${index}].condition`);
+      });
+      draft.permittedActions.forEach((permission, index) => {
+        if (
+          permission.availability.allSatisfiedRuleIds.includes(target.ruleId) ||
+          permission.availability.allUnsatisfiedRuleIds.includes(target.ruleId)
+        )
+          add(
+            "permitted_action",
+            permission.id,
+            `permittedActions[${index}].availability`
+          );
+      });
+      draft.instructions.forEach((instruction, index) => {
+        if (instruction.relatedRuleIds.includes(target.ruleId))
+          add(
+            "instruction",
+            instruction.id,
+            `instructions[${index}].relatedRuleIds`
+          );
+      });
+      draft.rubric.criteria.forEach((criterion, index) => {
+        if (
+          criterion.ruleIds.includes(target.ruleId) ||
+          criterion.evidenceMappings.some(
+            (mapping) =>
+              mapping.kind === "rule_diagnosis" &&
+              mapping.ruleId === target.ruleId
+          )
+        )
+          add("rubric_criterion", criterion.id, `rubric.criteria[${index}]`);
+      });
+      draft.presentation.rulePrompts.forEach((prompt, index) => {
+        if (prompt.ruleId === target.ruleId)
+          add(
+            "rule_prompt",
+            prompt.ruleId,
+            `presentation.rulePrompts[${index}]`
+          );
+      });
+      break;
+    case "material":
+      draft.rules.forEach((rule, index) => {
+        if (conditionReferencesMaterial(rule.condition, target.instanceId))
+          add("workflow_rule", rule.id, `rules[${index}].condition`);
+      });
+      draft.safetyBindings.forEach((binding, index) => {
+        if (binding.materialInstanceIds.includes(target.instanceId))
+          add(
+            "safety_binding",
+            binding.safetyPolicyId,
+            `safetyBindings[${index}].materialInstanceIds`
+          );
+      });
+      draft.presentation.materialLabels.forEach((label, index) => {
+        if (label.materialInstanceId === target.instanceId)
+          add(
+            "material_label",
+            label.materialInstanceId,
+            `presentation.materialLabels[${index}]`
+          );
+      });
+      break;
+    case "permitted_action": {
+      const permission = draft.permittedActions.find(
+        ({ id }) => id === target.permissionId
+      )!;
+      draft.rules.forEach((rule, index) => {
+        if (permissionMatchesCondition(permission, rule.condition))
+          add("workflow_rule", rule.id, `rules[${index}].condition`);
+      });
+      break;
+    }
+    case "instruction":
+      draft.presentation.instructionGuidance.forEach((guidance, index) => {
+        if (guidance.instructionId === target.instructionId)
+          add(
+            "instruction_guidance",
+            guidance.instructionId,
+            `presentation.instructionGuidance[${index}]`
+          );
+      });
+      break;
+    case "rubric_criterion":
+      break;
+  }
+
+  return references.sort(compareRemovalEntries);
+}
+
+function compatibilityEffectsForRemoval(
+  draft: LabWorkflowDraftV2,
+  target: LabDraftRemovalTarget
+): CompatibilityEffect[] {
+  const effects: CompatibilityEffect[] = [];
+  if (!draft.compatibility) return effects;
+  if (target.kind === "equipment") {
+    draft.compatibility.equipmentRoleBindings.forEach((binding, index) => {
+      if (binding.equipmentInstanceId !== target.instanceId) return;
+      effects.push({
+        kind: "equipment_role_removed",
+        id: binding.legacyRoleId,
+        path: `compatibility.equipmentRoleBindings[${index}]`,
+        message: `Removing ${target.instanceId} leaves compatibility role ${binding.legacyRoleId} unbound.`
+      });
+    });
+  }
+  if (target.kind === "material") {
+    draft.compatibility.materialRoleBindings.forEach((binding, index) => {
+      if (binding.materialInstanceId !== target.instanceId) return;
+      effects.push({
+        kind: "material_role_removed",
+        id: binding.legacyRoleId,
+        path: `compatibility.materialRoleBindings[${index}]`,
+        message: `Removing ${target.instanceId} leaves compatibility role ${binding.legacyRoleId} unbound.`
+      });
+    });
+  }
+  if (
+    effects.length > 0 &&
+    (target.kind === "equipment" || target.kind === "material")
+  ) {
+    effects.push({
+      kind: "runtime_compatibility_incomplete",
+      id: draft.compatibility.runtimeAdapterId,
+      path: "compatibility",
+      message:
+        "The legacy runtime adapter will remain unavailable until compatible role bindings are restored and revalidated."
+    });
+  }
+  return effects.sort(compareRemovalEntries);
+}
+
+function canDetachObjective(
+  draft: LabWorkflowDraftV2,
+  objectiveId: string
+): boolean {
+  return (
+    draft.objectiveIds.some((candidate) => candidate !== objectiveId) &&
+    draft.rules.every(
+      (rule) =>
+        !rule.objectiveIds.includes(objectiveId) || rule.objectiveIds.length > 1
+    ) &&
+    draft.rubric.criteria.every(
+      (criterion) =>
+        !criterion.objectiveIds.includes(objectiveId) ||
+        criterion.objectiveIds.length > 1
+    )
+  );
+}
+
+function inspectRemovalOrFail(
+  draft: LabWorkflowDraftV2,
+  target: LabDraftRemovalTarget,
+  registries: LabWorkflowV2RegistryContext
+): Readonly<LabDraftRemovalImpact> {
+  requireRemovalTarget(draft, target, registries);
+  const references = referencesForRemoval(draft, target);
+  const compatibilityEffects = compatibilityEffectsForRemoval(draft, target);
+  const allowed: RemovalResolutionKind[] = [];
+  if (references.length === 0 && compatibilityEffects.length === 0)
+    allowed.push("remove_only");
+  if (target.kind === "objective") {
+    if (draft.objectiveIds.some((id) => id !== target.objectiveId))
+      allowed.push("reassign");
+    if (canDetachObjective(draft, target.objectiveId)) allowed.push("detach");
+    allowed.push("remove_dependents");
+  } else {
+    allowed.push("cascade");
+  }
+  return deepFreeze({
+    sourceRevision: draft.revision,
+    sourceDraftHash: hashLabWorkflowSpec(draft),
+    target,
+    references,
+    compatibilityEffects,
+    allowedResolutions: [...new Set(allowed)]
+  });
+}
+
 function introducesOrderingCycle(rules: readonly WorkflowRule[]): boolean {
   const edges = new Map<string, string[]>();
   for (const rule of rules) {
@@ -640,12 +1128,502 @@ function removeRule(
   draft.rules = draft.rules.filter((rule) => rule.id !== ruleId);
 }
 
+function recalculateRubricTotal(draft: LabWorkflowDraftV2): void {
+  draft.rubric = {
+    ...draft.rubric,
+    totalPoints: draft.rubric.criteria.reduce(
+      (total, criterion) => total + criterion.maxPoints,
+      0
+    )
+  };
+}
+
+function removeRulesCascade(
+  draft: LabWorkflowDraftV2,
+  initialRuleIds: ReadonlySet<string>
+): void {
+  const removed = new Set(initialRuleIds);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const rule of draft.rules) {
+      if (removed.has(rule.id)) continue;
+      if (
+        [...removed].some((id) => conditionReferencesRule(rule.condition, id))
+      ) {
+        removed.add(rule.id);
+        changed = true;
+      }
+    }
+  }
+  draft.rules = draft.rules.filter((rule) => !removed.has(rule.id));
+  draft.permittedActions = draft.permittedActions.map((permission) => ({
+    ...permission,
+    availability: {
+      allSatisfiedRuleIds: permission.availability.allSatisfiedRuleIds.filter(
+        (id) => !removed.has(id)
+      ),
+      allUnsatisfiedRuleIds:
+        permission.availability.allUnsatisfiedRuleIds.filter(
+          (id) => !removed.has(id)
+        )
+    }
+  }));
+
+  const removedInstructionIds = new Set<string>();
+  draft.instructions = draft.instructions.flatMap((instruction) => {
+    const relatedRuleIds = instruction.relatedRuleIds.filter(
+      (id) => !removed.has(id)
+    );
+    if (relatedRuleIds.length === 0) {
+      removedInstructionIds.add(instruction.id);
+      return [];
+    }
+    return [{ ...instruction, relatedRuleIds }];
+  });
+
+  draft.rubric = {
+    ...draft.rubric,
+    criteria: draft.rubric.criteria.flatMap((criterion) => {
+      const ruleIds = criterion.ruleIds.filter((id) => !removed.has(id));
+      const evidenceMappings = criterion.evidenceMappings.filter(
+        (mapping) =>
+          mapping.kind !== "rule_diagnosis" || !removed.has(mapping.ruleId)
+      );
+      if (ruleIds.length === 0 || evidenceMappings.length === 0) return [];
+      return [{ ...criterion, ruleIds, evidenceMappings }];
+    })
+  };
+  recalculateRubricTotal(draft);
+  draft.presentation = {
+    ...draft.presentation,
+    instructionGuidance: draft.presentation.instructionGuidance.filter(
+      ({ instructionId }) => !removedInstructionIds.has(instructionId)
+    ),
+    rulePrompts: draft.presentation.rulePrompts.filter(
+      ({ ruleId }) => !removed.has(ruleId)
+    )
+  };
+}
+
+function removeMaterialsCascade(
+  draft: LabWorkflowDraftV2,
+  materialIds: ReadonlySet<string>
+): void {
+  const ruleIds = new Set(
+    draft.rules
+      .filter((rule) =>
+        [...materialIds].some((id) =>
+          conditionReferencesMaterial(rule.condition, id)
+        )
+      )
+      .map(({ id }) => id)
+  );
+  draft.materials = draft.materials.filter(
+    ({ instanceId }) => !materialIds.has(instanceId)
+  );
+  draft.safetyBindings = draft.safetyBindings
+    .map((binding) => ({
+      ...binding,
+      materialInstanceIds: binding.materialInstanceIds.filter(
+        (id) => !materialIds.has(id)
+      )
+    }))
+    .filter(
+      (binding) =>
+        binding.equipmentInstanceIds.length > 0 ||
+        binding.materialInstanceIds.length > 0
+    );
+  draft.presentation = {
+    ...draft.presentation,
+    materialLabels: draft.presentation.materialLabels.filter(
+      ({ materialInstanceId }) => !materialIds.has(materialInstanceId)
+    )
+  };
+  if (draft.compatibility) {
+    draft.compatibility = {
+      ...draft.compatibility,
+      materialRoleBindings: draft.compatibility.materialRoleBindings.filter(
+        ({ materialInstanceId }) => !materialIds.has(materialInstanceId)
+      )
+    };
+  }
+  removeRulesCascade(draft, ruleIds);
+}
+
+function removePermissionsCascade(
+  draft: LabWorkflowDraftV2,
+  permissionIds: ReadonlySet<string>
+): void {
+  const permissions = draft.permittedActions.filter(({ id }) =>
+    permissionIds.has(id)
+  );
+  const ruleIds = new Set(
+    draft.rules
+      .filter((rule) =>
+        permissions.some((permission) =>
+          permissionMatchesCondition(permission, rule.condition)
+        )
+      )
+      .map(({ id }) => id)
+  );
+  draft.permittedActions = draft.permittedActions.filter(
+    ({ id }) => !permissionIds.has(id)
+  );
+  removeRulesCascade(draft, ruleIds);
+}
+
+function removeEquipmentCascade(
+  draft: LabWorkflowDraftV2,
+  instanceId: string
+): void {
+  const materialIds = new Set(
+    draft.materials
+      .filter(({ containerInstanceId }) => containerInstanceId === instanceId)
+      .map(({ instanceId: materialInstanceId }) => materialInstanceId)
+  );
+  const permissionIds = new Set(
+    draft.permittedActions
+      .filter(
+        (permission) =>
+          permission.sourceEquipmentInstanceId === instanceId ||
+          permission.targetEquipmentInstanceIds.includes(instanceId)
+      )
+      .map(({ id }) => id)
+  );
+  const ruleIds = new Set(
+    draft.rules
+      .filter(
+        (rule) =>
+          conditionReferencesEquipment(rule.condition, instanceId) ||
+          [...materialIds].some((id) =>
+            conditionReferencesMaterial(rule.condition, id)
+          ) ||
+          draft.permittedActions
+            .filter(({ id }) => permissionIds.has(id))
+            .some((permission) =>
+              permissionMatchesCondition(permission, rule.condition)
+            )
+      )
+      .map(({ id }) => id)
+  );
+
+  draft.equipment = draft.equipment.filter(
+    ({ instanceId: candidate }) => candidate !== instanceId
+  );
+  draft.layout = {
+    ...draft.layout,
+    placements: draft.layout.placements.filter(
+      ({ equipmentInstanceId }) => equipmentInstanceId !== instanceId
+    )
+  };
+  draft.permittedActions = draft.permittedActions.filter(
+    ({ id }) => !permissionIds.has(id)
+  );
+  draft.safetyBindings = draft.safetyBindings
+    .map((binding) => ({
+      ...binding,
+      equipmentInstanceIds: binding.equipmentInstanceIds.filter(
+        (id) => id !== instanceId
+      )
+    }))
+    .filter(
+      (binding) =>
+        binding.equipmentInstanceIds.length > 0 ||
+        binding.materialInstanceIds.length > 0
+    );
+  draft.presentation = {
+    ...draft.presentation,
+    instructionGuidance: draft.presentation.instructionGuidance.map(
+      (guidance) => ({
+        ...guidance,
+        equipmentInstanceIds: guidance.equipmentInstanceIds.filter(
+          (id) => id !== instanceId
+        )
+      })
+    )
+  };
+  if (draft.compatibility) {
+    draft.compatibility = {
+      ...draft.compatibility,
+      equipmentRoleBindings: draft.compatibility.equipmentRoleBindings.filter(
+        ({ equipmentInstanceId }) => equipmentInstanceId !== instanceId
+      )
+    };
+  }
+  removeMaterialsCascade(draft, materialIds);
+  removeRulesCascade(draft, ruleIds);
+}
+
+function replaceObjectiveReference(
+  ids: readonly string[],
+  removedId: string,
+  replacementId: string
+): string[] {
+  return [...new Set(ids.map((id) => (id === removedId ? replacementId : id)))];
+}
+
+function reassignObjective(
+  draft: LabWorkflowDraftV2,
+  objectiveId: string,
+  replacementObjectiveId: string,
+  registries: LabWorkflowV2RegistryContext
+): void {
+  if (
+    replacementObjectiveId === objectiveId ||
+    !draft.objectiveIds.includes(replacementObjectiveId)
+  ) {
+    fail(
+      LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+      "command.resolution.replacementObjectiveId",
+      "The replacement objective must be another selected objective."
+    );
+  }
+  requireObjective(
+    draft,
+    replacementObjectiveId,
+    "command.resolution.replacementObjectiveId",
+    registries
+  );
+  draft.rules = draft.rules.map((rule) => ({
+    ...rule,
+    objectiveIds: replaceObjectiveReference(
+      rule.objectiveIds,
+      objectiveId,
+      replacementObjectiveId
+    )
+  }));
+  draft.rubric = {
+    ...draft.rubric,
+    criteria: draft.rubric.criteria.map((criterion) => ({
+      ...criterion,
+      objectiveIds: replaceObjectiveReference(
+        criterion.objectiveIds,
+        objectiveId,
+        replacementObjectiveId
+      )
+    }))
+  };
+  draft.coachPolicy = {
+    triggers: draft.coachPolicy.triggers.map((trigger) => ({
+      ...trigger,
+      objectiveIds: replaceObjectiveReference(
+        trigger.objectiveIds,
+        objectiveId,
+        replacementObjectiveId
+      )
+    })),
+    adaptiveRetries: draft.coachPolicy.adaptiveRetries.map((retry) => ({
+      ...retry,
+      targetObjectiveIds: replaceObjectiveReference(
+        retry.targetObjectiveIds,
+        objectiveId,
+        replacementObjectiveId
+      )
+    }))
+  };
+  draft.objectiveIds = draft.objectiveIds.filter((id) => id !== objectiveId);
+}
+
+function detachObjective(draft: LabWorkflowDraftV2, objectiveId: string): void {
+  if (!canDetachObjective(draft, objectiveId)) {
+    fail(
+      LAB_DRAFT_COMMAND_ERROR_CODES.removalResolutionNotAllowed,
+      "command.resolution.kind",
+      "This objective cannot be detached without leaving an empty required objective reference."
+    );
+  }
+  draft.rules = draft.rules.map((rule) => ({
+    ...rule,
+    objectiveIds: rule.objectiveIds.filter((id) => id !== objectiveId)
+  }));
+  draft.rubric = {
+    ...draft.rubric,
+    criteria: draft.rubric.criteria.map((criterion) => ({
+      ...criterion,
+      objectiveIds: criterion.objectiveIds.filter((id) => id !== objectiveId)
+    }))
+  };
+  draft.coachPolicy = {
+    triggers: draft.coachPolicy.triggers.map((trigger) => ({
+      ...trigger,
+      objectiveIds: trigger.objectiveIds.filter((id) => id !== objectiveId)
+    })),
+    adaptiveRetries: draft.coachPolicy.adaptiveRetries.map((retry) => ({
+      ...retry,
+      targetObjectiveIds: retry.targetObjectiveIds.filter(
+        (id) => id !== objectiveId
+      )
+    }))
+  };
+  draft.objectiveIds = draft.objectiveIds.filter((id) => id !== objectiveId);
+}
+
+function removeObjectiveDependents(
+  draft: LabWorkflowDraftV2,
+  objectiveId: string
+): void {
+  const ruleIds = new Set(
+    draft.rules
+      .filter((rule) => rule.objectiveIds.includes(objectiveId))
+      .map(({ id }) => id)
+  );
+  draft.rubric = {
+    ...draft.rubric,
+    criteria: draft.rubric.criteria.filter(
+      (criterion) => !criterion.objectiveIds.includes(objectiveId)
+    )
+  };
+  recalculateRubricTotal(draft);
+  draft.coachPolicy = {
+    triggers: draft.coachPolicy.triggers.filter(
+      (trigger) => !trigger.objectiveIds.includes(objectiveId)
+    ),
+    adaptiveRetries: draft.coachPolicy.adaptiveRetries.filter(
+      (retry) => !retry.targetObjectiveIds.includes(objectiveId)
+    )
+  };
+  draft.objectiveIds = draft.objectiveIds.filter((id) => id !== objectiveId);
+  removeRulesCascade(draft, ruleIds);
+}
+
+function removeInstructionCascade(
+  draft: LabWorkflowDraftV2,
+  instructionId: string
+): void {
+  draft.instructions = draft.instructions.filter(
+    ({ id }) => id !== instructionId
+  );
+  draft.presentation = {
+    ...draft.presentation,
+    instructionGuidance: draft.presentation.instructionGuidance.filter(
+      (guidance) => guidance.instructionId !== instructionId
+    )
+  };
+}
+
+function removeCriterionCascade(
+  draft: LabWorkflowDraftV2,
+  criterionId: string
+): void {
+  draft.rubric = {
+    ...draft.rubric,
+    criteria: draft.rubric.criteria.filter(({ id }) => id !== criterionId)
+  };
+  recalculateRubricTotal(draft);
+}
+
+function applyRemovalResolution(
+  draft: LabWorkflowDraftV2,
+  target: LabDraftRemovalTarget,
+  resolution: LabDraftRemovalResolution,
+  impact: Readonly<LabDraftRemovalImpact>,
+  registries: LabWorkflowV2RegistryContext
+): void {
+  if (!impact.allowedResolutions.includes(resolution.kind)) {
+    fail(
+      LAB_DRAFT_COMMAND_ERROR_CODES.removalResolutionNotAllowed,
+      "command.resolution.kind",
+      `Resolution ${resolution.kind} is not allowed for this removal plan.`
+    );
+  }
+  if (resolution.kind === "remove_only") {
+    switch (target.kind) {
+      case "objective":
+        draft.objectiveIds = draft.objectiveIds.filter(
+          (id) => id !== target.objectiveId
+        );
+        return;
+      case "equipment":
+        draft.equipment = draft.equipment.filter(
+          ({ instanceId }) => instanceId !== target.instanceId
+        );
+        return;
+      case "rule":
+        draft.rules = draft.rules.filter(({ id }) => id !== target.ruleId);
+        return;
+      case "material":
+        draft.materials = draft.materials.filter(
+          ({ instanceId }) => instanceId !== target.instanceId
+        );
+        return;
+      case "permitted_action":
+        draft.permittedActions = draft.permittedActions.filter(
+          ({ id }) => id !== target.permissionId
+        );
+        return;
+      case "instruction":
+        draft.instructions = draft.instructions.filter(
+          ({ id }) => id !== target.instructionId
+        );
+        return;
+      case "rubric_criterion":
+        removeCriterionCascade(draft, target.criterionId);
+        return;
+    }
+  }
+  if (target.kind === "objective") {
+    switch (resolution.kind) {
+      case "reassign":
+        reassignObjective(
+          draft,
+          target.objectiveId,
+          resolution.replacementObjectiveId,
+          registries
+        );
+        return;
+      case "detach":
+        detachObjective(draft, target.objectiveId);
+        return;
+      case "remove_dependents":
+        removeObjectiveDependents(draft, target.objectiveId);
+        return;
+      default:
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.removalResolutionNotAllowed,
+          "command.resolution.kind",
+          "Objective removal requires an objective resolution."
+        );
+    }
+  }
+  if (resolution.kind !== "cascade") {
+    fail(
+      LAB_DRAFT_COMMAND_ERROR_CODES.removalResolutionNotAllowed,
+      "command.resolution.kind",
+      "This target requires cascade resolution."
+    );
+  }
+  switch (target.kind) {
+    case "equipment":
+      removeEquipmentCascade(draft, target.instanceId);
+      return;
+    case "rule":
+      removeRulesCascade(draft, new Set([target.ruleId]));
+      return;
+    case "material":
+      removeMaterialsCascade(draft, new Set([target.instanceId]));
+      return;
+    case "permitted_action":
+      removePermissionsCascade(draft, new Set([target.permissionId]));
+      return;
+    case "instruction":
+      removeInstructionCascade(draft, target.instructionId);
+      return;
+    case "rubric_criterion":
+      removeCriterionCascade(draft, target.criterionId);
+      return;
+  }
+}
+
 function mutateDraft(
   draft: LabWorkflowDraftV2,
   command: LabDraftCommand,
   registries: LabWorkflowV2RegistryContext
 ): void {
   switch (command.type) {
+    case "update_metadata":
+      draft.metadata = command.metadata;
+      return;
     case "add_equipment": {
       if (
         draft.equipment.some(
@@ -770,6 +1748,38 @@ function mutateDraft(
           `${material.id} is not compatible with ${container.id}.`
         );
       }
+      // A container holds at most one reagent: reject binding a second, different
+      // reagent into a container that already holds one. This prevents chemically
+      // contradictory setups such as an acid placed into the base's burette.
+      if (
+        draft.materials.some(
+          (existing) =>
+            existing.containerInstanceId ===
+              command.binding.containerInstanceId &&
+            existing.materialProfileId !== command.binding.materialProfileId
+        )
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.incompatible,
+          "command.binding.containerInstanceId",
+          `${command.binding.containerInstanceId} already holds a different reagent.`
+        );
+      }
+      // A reagent lives in at most one container: reject binding the same reagent
+      // profile into a second container.
+      if (
+        draft.materials.some(
+          (existing) =>
+            existing.materialProfileId === command.binding.materialProfileId &&
+            existing.containerInstanceId !== command.binding.containerInstanceId
+        )
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.incompatible,
+          "command.binding.materialProfileId",
+          `${material.id} is already placed in another container.`
+        );
+      }
       const quantity = exactEntry(
         registries.configurations,
         command.binding.quantityPresetId,
@@ -787,6 +1797,206 @@ function mutateDraft(
         );
       }
       draft.materials = [...draft.materials, command.binding];
+      return;
+    }
+    case "remove_material_binding": {
+      const target = {
+        kind: "material" as const,
+        instanceId: command.instanceId
+      };
+      requireRemovalTarget(draft, target, registries);
+      const references = referencesForRemoval(draft, target);
+      const compatibilityEffects = compatibilityEffectsForRemoval(
+        draft,
+        target
+      );
+      if (references.length > 0 || compatibilityEffects.length > 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.dependencyExists,
+          "command.instanceId",
+          `Material ${command.instanceId} is still referenced.`,
+          [
+            ...references.map(({ path }) => path),
+            ...compatibilityEffects.map(({ path }) => path)
+          ].sort()
+        );
+      }
+      draft.materials = draft.materials.filter(
+        ({ instanceId }) => instanceId !== command.instanceId
+      );
+      return;
+    }
+    case "set_material_concentration": {
+      if (draft.schemaVersion !== "2.1.0") {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "draft.schemaVersion",
+          "Concentration authoring requires the v2.1 draft contract."
+        );
+      }
+      const index = draft.materials.findIndex(
+        ({ instanceId }) => instanceId === command.instanceId
+      );
+      if (index < 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "command.instanceId",
+          `Unknown material instance: ${command.instanceId}`
+        );
+      }
+      const binding = draft.materials[index]!;
+      const profile = exactEntry(
+        registries.materials,
+        binding.materialProfileId,
+        `materials[${index}].materialProfileId`
+      );
+      const contract = profile.concentrationAuthoring;
+      if (!contract) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "command.instanceId",
+          `${profile.id} does not support teacher-authored concentration.`
+        );
+      }
+      const configuration = exactEntry(
+        registries.configurations,
+        command.initialization.configurationSchemaId,
+        "command.initialization.configurationSchemaId"
+      );
+      if (
+        configuration.id !== contract.configurationSchemaId ||
+        configuration.category !== "configuration_schema" ||
+        configuration.scope !== "material_initialization" ||
+        configuration.availability !== "verified" ||
+        command.initialization.concentration.unitId !== contract.unitId
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.incompatible,
+          "command.initialization",
+          "The concentration schema or unit is not supported by this material."
+        );
+      }
+      let canonicalDecimalValue: string;
+      try {
+        canonicalDecimalValue = canonicalizeBoundedConcentrationDecimal(
+          command.initialization.concentration.decimalValue,
+          contract
+        ).canonicalDecimalValue;
+      } catch (error) {
+        if (!(error instanceof BoundedConcentrationError)) throw error;
+        fail(
+          error.code === "bounded_concentration.range" ||
+            error.code === "bounded_concentration.precision"
+            ? LAB_DRAFT_COMMAND_ERROR_CODES.boundsExceeded
+            : LAB_DRAFT_COMMAND_ERROR_CODES.commandInvalid,
+          "command.initialization.concentration.decimalValue",
+          error.message
+        );
+      }
+      draft.materials = draft.materials.map((material, materialIndex) =>
+        materialIndex === index
+          ? {
+              ...material,
+              initialization: {
+                kind: "bounded_concentration" as const,
+                configurationSchemaId: contract.configurationSchemaId,
+                concentration: {
+                  decimalValue: canonicalDecimalValue,
+                  unitId: contract.unitId
+                }
+              }
+            }
+          : material
+      );
+      if (
+        !draft.requiredChemistryCapabilityIds.includes(
+          contract.requiredChemistryCapabilityId
+        )
+      ) {
+        draft.requiredChemistryCapabilityIds = [
+          ...draft.requiredChemistryCapabilityIds,
+          contract.requiredChemistryCapabilityId
+        ];
+      }
+      for (const policyId of contract.safetyPolicyIds) {
+        if (!draft.safetyPolicyIds.includes(policyId))
+          draft.safetyPolicyIds = [...draft.safetyPolicyIds, policyId];
+        const requiredEquipmentIds = draft.equipment
+          .filter((equipment) =>
+            registries.components
+              .get(equipment.equipmentDefinitionId)
+              .safetyConstraintIds.includes(policyId)
+          )
+          .map(({ instanceId }) => instanceId);
+        const bindingIndex = draft.safetyBindings.findIndex(
+          (safetyBinding) => safetyBinding.safetyPolicyId === policyId
+        );
+        if (bindingIndex >= 0) {
+          draft.safetyBindings = draft.safetyBindings.map(
+            (safetyBinding, safetyIndex) =>
+              safetyIndex === bindingIndex
+                ? {
+                    ...safetyBinding,
+                    equipmentInstanceIds: [
+                      ...new Set([
+                        ...safetyBinding.equipmentInstanceIds,
+                        ...requiredEquipmentIds
+                      ])
+                    ],
+                    materialInstanceIds: [
+                      ...new Set([
+                        ...safetyBinding.materialInstanceIds,
+                        command.instanceId
+                      ])
+                    ]
+                  }
+                : safetyBinding
+          );
+        } else {
+          draft.safetyBindings = [
+            ...draft.safetyBindings,
+            {
+              safetyPolicyId: policyId,
+              equipmentInstanceIds: requiredEquipmentIds,
+              materialInstanceIds: [command.instanceId]
+            }
+          ];
+        }
+      }
+      return;
+    }
+    case "clear_material_concentration": {
+      if (draft.schemaVersion !== "2.1.0") {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "draft.schemaVersion",
+          "This draft has no authored concentration to clear."
+        );
+      }
+      const index = draft.materials.findIndex(
+        ({ instanceId }) => instanceId === command.instanceId
+      );
+      if (index < 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "command.instanceId",
+          `Unknown material instance: ${command.instanceId}`
+        );
+      }
+      const binding = draft.materials[index]!;
+      if (!binding.initialization) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "command.instanceId",
+          "This material has no authored concentration to clear."
+        );
+      }
+      draft.materials = draft.materials.map((material, materialIndex) => {
+        if (materialIndex !== index) return material;
+        const { initialization, ...withoutInitialization } = material;
+        void initialization;
+        return withoutInitialization;
+      });
       return;
     }
     case "set_layout": {
@@ -892,12 +2102,73 @@ function mutateDraft(
       draft.permittedActions = [...draft.permittedActions, command.action];
       return;
     }
+    case "remove_permitted_action": {
+      const target = {
+        kind: "permitted_action" as const,
+        permissionId: command.permissionId
+      };
+      requireRemovalTarget(draft, target, registries);
+      const references = referencesForRemoval(draft, target);
+      if (references.length > 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.dependencyExists,
+          "command.permissionId",
+          `Permitted action ${command.permissionId} is still referenced.`,
+          references.map(({ path }) => path)
+        );
+      }
+      draft.permittedActions = draft.permittedActions.filter(
+        ({ id }) => id !== command.permissionId
+      );
+      return;
+    }
     case "add_rule":
       addRule(draft, command.rule, "command.rule", registries);
       return;
     case "remove_rule":
       removeRule(draft, command.ruleId, "command.ruleId");
       return;
+    case "replace_rule": {
+      const index = draft.rules.findIndex(({ id }) => id === command.ruleId);
+      if (index < 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "command.ruleId",
+          `Unknown workflow rule: ${command.ruleId}`
+        );
+      }
+      if (command.rule.id !== command.ruleId) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "command.rule.id",
+          "Replacing a rule cannot change its ID."
+        );
+      }
+      requireSelectedObjectives(
+        draft,
+        command.rule.objectiveIds,
+        "command.rule.objectiveIds",
+        registries
+      );
+      validateCondition(
+        draft,
+        command.rule.condition,
+        "command.rule.condition",
+        registries
+      );
+      const rules = draft.rules.map((rule, ruleIndex) =>
+        ruleIndex === index ? command.rule : rule
+      );
+      if (introducesOrderingCycle(rules)) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.orderingCycle,
+          "command.rule.condition",
+          "Replacement would create an ordering cycle."
+        );
+      }
+      draft.rules = rules;
+      return;
+    }
     case "add_condition": {
       const index = draft.rules.findIndex((rule) => rule.id === command.ruleId);
       if (index < 0) {
@@ -948,6 +2219,20 @@ function mutateDraft(
           LAB_DRAFT_COMMAND_ERROR_CODES.orderingCycle,
           "command.successorRuleId",
           "A rule cannot depend on itself."
+        );
+      }
+      if (
+        draft.rules.some(
+          (rule) =>
+            rule.condition.kind === "rule_satisfied_before" &&
+            rule.condition.predecessorRuleId === command.predecessorRuleId &&
+            rule.condition.successorRuleId === command.successorRuleId
+        )
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.dependencyExists,
+          "command.successorRuleId",
+          "That ordering dependency already exists."
         );
       }
       addRule(
@@ -1018,18 +2303,56 @@ function mutateDraft(
           `Unknown instruction: ${command.instructionId}`
         );
       }
+      {
+        const target = {
+          kind: "instruction" as const,
+          instructionId: command.instructionId
+        };
+        const references = referencesForRemoval(draft, target);
+        if (references.length > 0) {
+          fail(
+            LAB_DRAFT_COMMAND_ERROR_CODES.dependencyExists,
+            "command.instructionId",
+            `Instruction ${command.instructionId} is still referenced.`,
+            references.map(({ path }) => path)
+          );
+        }
+      }
       draft.instructions = draft.instructions.filter(
         (instruction) => instruction.id !== command.instructionId
       );
-      // Presentation guidance is a subordinate 1:1 record and is explicitly
-      // cascaded by this command; workflow rules are never cascaded.
-      draft.presentation = {
-        ...draft.presentation,
-        instructionGuidance: draft.presentation.instructionGuidance.filter(
-          (guidance) => guidance.instructionId !== command.instructionId
-        )
-      };
       return;
+    case "replace_instruction": {
+      const index = draft.instructions.findIndex(
+        ({ id }) => id === command.instructionId
+      );
+      if (index < 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "command.instructionId",
+          `Unknown instruction: ${command.instructionId}`
+        );
+      }
+      if (command.instruction.id !== command.instructionId) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "command.instruction.id",
+          "Replacing an instruction cannot change its ID."
+        );
+      }
+      command.instruction.relatedRuleIds.forEach((ruleId, ruleIndex) =>
+        requireRuleReference(
+          draft,
+          ruleId,
+          `command.instruction.relatedRuleIds[${ruleIndex}]`
+        )
+      );
+      draft.instructions = draft.instructions.map(
+        (instruction, instructionIndex) =>
+          instructionIndex === index ? command.instruction : instruction
+      );
+      return;
+    }
     case "add_objective":
       requireObjective(
         draft,
@@ -1122,6 +2445,96 @@ function mutateDraft(
       };
       return;
     }
+    case "replace_rubric_criterion": {
+      const index = draft.rubric.criteria.findIndex(
+        ({ id }) => id === command.criterionId
+      );
+      if (index < 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "command.criterionId",
+          `Unknown rubric criterion: ${command.criterionId}`
+        );
+      }
+      if (command.criterion.id !== command.criterionId) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.commandNotApplicable,
+          "command.criterion.id",
+          "Replacing a rubric criterion cannot change its ID."
+        );
+      }
+      requireSelectedObjectives(
+        draft,
+        command.criterion.objectiveIds,
+        "command.criterion.objectiveIds",
+        registries
+      );
+      command.criterion.ruleIds.forEach((ruleId, ruleIndex) =>
+        requireRuleReference(
+          draft,
+          ruleId,
+          `command.criterion.ruleIds[${ruleIndex}]`
+        )
+      );
+      draft.rubric = {
+        ...draft.rubric,
+        criteria: draft.rubric.criteria.map((criterion, criterionIndex) =>
+          criterionIndex === index ? command.criterion : criterion
+        )
+      };
+      recalculateRubricTotal(draft);
+      return;
+    }
+    case "apply_removal": {
+      const currentHash = hashLabWorkflowSpec(draft);
+      if (
+        command.plan.sourceRevision !== draft.revision ||
+        command.plan.sourceDraftHash !== currentHash
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.removalPlanStale,
+          "command.plan",
+          "Removal plan does not match the current draft revision and hash."
+        );
+      }
+      const impact = inspectRemovalOrFail(
+        draft,
+        command.plan.target,
+        registries
+      );
+      if (
+        impact.compatibilityEffects.length > 0 &&
+        !command.confirmCompatibilityEffects
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.removalConfirmationRequired,
+          "command.confirmCompatibilityEffects",
+          "Compatibility effects require explicit confirmation.",
+          impact.compatibilityEffects.map(({ path }) => path)
+        );
+      }
+      if (
+        impact.references.length > 0 &&
+        (command.resolution.kind === "cascade" ||
+          command.resolution.kind === "remove_dependents") &&
+        !command.confirmDependentContentRemoval
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.removalConfirmationRequired,
+          "command.confirmDependentContentRemoval",
+          "Dependent-content removal requires explicit confirmation.",
+          impact.references.map(({ path }) => path)
+        );
+      }
+      applyRemovalResolution(
+        draft,
+        command.plan.target,
+        command.resolution,
+        impact,
+        registries
+      );
+      return;
+    }
     default: {
       const exhaustive: never = command;
       return exhaustive;
@@ -1129,32 +2542,139 @@ function mutateDraft(
   }
 }
 
-function invalidate(
-  input: LabWorkflowSpecV2,
-  command: LabDraftCommand,
-  registries: LabWorkflowV2RegistryContext
-): Readonly<LabWorkflowDraftV2> {
-  if (input.revision >= 1_000_000) {
-    fail(
-      LAB_DRAFT_COMMAND_ERROR_CODES.boundsExceeded,
-      "draft.revision",
-      "Draft revision cannot be incremented beyond 1000000."
-    );
-  }
+function prepareTransactionDraft(input: LabWorkflowSpecV2): LabWorkflowDraftV2 {
   const { supportStatus, validation, judgeCritique, ...authored } =
     structuredClone(input);
   void supportStatus;
   void validation;
   void judgeCritique;
-  const draft = labWorkflowDraftV2Schema.parse({
+  return labWorkflowDraftV2Schema.parse({
     ...authored,
-    revision: input.revision + 1,
+    revision: input.revision,
     supportStatus: "draft_unvalidated",
     validation: null,
     judgeCritique: null
   });
-  mutateDraft(draft, command, registries);
-  return deepFreeze(labWorkflowDraftV2Schema.parse(draft));
+}
+
+function transactionFailure(
+  failingCommandIndex: number | null,
+  code: LabDraftCommandErrorCode,
+  path: string,
+  message: string,
+  dependencyPaths: readonly string[] = []
+): Readonly<LabDraftTransactionResult> {
+  return deepFreeze({
+    ok: false as const,
+    failingCommandIndex,
+    error: { code, path, message, dependencyPaths: [...dependencyPaths] }
+  });
+}
+
+export function applyLabDraftTransaction(
+  input: unknown,
+  commandInputs: readonly unknown[],
+  expectedRevision: number,
+  registries: LabWorkflowV2RegistryContext = PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES
+): Readonly<LabDraftTransactionResult> {
+  const parsedDraft = labWorkflowSpecV2Schema.safeParse(input);
+  if (!parsedDraft.success) {
+    return transactionFailure(
+      null,
+      LAB_DRAFT_COMMAND_ERROR_CODES.draftInvalid,
+      firstZodPath(parsedDraft.error),
+      parsedDraft.error.issues[0]?.message ?? "Draft is invalid."
+    );
+  }
+  if (parsedDraft.data.revision !== expectedRevision) {
+    return transactionFailure(
+      null,
+      LAB_DRAFT_COMMAND_ERROR_CODES.revisionConflict,
+      "expectedRevision",
+      `Expected revision ${expectedRevision}, but the current revision is ${parsedDraft.data.revision}.`
+    );
+  }
+  if (
+    !Array.isArray(commandInputs) ||
+    commandInputs.length === 0 ||
+    commandInputs.length > 64
+  ) {
+    return transactionFailure(
+      null,
+      LAB_DRAFT_COMMAND_ERROR_CODES.commandInvalid,
+      "commands",
+      "A transaction requires between 1 and 64 commands."
+    );
+  }
+  if (parsedDraft.data.revision >= 1_000_000) {
+    return transactionFailure(
+      null,
+      LAB_DRAFT_COMMAND_ERROR_CODES.boundsExceeded,
+      "draft.revision",
+      "Draft revision cannot be incremented beyond 1000000."
+    );
+  }
+  const commands: LabDraftCommand[] = [];
+  for (let index = 0; index < commandInputs.length; index += 1) {
+    const parsedCommand = labDraftCommandSchema.safeParse(commandInputs[index]);
+    if (!parsedCommand.success) {
+      return transactionFailure(
+        index,
+        LAB_DRAFT_COMMAND_ERROR_CODES.commandInvalid,
+        firstZodPath(parsedCommand.error),
+        parsedCommand.error.issues[0]?.message ?? "Command is invalid."
+      );
+    }
+    commands.push(parsedCommand.data);
+  }
+
+  let draft = prepareTransactionDraft(parsedDraft.data);
+  for (let index = 0; index < commands.length; index += 1) {
+    try {
+      if (
+        commands[index]!.type === "set_material_concentration" &&
+        draft.schemaVersion === "2.0.0"
+      ) {
+        draft = migrateLabWorkflowV2_0ToV2_1(draft);
+      }
+      mutateDraft(draft, commands[index]!, registries);
+    } catch (error) {
+      if (error instanceof CommandFailure) {
+        return transactionFailure(
+          index,
+          error.code,
+          error.path,
+          error.message,
+          error.dependencyPaths
+        );
+      }
+      throw error;
+    }
+  }
+  draft.revision = parsedDraft.data.revision + 1;
+  const finalDraft = labWorkflowDraftV2Schema.safeParse(draft);
+  if (!finalDraft.success) {
+    return transactionFailure(
+      commands.length - 1,
+      LAB_DRAFT_COMMAND_ERROR_CODES.draftInvalid,
+      firstZodPath(finalDraft.error),
+      finalDraft.error.issues[0]?.message ??
+        "Transaction did not produce a strict draft."
+    );
+  }
+  const frozenDraft = deepFreeze(finalDraft.data);
+  return deepFreeze({
+    ok: true as const,
+    draft: frozenDraft,
+    edit: {
+      commandTypes: commands.map(({ type }) => type),
+      commandCount: commands.length,
+      revisionBefore: parsedDraft.data.revision,
+      revisionAfter: frozenDraft.revision,
+      validationInvalidated: true as const,
+      judgeCritiqueInvalidated: true as const
+    }
+  });
 }
 
 export function applyLabDraftCommand(
@@ -1162,6 +2682,41 @@ export function applyLabDraftCommand(
   commandInput: unknown,
   registries: LabWorkflowV2RegistryContext = PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES
 ): Readonly<LabDraftCommandResult> {
+  const revision =
+    typeof input === "object" &&
+    input !== null &&
+    "revision" in input &&
+    typeof input.revision === "number"
+      ? input.revision
+      : 0;
+  const transaction = applyLabDraftTransaction(
+    input,
+    [commandInput],
+    revision,
+    registries
+  );
+  if (!transaction.ok) {
+    return deepFreeze({ ok: false as const, error: transaction.error });
+  }
+  const commandType = transaction.edit.commandTypes[0]!;
+  return deepFreeze({
+    ok: true as const,
+    draft: transaction.draft,
+    edit: {
+      commandType,
+      revisionBefore: transaction.edit.revisionBefore,
+      revisionAfter: transaction.edit.revisionAfter,
+      validationInvalidated: true as const,
+      judgeCritiqueInvalidated: true as const
+    }
+  });
+}
+
+export function inspectLabDraftRemoval(
+  input: unknown,
+  targetInput: unknown,
+  registries: LabWorkflowV2RegistryContext = PRODUCTION_LAB_WORKFLOW_V2_REGISTRIES
+): Readonly<LabDraftRemovalInspectionResult> {
   const parsedDraft = labWorkflowSpecV2Schema.safeParse(input);
   if (!parsedDraft.success) {
     return deepFreeze({
@@ -1174,31 +2729,24 @@ export function applyLabDraftCommand(
       }
     });
   }
-  const parsedCommand = labDraftCommandSchema.safeParse(commandInput);
-  if (!parsedCommand.success) {
+  const parsedTarget = labDraftRemovalTargetSchema.safeParse(targetInput);
+  if (!parsedTarget.success) {
     return deepFreeze({
       ok: false as const,
       error: {
         code: LAB_DRAFT_COMMAND_ERROR_CODES.commandInvalid,
-        path: firstZodPath(parsedCommand.error),
+        path: firstZodPath(parsedTarget.error),
         message:
-          parsedCommand.error.issues[0]?.message ?? "Command is invalid.",
+          parsedTarget.error.issues[0]?.message ?? "Removal target is invalid.",
         dependencyPaths: []
       }
     });
   }
   try {
-    const draft = invalidate(parsedDraft.data, parsedCommand.data, registries);
+    const draft = prepareTransactionDraft(parsedDraft.data);
     return deepFreeze({
       ok: true as const,
-      draft,
-      edit: {
-        commandType: parsedCommand.data.type,
-        revisionBefore: parsedDraft.data.revision,
-        revisionAfter: draft.revision,
-        validationInvalidated: true as const,
-        judgeCritiqueInvalidated: true as const
-      }
+      impact: inspectRemovalOrFail(draft, parsedTarget.data, registries)
     });
   } catch (error) {
     if (error instanceof CommandFailure) {
