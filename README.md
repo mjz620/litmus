@@ -1,51 +1,65 @@
 # LabBench AI
 
-LabBench AI is a browser-based chemistry rehearsal environment for high-school students and teachers. Students practice meaningful lab actions in deterministic simulations, receive evidence-based coaching, submit reports, retry targeted skills, and give teachers a readiness view before physical lab time.
+LabBench AI is a browser-based chemistry rehearsal environment for students and teachers. Students practice supported lab procedures in deterministic simulations; teachers can compose, validate, preview, and review supported lab workflows before assigning them in a future persistence phase.
 
-The central boundary is deliberate: **deterministic experiment engines own chemistry and grading truth; AI supports pedagogy.** The coach and report evaluator consume typed state and semantic events. They never calculate pH, equivalence volume, precipitate identity, or simulation state.
+The core rule is simple: **deterministic code owns chemistry, simulation state, validation, replay, and scoring truth. AI provides bounded pedagogy and authoring assistance.**
 
-## The problem
+## What works today
 
-Many students enter a physical chemistry lab knowing the written procedure but not how their choices affect the result. Equipment access, class time, and individual feedback are especially constrained in under-resourced schools. A useful pre-lab must therefore run on modest hardware, work without an account, and explain mistakes without fabricating science.
+### Student labs
 
-## What is implemented
+- Acid–base titration with fills/refills, cumulative delivery, pH progression, meniscus evidence, reports, targeted retries, and seeded replay.
+- Precipitation/solubility practice with exact supported solution IDs, observations, product prediction, and net-ionic evidence.
+- Sodium-chloride solution preparation: condition a pipette, measure and deliver an aliquot, fill a volumetric flask to the mark, and mix the solution.
+- Keyboard-accessible controls, reduced-motion/graphics behavior, demand-rendered 3D, and optional hold-to-talk questions.
 
-- Deterministic acid–base titration with custom fills/refills, cumulative delivery, pH curve, meniscus evidence, seeded replay, and targeted retries.
-- Deterministic precipitation/solubility plugin with verified solution IDs, visible observations, product prediction, and net ionic equation evidence.
-- Shared `ExperimentDefinition.step()` action path, semantic events, in-memory `StudentModel`, asynchronous checkpoints, and deterministic teacher aggregates.
-- Context-triggered text/voice coaching and structured report evaluation, with credential-free mock behavior for local/demo use.
-- Student, teacher, technical, and resettable judge-demo paths; core student practice requires no auth.
-- Keyboard-accessible 2D controls, reduced motion/graphics, lazy-loaded demand-rendered 3D, and gesture-gated synthesized audio.
-- Transitional Lab Composer contracts: exact capability/equipment/action/material/model registries, strict versioned `LabWorkflowSpec` schemas, pure v1-to-v2 migration, version-aware canonical hashing, deterministic v1 hard validation, a checked-in titration workflow/replay gate, a titration-specific assembler, and an initial constrained Author Agent route.
+### Teacher Lab Composer
 
-The Composer foundation now has capability-oriented contracts and a migratable v2 IR, but it is not yet a capability-driven authoring/runtime product. It remains tied to one titration engine, mandatory family metadata, rigid ordered steps, and a fixed student scene. The current migration evolves that v1 IR into reusable equipment/action/material/model capabilities and constraint-based workflows while preserving deterministic truth and existing behavior. Unsupported workflows remain non-runnable.
+The Composer is a supported-workflow builder, not a free-form chemistry generator. Teachers can:
+
+- define student-facing metadata and objectives;
+- arrange verified equipment, materials, and permitted actions;
+- edit procedural checks in a graph or accessible outline;
+- link objectives, rubric criteria, and evidence checks;
+- inspect removal impact before deleting referenced content;
+- validate, save/load locally, and launch an exact-hash Preview;
+- request a bounded AI draft proposal, then explicitly accept, reject, or revise it;
+- review the Author → deterministic checks → advisory Judge cycle in the **AI review** tab.
+
+The current supported native workflow is solution preparation. Compatibility titration remains available through the same generic coordinator. Preview is enabled only for a current, deterministically validated runnable workflow; advisory AI and Judge output never override that gate.
+
+### AI boundaries
+
+- The Author Agent can inspect fixed registry data and issue the same typed draft commands as the human Composer.
+- The Workflow Judge is advisory and teacher-controlled; accepted suggestions are revalidated and replayed before they can affect a draft.
+- The Student Coach receives deterministic state, diagnoses, and semantic evidence. It cannot mutate a simulation or compute chemistry truth.
+- Live OpenAI calls are server-only, bounded by timeout/retry limits, and fall back to deterministic local guidance when unavailable.
 
 ## Architecture
 
 ```text
-Student gesture
-  → typed experiment action
-  → ExperimentDefinition.step()       deterministic/local
-  → state + semantic events
-      ├─ StudentModel reducer          deterministic/local
-      ├─ checkpoint queue              asynchronous/idempotent
-      ├─ coach trigger policy          deterministic/local
-      │    └─ structured AI response   pedagogy only
-      ├─ report evaluator              rubric feedback only
-      └─ teacher analytics             deterministic aggregates
+Student or teacher action
+  → typed command / experiment action
+  → ExperimentDefinition.step() or draft transaction
+  → deterministic state, validation, and semantic evidence
+      ├─ replay and checkpoint contracts
+      ├─ StudentModel and teacher analytics
+      ├─ bounded Coach / Author / Judge requests
+      └─ exact-hash Preview eligibility
 ```
 
-Key areas:
+Key directories:
 
-- `src/experiments/`: chemistry truth, experiment contracts, replay, and plugin registry.
-- `src/lab-workflows/`: versioned Composer schemas, exact registries, migration, hashing, v1 validation, canonical workflow, runtime adapters, and the capability-migration package boundary.
-- `src/stores/`: typed runtime state and action dispatch.
-- `src/lib/agent/`: trigger policy, constrained prompts, and structured response contracts.
-- `src/lib/persistence/` and `supabase/`: checkpoint contracts, schema, RLS, and repositories.
-- `src/lib/analytics/` and `src/components/teacher/`: deterministic class readiness views.
-- `tests/`: chemistry, contracts, API, policy, analytics, replay, and browser flows.
+- `src/experiments/` — deterministic legacy experiment engines and shared contracts.
+- `src/lab-workflows/` — strict workflow schemas, registries, validation, hashing, generic runtime, replay, and deterministic models.
+- `src/components/lab/` — student controls and 3D presentation.
+- `src/components/teacher/lab-composer/` — teacher Composer workspace and Preview UI.
+- `src/lib/agent/` — server-side bounded Coach, Author, Evaluator, and Judge integrations.
+- `src/stores/` — typed client session and runtime state.
+- `src/lib/persistence/`, `src/lib/analytics/`, and `supabase/` — checkpointing, deterministic aggregates, and production data boundaries.
+- `tests/` — unit, contract, replay, API, and browser coverage.
 
-The full documentation reading order is in [`docs/README.md`](docs/README.md). Repository law and ticket scopes live in [`AGENTS.md`](AGENTS.md) and [`tickets.md`](tickets.md).
+For the authoritative Composer architecture and active ticket map, start with [`docs/lab-composer/README.md`](docs/lab-composer/README.md) and [`docs/lab-composer/tickets/README.md`](docs/lab-composer/tickets/README.md).
 
 ## Local setup
 
@@ -54,36 +68,23 @@ Requirements: Node.js 20+ and npm.
 ```bash
 npm install
 npx playwright install chromium
-cp .env.example .env.local
+cp .env.example .env
 npm run dev
 ```
 
-Open:
+For deterministic local development, leave `OPENAI_MOCK_MODE=1`. To exercise live server-side AI, set `OPENAI_API_KEY` and change that flag to `0`. Never expose an OpenAI or Supabase service-role key to the browser.
 
-- `http://localhost:3000/experiments` for guest practice.
-- `http://localhost:3000/demo` for the credential-free judge flow.
-- `http://localhost:3000/dev/lab/titration` for development diagnostics (development builds only).
+Useful routes:
 
-The deterministic labs, mock coach/evaluator, and demo work with `OPENAI_MOCK_MODE=1` and placeholder/absent backend credentials. For real persistence, create a Supabase project, apply the migrations in `supabase/migrations/`, seed with `supabase/seed.sql` when desired, and supply the values documented in `.env.example`. Keep the service-role and OpenAI keys server-side.
+- `/` — product overview.
+- `/experiments` — guest student practice.
+- `/demo` — credential-free Student, Teacher, and Technical demo paths.
+- `/teacher/lab-composer` — teacher workflow authoring.
+- `/dev/lab/titration?runtime=setup-v2` — setup-driven development diagnostics.
 
-Local development intentionally tolerates absent Supabase values so guest practice remains available. A production build validates all three Supabase deployment values and fails with their names when they are absent or invalid; configure real deployment values before running `npm run build`.
+Guest practice and the demo do not require authentication. Supabase configuration is needed for real persistence, classroom data, and production deployment; see [`.env.example`](.env.example) and `supabase/`.
 
-For real structured coaching/evaluation, set `OPENAI_API_KEY`, choose server-side model names, and set `OPENAI_MOCK_MODE=0`. The browser receives only short-lived realtime transcription credentials; it never receives the long-lived API key.
-
-## Demo
-
-The fastest path is `/demo`:
-
-1. Open **Student** and make a controlled or deliberately fast endpoint addition.
-2. Ask a text or hold-to-talk question, then inspect evidence-linked coaching.
-3. Submit the report and launch the targeted retry.
-4. Switch to **Teacher** to see the live demo row merged through the same analytics path.
-5. Switch to **Technical** to trace action → event → StudentModel → coach/checkpoint/eval.
-6. Use **Reset demo** to clear only demo-scoped state.
-
-See [`docs/demo/Runbook.md`](docs/demo/Runbook.md) for setup and fallback details and [`docs/demo/Demo_Script.md`](docs/demo/Demo_Script.md) for the three-minute narration.
-
-## Quality gates and evals
+## Quality gates
 
 ```bash
 npm run typecheck
@@ -95,18 +96,26 @@ npm run build
 npm run test:e2e
 ```
 
-With a local dev server already running, `npm run profile:lab` records a reproducible 4× CPU-throttled browser sample for the active 3D path. The latest profile and interpretation are in [`docs/project/Chromebook_Performance.md`](docs/project/Chromebook_Performance.md).
+`npm run profile:lab` records a reproducible browser performance sample for the active 3D path. See [`docs/project/Chromebook_Performance.md`](docs/project/Chromebook_Performance.md) for the performance target and prior results.
 
-Coach evals report mistake recall, routine-success silence, and evidence-linking. Deterministic unit tests remain authoritative for chemistry, safety-relevant validation, replay, persistence idempotency, and teacher metrics.
+## Current limits
 
-## Data and security notes
+- Lab Composer only supports exact registered equipment, actions, materials, deterministic models, and workflow conditions. It does not author arbitrary formulas, code, or physical coordinates.
+- Preview is available for validated supported workflows only. Assignment, immutable definition versions, and production classroom persistence are Phase 8 work.
+- The 3D scene is a verified presentation of registered equipment poses; it is not a free-form scene editor.
+- AI output is advisory. It cannot create registry IDs, certify validation, change simulation state, or override safety and runtime checks.
 
-- Core guest/demo practice does not require authentication.
-- Production class membership and teacher/student rows are protected by Supabase RLS.
-- Checkpoint event IDs and writes are idempotent.
-- Simulation dispatch never waits for OpenAI or Supabase.
-- API keys and service-role credentials never enter the client bundle.
+## Security and data guarantees
 
-## Product direction
+- Meaningful simulation actions continue through `ExperimentDefinition.step()`.
+- Semantic events are the shared contract for coaching, persistence, replay, evaluation, and teacher analytics.
+- Simulation actions never wait for OpenAI or Supabase.
+- Checkpoint writes are idempotent; teacher metrics are deterministic aggregates over persisted evidence.
+- Production class data is protected by Supabase RLS.
 
-LabBench is moving toward a capability-driven Composer where a lab is a validated composition of reusable equipment, materials, deterministic chemistry capabilities, workflow constraints, and assessment rules. Titration is one authored lab, not the runtime architecture. The system will use strict schemas, exact registry resolution, canonical hashes, hard validation, executable traces, independent advisory judging, immutable versions, and explicit teacher approval. It will not generate arbitrary chemistry code or bypass `ExperimentDefinition.step()`. Start with [`docs/lab-composer/README.md`](docs/lab-composer/README.md) and [`docs/lab-composer-architecture.md`](docs/lab-composer-architecture.md).
+## Documentation
+
+- [`docs/Repo_Current_State.md`](docs/Repo_Current_State.md) — detailed implementation record.
+- [`docs/lab-composer-architecture.md`](docs/lab-composer-architecture.md) — Composer architecture and boundaries.
+- [`docs/demo/Runbook.md`](docs/demo/Runbook.md) — demo setup and fallback instructions.
+- [`AGENTS.md`](AGENTS.md) — repository engineering rules and completion-report requirements.
