@@ -49,10 +49,17 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | `LC2-702` | Complete | Added authority-separated teaching review UI, command-only suggestions, candidate validation/five-trace/rejudge gating, stale blocking, fixed budgets, termination reasons, and history |
 | `LC2-703` | Complete | Added exact versioned authored context, diagnosis/evidence/action grounding, four authority labels, deterministic silence, bounded fallback, and legacy compatibility |
 | `LC2-704` | Complete | Added a dedicated plain-language Composer AI review tab that projects the bounded Author → deterministic checks → advisory Judge → teacher-approved revision cycle without exposing private model reasoning or changing authority |
-| `LC2-800` | Ready | Add RLS-protected drafts and immutable approved definition versions without attaching assignments |
-| `LC2-801` through `LC2-804` | Blocked by dependencies | Assignment pins, production release gate, hardening, and eventual legacy cleanup remain Phase 8 work |
+| `LC2-800` | Complete | Added authenticated RLS-protected drafts and immutable, server-revalidated approved definition versions without attaching assignments |
+| `LC2-801` | Complete | Assignment/session pins, assignment eligibility, Composer Assign, setup-driven titration defaults, historical legacy resolver |
+| `LC2-802` | Complete | Production-path integration coverage for approve/assign/resolve, stale pins, legacy static rows, and default setup-driven student entry |
+| `LC2-803` | Complete | Ops/retention/extension runbook, Chromebook follow-up notes, docs synced to implemented persistence reality |
+| `LC2-804` | Complete | Retired titration dual-path opt-in as the primary mode; retained precipitation, historical adapters, and null-pin legacy resolver |
+| `LC2-805` | Complete | Student `/assignments/[id]` loads pinned definition into session init; class page lists start links |
+| `LC2-806` | Ready (physical residual) | Automated dual-lab gates green; dated physical Chromebook pass still required before `LC2-808` |
+| `LC2-807` | Complete | Family Author v1 route returns 410; capability author is the sole production path |
+| `LC2-808` | Blocked by `LC2-806` physical sign-off | Remove titration `?runtime=legacy` student escape hatch after hardware verification |
 
-The corrective `LC2-410`–`LC2-416` pass (from [`../../qa/strict-product-judge-report.md`](../../qa/strict-product-judge-report.md)) precedes further feature work. The release-blocking `LC2-410`–`LC2-414` tickets are complete. Phases 5, 6, and 7 are complete, including the documented Level 2 gate, editable capability-author handoff, authored-rubric evaluator, bounded teacher-controlled Judge loop, and diagnosis-aware Coach. `LC2-800` is the next dependency-ready product boundary; the remaining non-blocking QA refinements stay independently reviewable.
+The corrective `LC2-410`–`LC2-416` pass (from [`../../qa/strict-product-judge-report.md`](../../qa/strict-product-judge-report.md)) precedes further feature work. The release-blocking `LC2-410`–`LC2-414` tickets are complete. Phases 5–8 core gates plus `LC2-805`/`LC2-807` are complete; `LC2-806` physical sign-off remains before `LC2-808`.
 
 ## Dependency map
 
@@ -83,6 +90,11 @@ LC2-204 + LC2-503 -> LC2-703
 
 LC2-408 -> LC2-800 -> LC2-801
 LC2-700/702/703/801 -> LC2-802 -> LC2-803 -> LC2-804
+
+LC2-801 -> LC2-805
+LC2-803 -> LC2-806
+LC2-602 + LC2-804 inventory -> LC2-807
+LC2-806 + manual sign-off -> LC2-808
 ```
 
 ## Phase specifications

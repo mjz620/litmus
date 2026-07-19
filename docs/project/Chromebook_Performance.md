@@ -36,3 +36,14 @@ Across three consecutive final runs, the scene sustained a median 28.88 actual r
 ## Interpretation and limits
 
 This repeatable software profile is a conservative development signal, not a substitute for Chrome DevTools capture on representative school hardware. SwiftShader and host scheduling differ from an actual Chromebook GPU. Before a broad deployment, repeat the student demo on the lowest supported physical device, record thermals and input latency over a full session, and select reduced graphics by policy if needed.
+
+## LC2-803 follow-up (both labs)
+
+- Titration production/demo defaults now use the setup-driven workspace (`LC2-801`). Re-run `npm run profile:lab` against `/lab/titration` after visual regressions.
+- Solution preparation shares the same setup-driven student workspace and lazy 3D loading path; treat its Chromebook budget as the same interaction frame envelope unless a dedicated profile script is added.
+- Agent/Judge routes retain existing rate, token, time, and cost budgets with deterministic fallbacks; simulation must not await those calls.
+- Storage growth remains event/skill/trace oriented — see [`../lab-composer/ops-runbook.md`](../lab-composer/ops-runbook.md).
+
+## LC2-806 status (2026-07-19)
+
+Automated dual-lab / setup-driven gates remain green (`phase8ProductionFlow`, dispense, store). The constrained `profile:lab` protocol above still stands as the software evidence baseline. **Physical Chromebook-class sign-off is still required** before retiring `?runtime=legacy` (`LC2-808`). Until then, treat the 2026-07-17 SwiftShader median as the last dated lab-bench sample and re-run on school hardware before declaring deployment readiness.

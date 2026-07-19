@@ -81,7 +81,7 @@ The implemented Composer surface currently includes:
 
 It does **not** yet include:
 
-- immutable server-persisted Composer definition versions, approval, or assignment pins;
+- assignment pins over the immutable server-persisted Composer definition versions added by `LC2-800`;
 - a production-default promotion away from the explicit setup-driven preview/flag paths;
 - a capability-driven migration of the static precipitation lab;
 - Phase 8 end-to-end release, operations, retention, and legacy-removal gates;
@@ -703,12 +703,12 @@ Phase 4 is complete through `LC2-409`. Atomic removals, the pose-driven 3D setup
 
 ## Current known limitations
 
-The strict v2 schema, validator, generic coordinator/evaluator, setup-driven student scene, human Composer, exact registered 3D arrangement layer, validated Preview path, second adaptable solution-preparation lab, bounded capability Author, authored-rubric evaluator, authority-separated bounded Workflow Judge loop, and diagnosis-aware Coach are implemented through `LC2-703`. Immutable Composer definition persistence, approval, and assignment remain Phase 8 work. Production student defaults remain on the legacy path while those later gates are incomplete.
+The strict v2 schema, validator, generic coordinator/evaluator, setup-driven student scene, human Composer, exact registered 3D arrangement layer, validated Preview path, second adaptable solution-preparation lab, bounded capability Author, authored-rubric evaluator, authority-separated bounded Workflow Judge loop, and diagnosis-aware Coach are implemented through `LC2-703`. Phase 8 (`LC2-800`–`LC2-804`) adds authenticated draft/version persistence, assignment/session pins, production-flow gates, ops documentation, and setup-driven titration as the production/demo default. Precipitation and null-pin historical sessions retain their legacy resolvers; historical titration adapters remain for replay.
 
 ## Registry, schema, migration, and documentation follow-ups
 
 - Schema: no schema shape change or migration was needed for `LC2-409`; the existing strict draft remains authoritative and free of XYZ/rotation values.
 - Registries: `LC2-409` added `scene-placements.1.0.0` and advanced configurations to `configurations.2.4.0`, retaining `2.3.0` as historical provenance. `LC2-500` may add second-lab equipment, mechanics, and poses only with code-backed support and exact-resolution tests.
-- Migration: production use still requires immutable definition versions, legacy checkpoint/demo adapters, and historical runtime retention.
+- Migration: production use still requires assignment/session pins, legacy checkpoint/demo adapters, and historical runtime retention over the immutable definition versions.
 - Documentation: update the detailed schema, component/action/material registry, state/runtime, author-agent, Judge, evaluator, persistence, demo, and extension guides in the ticket that changes each contract.
 - Roadmap: the old fixed-family implementation roadmap remains useful historical evidence but is superseded by the phased ticket plan above for runtime architecture.

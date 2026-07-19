@@ -78,8 +78,11 @@ Useful routes:
 
 - `/` — product overview.
 - `/experiments` — guest student practice.
-- `/demo` — credential-free Student, Teacher, and Technical demo paths.
-- `/teacher/lab-composer` — teacher workflow authoring.
+- `/demo` — credential-free Student, Teacher, Composer, and Technical demo paths.
+- `/lab-composer` — Lab Composer for students and teachers (cloud save/assign require teacher sign-in).
+- `/assignments/[assignmentId]` — student start for a pinned class assignment.
+- `/teacher/lab-composer` — redirects to `/lab-composer`.
+- `/teacher/lab-composer/preview` — isolated Composer preview.
 - `/dev/lab/titration?runtime=setup-v2` — setup-driven development diagnostics.
 
 Guest practice and the demo do not require authentication. Supabase configuration is needed for real persistence, classroom data, and production deployment; see [`.env.example`](.env.example) and `supabase/`.

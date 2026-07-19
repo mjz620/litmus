@@ -2,6 +2,20 @@
 
 Persistence work is additive and must preserve old static assignments, sessions, checkpoints, and historical replay. No approved definition is mutable.
 
+## Status
+
+| Ticket | Status |
+| --- | --- |
+| `LC2-800` | Complete |
+| `LC2-801` | Complete |
+| `LC2-802` | Complete |
+| `LC2-803` | Complete |
+| `LC2-804` | Complete — see [`../legacy-retirement-inventory.md`](../legacy-retirement-inventory.md) |
+| `LC2-805` | Complete — `/assignments/[assignmentId]` + class start links |
+| `LC2-806` | Ready residual — physical Chromebook pass still required |
+| `LC2-807` | Complete — Author v1 route returns 410 Gone |
+| `LC2-808` | Blocked — remove `?runtime=legacy` after `LC2-806` physical sign-off |
+
 ## LC2-800 — Immutable definition versions and draft persistence
 
 **Objective:** Add RLS-protected persistence for mutable teacher drafts and immutable approved validated definition versions with exact provenance.
@@ -135,3 +149,102 @@ Persistence work is additive and must preserve old static assignments, sessions,
 **Acceptance:** The active product uses one capability-driven setup/runtime path for supported labs while historical records remain reproducible. No behavior is removed merely because it is “legacy.”
 
 **Stop:** If any saved version or production/demo route still requires the code, retain it and document the blocker.
+
+---
+
+## Phase 8 follow-up tickets
+
+These close remaining seams documented in [`../legacy-retirement-inventory.md`](../legacy-retirement-inventory.md) and the `LC2-801`–`804` completion report. They are independently reviewable; do not reopen Phase 8 gates already marked complete.
+
+## LC2-805 — Student assignment entry loads the pinned definition
+
+**Objective:** Let a student open a class assignment and initialize a session from the exact pinned `lab_definition_version_id` / hash, never from the latest draft or an unpinned seed when a pin exists.
+
+**Dependencies:** `LC2-801`.
+
+**Allowed areas:** teacher roster/class assignment list UI, student assignment entry route, session init / `useLabSession` / lab store wiring to `resolveSessionDefinition`, checkpoint pin fields, API/e2e tests/docs.
+
+**Do not touch:** validator semantics, chemistry engines, Composer authoring commands, precipitation migration.
+
+**Required changes:**
+
+1. Surface class assignments (title, due date, pinned hash short form) on teacher class and student-facing entry points.
+2. Student start URL/action creates or resumes a session with the assignment pin copied onto the session row.
+3. Session init calls `resolveSessionDefinition`; on `pinned_v2`, pass the exact validated spec into setup-driven assembly; on `legacy_static`, keep the existing static experiment path.
+4. Fail closed with an accessible error when the pin is missing, hash-mismatched, or implementation-stale.
+5. Checkpoint writes continue to persist `labDefinitionVersionId` + canonical hash for pinned sessions.
+
+**Tests/manual:** pinned titration and solution-prep assignment start; edited draft after assign does not change student session; unauthorized class denied; null-pin legacy assignment still loads; e2e student path.
+
+**Acceptance:** Assigned students always run the approved definition that was pinned at assign time.
+
+**Stop:** Do not invent a second IR or bypass hard validation.
+
+## LC2-806 — Physical Chromebook and dual-lab performance sign-off
+
+**Objective:** Re-measure setup-driven titration and solution-preparation Preview/student paths on Chromebook-class hardware (or the documented constrained protocol) and record pass/fail against existing budgets.
+
+**Dependencies:** `LC2-803`, `LC2-805` preferred for assignment-path coverage but not required for seed/demo profiling.
+
+**Allowed areas:** `docs/project/Chromebook_Performance.md`, profile scripts, narrow perf fixes inside owned lab/Composer UI, ops runbook cross-links.
+
+**Do not touch:** chemistry precision, evidence semantics, unrelated refactors.
+
+**Required changes:**
+
+1. Run `npm run profile:lab` (and extend if needed) against default `/lab/titration` and solution-prep Preview/student entry.
+2. Record FPS, slow-frame %, heap, and qualitative input latency; note reduced-graphics path.
+3. Confirm compile-once runtime and no per-event full-state checkpoint growth under a long session.
+4. Update Chromebook and ops docs with dated results and any residual limits.
+
+**Tests/manual:** profile script gate; long-session smoke; reduced graphics; offline-after-load coach/evaluator fallback still usable.
+
+**Acceptance:** Both supported labs have dated Chromebook-class evidence; no undocumented perf regression vs the prior titration median.
+
+**Stop:** Do not “optimize” by dropping validation, evidence, or scientific fidelity.
+
+## LC2-807 — Retire Author Agent v1 family route
+
+**Objective:** Remove the frozen family-oriented `/api/lab-composer/author` prototype once the capability-author route is the sole production authoring agent path and zero required callers remain.
+
+**Dependencies:** `LC2-602`, `LC2-804` inventory.
+
+**Allowed areas:** `src/app/api/lab-composer/author/route.ts` and exclusively v1-family tests/docs/fixtures; redirect or 410 for the old path if needed.
+
+**Do not touch:** capability author route (`author/capability`), shared domain commands, registries.
+
+**Required changes:**
+
+1. Inventory all imports, e2e, demo, and docs references to the v1 family author route.
+2. Prove capability-author covers every required production/demo authoring entry.
+3. Delete or hard-fail the v1 route; replace tests with capability-author equivalents where behavior must remain covered.
+4. Update architecture/system-map/docs so they no longer describe the family route as a live path.
+
+**Tests/manual:** capability-author route/e2e green; grep shows no production caller of the deleted path; bundle/dependency check.
+
+**Acceptance:** Only the capability-author agent surface remains for Composer AI authoring.
+
+**Stop:** If any required demo, eval, or teacher path still calls v1, retain it and document the blocker.
+
+## LC2-808 — Remove titration `?runtime=legacy` student escape hatch
+
+**Objective:** Delete the temporary student/demo `?runtime=legacy` entry after hardware sign-off proves setup-driven defaults cover production, demo, and retry needs (or retry is re-expressed on setup-driven).
+
+**Dependencies:** `LC2-806`, teacher/student manual sign-off, `LC2-804` checklist.
+
+**Allowed areas:** `resolveLabSessionRuntimeMode`, lab/demo/dev route query handling, obsolete e2e asserting legacy defaults, docs.
+
+**Do not touch:** null-pin historical session resolver, precipitation static path, historical adapters required for replay.
+
+**Required changes:**
+
+1. Confirm no production or demo URL requires `runtime=legacy` after sign-off.
+2. Re-home retry-skill demo behavior onto setup-driven or an explicit non-query entry if still needed.
+3. Remove `LEGACY_TITRATION_RUNTIME_FLAG` student routing; keep legacy resolver only for null-pin DB rows.
+4. Update migration playbook checklist and legacy inventory.
+
+**Tests/manual:** default titration/demo e2e; precipitation unchanged; old null-pin session replay; full gates; rollback note in ops runbook.
+
+**Acceptance:** Students no longer select a parallel legacy titration engine via query flag; historical static rows remain readable.
+
+**Stop:** If retry demos or a school deployment still depend on the flag, retain it and file a narrower replacement ticket instead of force-deleting.
