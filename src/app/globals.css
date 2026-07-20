@@ -30,6 +30,19 @@
   --color-coach: #684f70;
   --color-coach-soft: #f1e8f3;
   --color-instrument: #202b2d;
+  /*
+   * Foreground ramp for the instrument surface — the one place in the product
+   * that inverts. These existed as nine separate literals scattered through the
+   * dark console's children; naming them makes "warm ground, cool instruments"
+   * a system rather than a set of one-off hexes. Contrast is against
+   * --color-instrument, not the canvas.
+   */
+  --color-instrument-ink: #eff6f2;
+  --color-instrument-ink-muted: #aebfba;
+  --color-instrument-border: #344542;
+  --color-instrument-line: rgb(255 255 255 / 12%);
+  --color-instrument-accent: #9de1c2;
+  --color-instrument-primary: #79c9bb;
   --color-focus: #0f766e;
 
   /* Typography: Adobe Fonts project families with metric-conscious fallbacks. */

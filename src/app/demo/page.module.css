@@ -71,9 +71,13 @@
   font-weight: var(--type-ui-bold);
 }
 
+/*
+ * auto-fit, so four cards do not leave one stranded on a second row with two
+ * thirds of it empty — the same orphan the experiment chooser had.
+ */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-12);
 }
@@ -90,17 +94,6 @@
   box-shadow: var(--shadow-card);
 }
 
-.card[data-featured="true"] {
-  border-top: 3px solid var(--color-primary);
-}
-
-.cardTopline {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
 .roleIcon {
   display: grid;
   width: 2.75rem;
@@ -109,25 +102,14 @@
   border-radius: var(--radius-md);
   background: var(--color-primary-soft);
   color: var(--color-primary);
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
 }
 
-.card:nth-child(2) .roleIcon {
-  background: var(--color-warning-soft);
-  color: var(--color-warning);
-}
-
-.card:nth-child(3) .roleIcon {
-  background: var(--color-coach-soft);
-  color: var(--color-coach);
-}
-
-.step {
-  color: var(--color-ink-muted);
-  font-family: var(--font-ui);
-  font-size: var(--text-xs);
-  font-weight: var(--type-ui-semibold);
-}
+/*
+ * One tint for all four. The amber and lilac variants were applied to cards two
+ * and three only, so the colour differentiated nothing — card four fell back to
+ * teal — and neither tone is in the palette for this purpose.
+ */
 
 .card h2 {
   margin: var(--space-2) 0 0;

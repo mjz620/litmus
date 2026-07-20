@@ -9,7 +9,7 @@ const demoRoles = [
     label: "Student",
     kicker: "Interactive lab",
     description:
-      "Run the default setup-driven titration without an account and produce real semantic evidence.",
+      "Run the titration without an account. Every action is recorded as evidence.",
     action: "Open student demo"
   },
   {
@@ -52,9 +52,9 @@ export default function DemoHubPage() {
           <p className={styles.eyebrow}>Guided product tour</p>
           <h1>LabBench AI judge demo</h1>
           <p className={styles.summary}>
-            Judges can reach the student bench, teacher readiness view, and Lab
-            Composer from this hub. Guest practice needs no account; teachers
-            sign in only to persist drafts and create assignments.
+            Reach the student bench, the teacher readiness view, and Lab
+            Composer from here. Practice needs no account; teachers sign in only
+            to save drafts and create assignments.
           </p>
           <p className={styles.accessNote}>
             <span aria-hidden="true">✓</span>
@@ -63,18 +63,16 @@ export default function DemoHubPage() {
         </header>
 
         <section className={styles.grid} aria-label="Demo roles">
-          {demoRoles.map((role, index) => (
-            <article
-              className={styles.card}
-              data-featured={index === 0 ? "true" : undefined}
-              key={role.href}
-            >
-              <div className={styles.cardTopline}>
-                <span className={styles.roleIcon} aria-hidden="true">
-                  {role.icon}
-                </span>
-                <span className={styles.step}>0{index + 1}</span>
-              </div>
+          {demoRoles.map((role) => (
+            <article className={styles.card} key={role.href}>
+              {/*
+                No step number. These are four independent entry points, not a
+                sequence — numbering them 01-04 promised an order that does not
+                exist and that nothing enforces.
+              */}
+              <span className={styles.roleIcon} aria-hidden="true">
+                {role.icon}
+              </span>
               <div>
                 <p className={styles.kicker}>{role.kicker}</p>
                 <h2>{role.label}</h2>

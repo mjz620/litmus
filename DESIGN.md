@@ -14,6 +14,11 @@ colors:
   accent: "#d98963"
   accent-ink: "#a35128"
   instrument: "#202b2d"
+  instrument-ink: "#eff6f2"
+  instrument-ink-muted: "#aebfba"
+  instrument-border: "#344542"
+  instrument-accent: "#9de1c2"
+  instrument-primary: "#79c9bb"
   coach: "#684f70"
   coach-soft: "#f1e8f3"
   border: "#cbd8d3"
@@ -105,6 +110,12 @@ about a physical lab they haven't done yet, often on a shared Chromebook, and
 the interface has one job: make the equipment look touchable without making the
 chemistry look fake. Warmth lowers the barrier; the instrument darks and the
 monospace readouts keep the measurements honest.
+
+The instrument surface is the one place the product inverts, so it carries its
+own foreground ramp (`instrument-ink`, `instrument-ink-muted`, `instrument-accent`,
+`instrument-primary`, `instrument-border`). Those contrast against
+`instrument`, not against the canvas — reaching for a canvas-surface ink on a
+dark console is how that panel accumulated nine one-off hex values.
 
 The organising idea is **warm ground, cool instruments**. The cream canvas is
 classroom light — the room the bench sits in. Teal, instrument-near-black, and

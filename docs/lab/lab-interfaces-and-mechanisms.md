@@ -26,9 +26,51 @@ why solubility truth now lives in
 `precipitation.ts` merely re-exports it. **Relocate, never copy** — two copies
 of chemistry truth is precisely what invariant 1 exists to prevent.
 
-Titration still runs through a legacy adapter (a *strangler seam*,
-`src/lab-workflows/runtime/legacy/titration.ts`): the generic runtime wraps the
-old engine rather than replacing it. That is a bridge, not a destination.
+**Titration now defaults to the capability-native runtime.** `/lab/titration`
+with no query runs the validated native workflow on the generic capability
+ports — no legacy engine, no compatibility adapter. The two registered native
+titration definitions (only these two exist; anything else fails closed):
+
+- `workflow.acid_base_titration.full.native.v2` — the complete procedure from
+  a clean bench (the default).
+- `workflow.acid_base_titration.endpoint_drill.native.v2` — the mid-procedure
+  endpoint-control drill (`?runtime=endpoint-drill` or `&drill`), seeded at
+  22 mL delivered by the registered **native initialization preset**
+  `seed.titration.near_endpoint_22ml.v1`
+  (`src/lab-workflows/seeds/nativeInitializationPresets.ts`). A preset seeds
+  the material ledger first — so mechanical initializers derive contained
+  volumes and meniscus readings from material truth — then applies equipment
+  field overrides for history the ledger cannot express (conditioning solvent,
+  committed indicator addition, cumulative delivery).
+
+Student-visible bench facts on the native path (notebook, pH-curve axis, the
+`data-burette-*`/`data-procedure-stage` attributes) are projections over
+**equipment-owned observables** — burette `availableML`/`capacityML`/
+`deliveredML`/`meniscusReadingML`/`conditionedWith`, flask `totalVolumeML`/
+`indicatorAdded`/`observableColor` — plus emitted event envelopes and registry
+material metadata (`components/lab/setup-driven/nativeTitrationFacts.ts`).
+Nothing UI-side reads chemistry ground truth or computes chemistry.
+
+The legacy-adapter strangler (`src/lab-workflows/runtime/legacy/titration.ts`,
+where the generic runtime wraps the old engine) is now the **rollback path**,
+reached explicitly with `?runtime=setup-v2`; `?runtime=legacy` keeps the pure
+static engine for parity replays. Both are scheduled for deletion — see
+[`titration-legacy-retirement.md`](titration-legacy-retirement.md).
+
+### Titration route and mode table (post-flip)
+
+| Entry | Mode | Session |
+|---|---|---|
+| `/lab/titration` (no query) | `native_v2` | lab-store native session (checkpoints, report flow) |
+| `/lab/titration?runtime=endpoint-drill` (or `&drill`) | `native_v2` | native endpoint drill, preset-seeded |
+| `/lab/titration?runtime=native` | `native_v2` | same as default (kept for links) |
+| `/lab/titration?runtime=setup-v2` | `setup_driven_v2` | strangler rollback (TitrationWorkspace) |
+| `/lab/titration?runtime=setup-v2&drill` | `setup_driven_v2` | strangler endpoint drill |
+| `/lab/titration?runtime=legacy`, `?retry=` flows | `legacy` | pure legacy engine |
+| unknown `?runtime=` value | `native_v2` | fails toward the default, never toward legacy |
+| `/dev/lab/titration` (no query) | pinned `setup_driven_v2` | developer diagnostics shell renders the strangler UI |
+| `/demo/student` (no query) | pinned `setup_driven_v2` | scripted demo narrative; flips with legacy retirement |
+| `/assignments/[id]` | per assignment kind | `setup_driven_native_v2` renders the native workspace **without** store persistence (pre-existing gap) |
 
 ---
 
@@ -225,8 +267,9 @@ Registry data becomes pixels through three hops:
 1. **Pose** — `resolveEquipmentPose()` cross-checks placement against equipment.
    Mismatch **throws**.
 2. **Scene registration** — `LAB_VISUAL_ADAPTERS` in
-   `components/lab/titration/setupDrivenScene.ts` maps adapter ID → kind and
-   selectable equipment IDs. Missing entry **throws**
+   `components/lab/setup-driven/labScene.ts` (formerly
+   `titration/setupDrivenScene.ts`, which remains as a re-export) maps adapter
+   ID → kind and selectable equipment IDs. Missing entry **throws**
    (`setup-scene.visual_adapter_unknown.v1`).
 3. **Render block** — `LabScene.tsx` looks the pose up and renders a literal JSX
    block per adapter.
@@ -381,8 +424,8 @@ Only a current, hash-matching `runnable` result may be previewed or assigned.
 6. `mechanics/` — an adapter, registered in `mechanics/registry.ts`
 7. `components/lab/three/<Name>.tsx` — mesh + `*_HIT` + mouth height
 8. `components/lab/three/equipmentPose.ts` — local-origin set + `VESSEL_MOUTH_Y`
-9. `components/lab/titration/setupDrivenScene.ts` — `LAB_VISUAL_ADAPTERS`
-10. `components/lab/titration/equipment.ts` — `EquipmentId` + `EQUIPMENT`
+9. `components/lab/setup-driven/labScene.ts` — `LAB_VISUAL_ADAPTERS`
+10. `components/lab/setup-driven/equipment.ts` — `EquipmentId` + `EQUIPMENT`
 11. `components/lab/three/LabScene.tsx` — the render block
 12. `components/lab/three/renderableAdapters.ts` — add to the renderable list
 
@@ -396,8 +439,8 @@ Steps 11–12 are the silent ones. The wiring test covers them.
 4. `actions/preconditions.ts` — any preconditions + snapshot bump
 5. `actions/entries.ts` — the entry
 6. `event-flags/entries.ts` — event type with `observationKeys`
-7. `setupDrivenScene.ts` — `ACTION_CONTROL_GROUP` (**easy to miss**; a missing
-   entry throws `setup-scene.action_adapter_unknown.v1` at runtime)
+7. `setup-driven/labScene.ts` — `ACTION_CONTROL_GROUP` (**easy to miss**; a
+   missing entry throws `setup-scene.action_adapter_unknown.v1` at runtime)
 8. The component's `allowedActionIds`
 
 ### Add a lab

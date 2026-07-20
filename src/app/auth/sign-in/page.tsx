@@ -44,7 +44,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         backHref="/"
         backLabel="Home"
       />
-      <section className={styles.formCard} aria-label="Sign-in options">
+      <section className={styles.choiceSurface} aria-label="Sign-in options">
         {message && (
           <p className="ui-notice" data-tone="error" role="alert">
             {message}

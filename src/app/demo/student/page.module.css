@@ -1,25 +1,37 @@
+/*
+ * The demo route stacks a playground bar and this guide note above the lab's
+ * own header, so the bench has less viewport to work with than /lab/* does.
+ * display: contents keeps the layout identical while letting the allowance
+ * inherit down to the canvas.
+ */
+.demoRoute {
+  display: contents;
+  --lab-chrome-allowance: 14rem;
+}
+
+/*
+ * One compact line. This was a two-line block with a 2rem icon tile, and on a
+ * 1366x768 Chromebook it was the third band of chrome above the bench: together
+ * they pushed the canvas far enough down that its own bottom controls fell
+ * below the fold.
+ */
 .guide {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  align-items: baseline;
+  gap: var(--space-2);
   margin: 0;
-  padding: 0.7rem clamp(0.75rem, 2vw, 1.4rem);
-  border-bottom: 1px solid #e5ca91;
+  padding: 0.45rem clamp(0.75rem, 2vw, 1.4rem);
+  border-bottom: 1px solid var(--color-border);
   background: var(--color-warning-soft);
   color: var(--color-warning);
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: var(--text-sm);
+  line-height: 1.4;
 }
 
 .guideIcon {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: #3b2922;
+  /* accent-ink, not accent: the decorative tone is 2.39:1 on this surface. */
+  color: var(--color-accent-ink);
 }
 
 .guide p,
@@ -28,7 +40,6 @@
 }
 
 .guide strong {
-  display: block;
   font-family: var(--font-heading);
-  font-size: 0.82rem;
+  font-weight: var(--type-ui-bold);
 }

@@ -9,13 +9,12 @@ export default function Home() {
     <ProductShell width="wide">
       <section className={styles.hero} aria-labelledby="page-title">
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>
-            Chemistry rehearsal, built for action
-          </p>
+          <p className={styles.eyebrow}>For high-school chemistry</p>
           <h1 id="page-title">LabBench AI</h1>
           <p className={styles.summary}>
-            Practice real lab decisions in a deterministic virtual workspace,
-            get evidence-based guidance, and arrive at the bench ready to work.
+            Practise the technique before you do it for real. Nothing here can
+            break, spill, or be wasted, so you can run it as many times as you
+            need.
           </p>
           <div className={styles.actions}>
             <Link className="ui-button" href="/experiments">
@@ -24,15 +23,20 @@ export default function Home() {
             <Link className="ui-button-secondary" href="/lab-composer">
               Open Lab Composer
             </Link>
-            <Link className="ui-button-secondary" href="/demo">
-              Judge demo
-            </Link>
           </div>
           <ul className={styles.trustList} aria-label="Access details">
-            <li>No account required for practice or Composer drafting</li>
-            <li>Teachers sign in to save cloud drafts and assign labs</li>
-            <li>Deterministic chemistry · keyboard-accessible controls</li>
+            <li>No account needed to practise</li>
+            <li>Teachers sign in to save labs and assign them</li>
+            <li>The same chemistry every time · works by keyboard</li>
           </ul>
+          {/*
+            Demoted out of the action row. It is a guided tour for judges, not
+            a thing a student on this page is looking for, and as a third button
+            of near-equal weight it competed with the one action that matters.
+          */}
+          <p className={styles.asideLink}>
+            <Link href="/demo">Reviewing LabBench? Take the guided demo →</Link>
+          </p>
         </div>
 
         <aside className={styles.labConsole} aria-label="How LabBench works">
@@ -50,22 +54,22 @@ export default function Home() {
             <li>
               <span>01</span>
               <div>
-                <strong>Manipulate real equipment</strong>
-                <p>Prepare, measure, observe, and record.</p>
+                <strong>Handle the equipment</strong>
+                <p>Pour, measure, and read instruments as you would for real.</p>
               </div>
             </li>
             <li>
               <span>02</span>
               <div>
-                <strong>Build semantic evidence</strong>
-                <p>Your meaningful actions drive the learning model.</p>
+                <strong>Your work is recorded</strong>
+                <p>Every step you take is saved, so you can see what you did.</p>
               </div>
             </li>
             <li>
               <span>03</span>
               <div>
-                <strong>Reflect with guidance</strong>
-                <p>Coaching explains technique without inventing science.</p>
+                <strong>Ask when you are stuck</strong>
+                <p>Coaching explains technique. It never invents chemistry.</p>
               </div>
             </li>
           </ol>
@@ -77,20 +81,27 @@ export default function Home() {
       </section>
 
       <section className={styles.audiences} aria-label="LabBench experiences">
+        {/*
+          The decorative glyphs are gone. They were three unrelated characters
+          from three type families, rendering inconsistently across platforms
+          and carrying no meaning the heading did not already carry.
+        */}
         <article>
-          <span aria-hidden="true">⌁</span>
           <h2>Student practice</h2>
-          <p>Clear next actions, precise measurements, and accessible tools.</p>
+          <p>
+            See what to do next, take real measurements, and work entirely by
+            keyboard if you need to.
+          </p>
         </article>
         <article>
-          <span aria-hidden="true">▤</span>
           <h2>Teacher readiness</h2>
-          <p>Deterministic class summaries grounded in persisted evidence.</p>
+          <p>
+            See what each student actually did before they walk into the lab.
+          </p>
         </article>
         <article>
-          <span aria-hidden="true">✦</span>
           <h2>Focused coaching</h2>
-          <p>Timely pedagogical support that never mutates the simulation.</p>
+          <p>Guidance on technique that never changes the chemistry.</p>
         </article>
       </section>
     </ProductShell>

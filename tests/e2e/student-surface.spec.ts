@@ -43,7 +43,7 @@ for (const seed of regressionSeeds) {
     const config = generateTitrationSessionConfig(seed);
     const equivalenceML = equivalenceVolumeML(config);
 
-    await page.goto(`/lab/titration?seed=${seed}`);
+    await page.goto(`/lab/titration?seed=${seed}&runtime=setup-v2`);
     await openLabNotebook(page);
     const notebook = page.getByRole("complementary", {
       name: "Session notes"
@@ -95,7 +95,7 @@ test("a shared seed produces the same configuration on both routes without expos
   const devConfigText = await page.getByTestId("dev-config").innerText();
   expect(JSON.parse(devConfigText)).toEqual(expectedConfig);
 
-  await page.goto(`/lab/titration?seed=${seed}`);
+  await page.goto(`/lab/titration?seed=${seed}&runtime=setup-v2`);
   await openLabNotebook(page);
   const notebook = page.getByRole("complementary", { name: "Session notes" });
   await expect(notebook).toBeVisible();

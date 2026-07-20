@@ -18,7 +18,7 @@ test("typography tokens cover student, coach, controls, and teacher surfaces", a
     fullPage: true
   });
 
-  await page.goto("/lab/titration?seed=typography-review");
+  await page.goto("/lab/titration?seed=typography-review&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

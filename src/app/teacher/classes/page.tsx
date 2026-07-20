@@ -20,7 +20,7 @@ export default async function TeacherClassesPage() {
       />
       <section className={styles.formCard}>
         <h2 className={styles.sectionTitle}>Create a class</h2>
-        <form className="ui-form" action={createClass}>
+        <form className={`${styles.narrowForm} ui-form`} action={createClass}>
           <label className="ui-field">
             Class name
             <input name="name" required maxLength={120} />
@@ -33,16 +33,6 @@ export default async function TeacherClassesPage() {
             Create class
           </button>
         </form>
-      </section>
-      <section className={styles.contentCard}>
-        <h2 className={styles.sectionTitle}>Lab Composer</h2>
-        <p>
-          Assemble a supported physical setup and flexible workflow from
-          verified laboratory primitives—no AI generation required.
-        </p>
-        <Link className="ui-button-secondary" href="/lab-composer">
-          Open Lab Composer
-        </Link>
       </section>
       {!hasPublicSupabaseEnvironment() && (
         <p className="ui-notice" data-tone="warning">
@@ -72,6 +62,16 @@ export default async function TeacherClassesPage() {
             </Link>
           </div>
         )}
+      </section>
+      <section className={styles.quietSection}>
+        <h2 className={styles.sectionTitle}>Lab Composer</h2>
+        <p>
+          Assemble a physical setup and a workflow from equipment and steps that
+          are checked before students see them. No AI writes the chemistry.
+        </p>
+        <Link className="ui-button-secondary" href="/lab-composer">
+          Open Lab Composer
+        </Link>
       </section>
     </ProductShell>
   );

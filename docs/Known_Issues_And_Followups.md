@@ -39,6 +39,12 @@ When Codex notices something outside the active ticket, it should record it here
 - Do not fix until: the baseline checkpoint route and queue tickets are complete
   and a persistence-hardening ticket explicitly owns the migration, repository,
   and integration-test changes.
+- Update (2026-07-20, Phase 5 native flip): the native `/lab/titration`
+  practice route now checkpoints through the same lab-store queue and route as
+  the strangler did, so its exposure to this issue is identical — idempotent
+  event inserts, non-monotonic session/skill upserts. The flip does not widen
+  the exposure; the native assignment route still performs no checkpoint
+  writes at all (pre-existing gap, see titration-legacy-retirement.md).
 
 ## KI-002 — Titration duration metadata conflicts with product specification
 
@@ -53,6 +59,12 @@ When Codex notices something outside the active ticket, it should record it here
 - Suggested follow-up ticket: correct the manifest duration when experiment
   metadata is next in scope.
 - Do not fix until: a ticket permits edits to the T0006-owned titration manifest.
+- Update (2026-07-20, Phase 5 native flip): not mooted by the native default.
+  The catalog card still reads `manifest.metadata.estimatedMinutes` (20), and
+  the native workflow metadata (`native-full-titration.v2.json`) also says 20
+  against the specified 8–12. When the legacy manifest is deleted (see
+  titration-legacy-retirement.md) the fix moves to the native workflow
+  metadata, which requires a deliberate hash re-pin.
 
 ## Resolved issues
 
@@ -79,6 +91,10 @@ When Codex notices something outside the active ticket, it should record it here
   T0048 subsequently added positive bounded custom refills, independent current
   reading/availability/cumulative delivery, multi-fill replay/checkpoints, and
   refill-required configurations without changing chemistry formulas.
+  Obsolete as of 2026-07-20: the Phase 5 native default runs fill/refill as
+  registered burette mechanics in the generic runtime; the legacy engine's
+  fill contract survives only on the `?runtime=legacy`/`setup-v2` rollback
+  paths scheduled for deletion in titration-legacy-retirement.md.
 
 ## KI-001 — Root README fails the global Prettier check
 

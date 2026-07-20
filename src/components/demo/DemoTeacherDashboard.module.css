@@ -18,10 +18,14 @@
 .eyebrow {
   margin: 0;
   color: var(--color-primary);
+  /*
+   * Sentence case, matching every eyebrow outside the demo routes. The product
+   * used two systems for the same element — "Guest practice" here, "TEACHER
+   * READINESS" there — which read as two different products.
+   */
   font-size: var(--text-xs);
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: var(--type-ui-semibold);
+  letter-spacing: 0.035em;
 }
 
 .header h1 {

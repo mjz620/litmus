@@ -153,6 +153,8 @@
 
 .pageHeader h1 {
   margin: 0;
+  /* Card titles already balance; page titles were orphaning their last word. */
+  text-wrap: balance;
   font-size: var(--text-page-title);
   letter-spacing: -0.022em;
   font-weight: var(--type-display-weight);

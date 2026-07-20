@@ -16,13 +16,20 @@ export default async function DemoStudentPage({
 }: DemoStudentPageProps) {
   const { runtime } = await searchParams;
   const requestedRuntime = Array.isArray(runtime) ? runtime[0] : runtime;
-  const runtimeMode = resolveLabSessionRuntimeMode(
-    "acid_base_titration",
-    requestedRuntime
-  );
+  /*
+   * The scripted demo path narrates the setup-driven endpoint-control drill,
+   * so the demo deliberately stays pinned to the strangler runtime while the
+   * student default is native_v2; flipping the demo (and its trace/technical
+   * inspection expectations) is scheduled with legacy retirement. Explicit
+   * ?runtime= values still resolve as everywhere else.
+   */
+  const runtimeMode =
+    requestedRuntime === undefined
+      ? "setup_driven_v2"
+      : resolveLabSessionRuntimeMode("acid_base_titration", requestedRuntime);
   const useSetupDriven = runtimeMode === "setup_driven_v2";
   return (
-    <>
+    <div className={styles.demoRoute}>
       <aside className={styles.guide} role="note">
         <span className={styles.guideIcon} aria-hidden="true">
           ✦
@@ -45,6 +52,6 @@ export default async function DemoStudentPage({
         }
       />
       <DemoTraceRecorder />
-    </>
+    </div>
   );
 }
