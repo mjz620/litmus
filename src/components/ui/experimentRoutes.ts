@@ -1,8 +1,7 @@
 import type { ExperimentId } from "../../experiments/registry";
 
 const pathsByExperimentId = {
-  acid_base_titration: "/lab/titration",
-  precipitation_solubility: "/lab/precipitation"
+  acid_base_titration: "/lab/titration"
 } as const satisfies Record<ExperimentId, `/lab/${string}`>;
 
 /** Guest practice path for the verified native dilution seed (not an engine registry id). */
@@ -17,6 +16,14 @@ export const CALORIMETRY_PRACTICE_PATH = "/lab/calorimetry" as const;
 
 export const CALORIMETRY_PRACTICE_SEED = "2026-07-19T12:00:00.000Z" as const;
 
+/**
+ * Guest practice path for the verified native precipitation seed. This is now
+ * the only precipitation lab; the legacy 2D experiment has been retired.
+ */
+export const PRECIPITATION_PRACTICE_PATH = "/lab/silver-chloride" as const;
+
+export const PRECIPITATION_PRACTICE_SEED = "2026-07-19T15:00:00.000Z" as const;
+
 export function getExperimentPath(
   experimentId: ExperimentId
 ): `/lab/${string}` {
@@ -29,6 +36,10 @@ export function getSolutionPreparationPracticePath(): typeof SOLUTION_PREPARATIO
 
 export function getCalorimetryPracticePath(): typeof CALORIMETRY_PRACTICE_PATH {
   return CALORIMETRY_PRACTICE_PATH;
+}
+
+export function getPrecipitationPracticePath(): typeof PRECIPITATION_PRACTICE_PATH {
+  return PRECIPITATION_PRACTICE_PATH;
 }
 
 export function resolveExperimentId(routeSegment: string): ExperimentId | null {

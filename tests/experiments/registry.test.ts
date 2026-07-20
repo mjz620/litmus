@@ -29,19 +29,12 @@ describe("experiment registry", () => {
     expect(manifest.loadDefinition).toBeTypeOf("function");
   });
 
-  it("lists both independently registered experiment manifests", () => {
+  it("lists only the registered titration experiment", () => {
+    // The 2D precipitation lab was retired in favour of the native
+    // precipitation workflow on the shared 3D bench.
     expect(listExperimentManifests().map(({ id }) => id)).toEqual([
-      "acid_base_titration",
-      "precipitation_solubility"
+      "acid_base_titration"
     ]);
-  });
-
-  it("lazily loads the precipitation definition by ID", async () => {
-    const definition = await loadExperimentDefinition(
-      "precipitation_solubility"
-    );
-    expect(definition.id).toBe("precipitation_solubility");
-    expect(definition.step).toBeTypeOf("function");
   });
 
   it("lazily loads the titration definition by ID", async () => {
