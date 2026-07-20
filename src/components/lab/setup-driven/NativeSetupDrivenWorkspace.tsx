@@ -27,6 +27,8 @@ import {
   type SetupDrivenNativeSession
 } from "../../../stores/setupDrivenLabSession";
 import { useLabUiStore } from "../../../stores/labUiStore";
+import { ProcedureGuide } from "../ProcedureGuide";
+import { procedureGuideStepsFromWorkflow } from "./procedureGuideSteps";
 import { ImmersiveSetupDrivenBench } from "./ImmersiveSetupDrivenBench";
 import {
   projectionActionsForEquipmentFocus,
@@ -96,6 +98,35 @@ function initialParameterValue(
   return "";
 }
 
+function equipmentLabel(
+  projection: Readonly<SetupDrivenLabProjection>,
+  instanceId: string | null | undefined
+): string | null {
+  if (!instanceId) return null;
+  return (
+    projection.equipment.find(({ instanceId: id }) => id === instanceId)
+      ?.label ?? null
+  );
+}
+
+/**
+ * "Pour <source> into <target>", using the labels the workflow author wrote.
+ * Falls back to the registered action purpose when either end is unlabelled.
+ */
+function transferPhrase(
+  action: SetupDrivenLabProjection["actions"][number],
+  projection: Readonly<SetupDrivenLabProjection>,
+  verb: string
+): string {
+  const source = equipmentLabel(projection, action.sourceEquipmentInstanceId);
+  const target = equipmentLabel(
+    projection,
+    action.targetEquipmentInstanceIds[0]
+  );
+  if (!source || !target) return actionRegistry.get(action.actionId).purpose;
+  return `${verb} ${source} into ${target}`;
+}
+
 function actionLabel(
   action: SetupDrivenLabProjection["actions"][number],
   projection: Readonly<SetupDrivenLabProjection>
@@ -107,14 +138,14 @@ function actionLabel(
       return "Fill the flask to the mark";
     case "action.mix_solution.v1":
       return "Mix the prepared solution";
-    case "action.pour_liquid.v1": {
-      const source = projection.equipment.find(
-        ({ instanceId }) => instanceId === action.sourceEquipmentInstanceId
-      );
-      return source?.equipmentDefinitionId === "component.wash_bottle.v1"
-        ? "Pour cold water into the calorimeter"
-        : "Pour hot water into the calorimeter";
-    }
+    case "action.pour_liquid.v1":
+      /*
+       * Built from the workflow's own labels. This used to hardcode
+       * "cold/hot water into the calorimeter", which was correct only for
+       * calorimetry — a precipitation bench read "pour hot water into the
+       * calorimeter" while pouring silver nitrate into a beaker.
+       */
+      return transferPhrase(action, projection, "Pour");
     case "action.mix_calorimeter.v1":
       return "Mix the calorimeter contents";
     case "action.set_calorimeter_lid.v1":
@@ -274,6 +305,7 @@ export function NativeSetupDrivenWorkspace({
   const [values, setValues] = useState<Readonly<Record<string, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [coachMessages, setCoachMessages] = useState<readonly CoachMessage[]>(
     []
   );
@@ -490,6 +522,10 @@ export function NativeSetupDrivenWorkspace({
           ? `Next: ${actionLabel(nextAction, current.projection)}.`
           : "Open Lab steps to continue the verified procedure.";
   const focused = useLabUiStore((store) => store.focused);
+  const procedureSteps = useMemo(
+    () => procedureGuideStepsFromWorkflow(workflow, current.state.diagnoses),
+    [workflow, current.state.diagnoses]
+  );
   const drawerActions = useMemo(() => {
     try {
       const configuration = resolveTitrationSceneConfiguration(
@@ -546,6 +582,15 @@ export function NativeSetupDrivenWorkspace({
                 : "Practice mode — ready"}
           </span>
           <div className={sessionBarStyles.actions}>
+            {procedureSteps.length > 0 && (
+              <button
+                type="button"
+                aria-pressed={guideOpen}
+                onClick={() => setGuideOpen(!guideOpen)}
+              >
+                Procedure
+              </button>
+            )}
             <button type="button" onClick={restart}>
               Restart attempt
             </button>
@@ -606,6 +651,27 @@ export function NativeSetupDrivenWorkspace({
             <button type="button" onClick={() => setError(null)}>
               Dismiss
             </button>
+          </div>
+        )}
+
+        {guideOpen && procedureSteps.length > 0 && (
+          <div className={styles.guideDrawer} role="presentation">
+            <div className={styles.drawerHeader}>
+              <div>
+                <p>Read-only reference</p>
+                <h2>Procedure</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Close procedure guide"
+                onClick={() => setGuideOpen(false)}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <div className={styles.guideBody}>
+              <ProcedureGuide steps={procedureSteps} showHeader={false} />
+            </div>
           </div>
         )}
 

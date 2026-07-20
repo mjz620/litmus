@@ -325,9 +325,20 @@ export function TitrationScene({
   const procedureStage = getProcedureStage(state, eventQueue);
   const nearEndpoint = isNearEndpointProjection(state, eventQueue);
   const endpointOvershot = hasRecentEndpointOvershoot(eventQueue);
-  const contextualPrompt =
+  /*
+   * A workflow with no available control groups has nothing left to dispatch:
+   * every permitted action is either done or gated behind a satisfied success
+   * rule. Without this the bench fell through to "continue titrating" while
+   * the valve was closed, and the burette hint blamed unfinished earlier
+   * steps — so a completed titration read as a broken one.
+   */
+  const workflowActionsExhausted =
     configuration.mode === "setup_driven_v2" &&
-    configuration.availableControlGroups.includes("reading")
+    configuration.availableControlGroups.length === 0;
+  const contextualPrompt = workflowActionsExhausted
+    ? "Endpoint reached — no more titrant is needed. Open the report from the session bar to submit your result."
+    : configuration.mode === "setup_driven_v2" &&
+        configuration.availableControlGroups.includes("reading")
       ? "Next: focus the meniscus and record the displayed burette reading before dispensing."
       : configuration.mode === "setup_driven_v2" && deliveryAvailable
         ? "Reading recorded. Focus the burette and add titrant within the workflow limit."
@@ -338,6 +349,20 @@ export function TitrationScene({
             endpointOvershot
           );
   const infoEquipment = hovered ?? focused;
+  /*
+   * Only promise the drag when the valve will actually respond. The workflow
+   * makes dispensing available once the initial reading is recorded, so before
+   * that this line was inviting a gesture the bench refuses — which reads as a
+   * broken stopcock rather than a locked one.
+   */
+  const buretteStopcockHint =
+    infoEquipment === "burette" && focused === "burette"
+      ? physicalDispenseEnabled
+        ? " Drag the bright blue stopcock handle downward through the flow detents; release it to close the valve."
+        : workflowActionsExhausted
+          ? " The stopcock is closed because the endpoint is reached — no more titrant is needed."
+          : " The stopcock stays closed until the earlier steps are done — follow the procedure guide before delivering titrant."
+      : "";
   const visualSummary = `3D chemistry lab. Burette contains ${formatBuretteVolume(visualBuretteAvailableML)} mL of ${formatBuretteVolume(visualBuretteCapacityML)} mL capacity. Flask liquid appears ${latestObservedColor ?? "colorless"}.`;
 
   function handleSelect(equipment: EquipmentId) {
@@ -677,7 +702,7 @@ export function TitrationScene({
         )}
         <p className={styles.instructions} aria-live="polite">
           {infoEquipment
-            ? `${EQUIPMENT[infoEquipment].name}: ${EQUIPMENT[infoEquipment].purpose}${infoEquipment === "burette" && focused === "burette" ? " Drag the bright blue stopcock handle downward through the flow detents; release it to close the valve." : ""}`
+            ? `${EQUIPMENT[infoEquipment].name}: ${EQUIPMENT[infoEquipment].purpose}${buretteStopcockHint}`
             : "Click the simulation panel to initiate panning, then move the cursor toward its edges. Select equipment to focus on it."}
         </p>
         <div className={styles.coachDock}>

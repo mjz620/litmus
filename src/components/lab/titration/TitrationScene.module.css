@@ -89,7 +89,7 @@
   height: 2.15rem;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: #d98963;
+  background: var(--color-accent);
   color: #3b2922;
   font-size: 1.2rem;
 }
@@ -255,7 +255,8 @@
   position: absolute;
   z-index: 3;
   right: 5.75rem;
-  bottom: 0.7rem;
+  /* Sits low so it clears the flask, which the student watches for colour. */
+  bottom: 0.3rem;
   left: 10.5rem;
   width: fit-content;
   max-width: min(44rem, calc(100% - 18rem));

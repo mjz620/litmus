@@ -1,0 +1,131 @@
+.guide {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.badge {
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.marker {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.body {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.body h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.body p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.status {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.step[data-status="done"] .marker {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.step[data-status="done"] .status {
+  color: var(--color-success);
+}
+
+.step[data-status="active"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.step[data-status="active"] .marker {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.step[data-status="active"] .status {
+  color: var(--color-primary);
+}
+
+.step[data-status="attention"] {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.step[data-status="attention"] .marker {
+  background: var(--color-danger);
+  color: var(--color-surface);
+}
+
+.step[data-status="attention"] .status {
+  color: var(--color-danger);
+}

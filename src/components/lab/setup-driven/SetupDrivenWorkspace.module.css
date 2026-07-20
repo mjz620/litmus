@@ -70,6 +70,28 @@
   box-shadow: 0 1rem 2.5rem rgb(20 48 42 / 24%);
 }
 
+/* Left-anchored so the read-only guide and the step executor can coexist. */
+.guideDrawer {
+  position: absolute;
+  z-index: 12;
+  top: 0.85rem;
+  left: 0.85rem;
+  bottom: 0.85rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(22rem, calc(100% - 1.7rem));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--lab-primary) 36%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--lab-surface);
+  box-shadow: 0 1rem 2.5rem rgb(20 48 42 / 24%);
+}
+
+.guideBody {
+  overflow-y: auto;
+  padding: 0.9rem;
+}
+
 .drawerHeader {
   display: flex;
   align-items: center;

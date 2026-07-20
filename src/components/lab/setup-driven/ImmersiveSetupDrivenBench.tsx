@@ -100,7 +100,6 @@ export function ImmersiveSetupDrivenBench({
   const [autoQuality, setAutoQuality] = useState<GlassQuality>("high");
   const [reducedGraphics, setReducedGraphics] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
-  const [sceneError, setSceneError] = useState<string | null>(null);
   const focused = useLabUiStore((store) => store.focused);
   const hovered = useLabUiStore((store) => store.hovered);
   const lookActive = useLabUiStore((store) => store.lookActive);
@@ -110,20 +109,33 @@ export function ImmersiveSetupDrivenBench({
   const clearFocus = useLabUiStore((store) => store.clearFocus);
   const soundMuted = useSyncMuted();
 
-  const configuration = useMemo((): TitrationSceneConfiguration | null => {
+  /*
+   * Resolved as one value rather than a memo that writes to error state. A
+   * failed resolve is not an event, it is a property of this projection, so it
+   * is derived during render alongside the configuration it replaces. Setting
+   * state from inside the memo made the render impure and risked re-running
+   * the memo off its own state write.
+   */
+  const scene = useMemo(():
+    | { readonly configuration: TitrationSceneConfiguration; readonly error: null }
+    | { readonly configuration: null; readonly error: string } => {
     try {
-      const resolved = resolveTitrationSceneConfiguration(projection);
-      setSceneError(null);
-      return resolved;
+      return {
+        configuration: resolveTitrationSceneConfiguration(projection),
+        error: null
+      };
     } catch (error) {
-      setSceneError(
-        error instanceof Error
-          ? error.message
-          : "The setup-driven scene could not be resolved."
-      );
-      return null;
+      return {
+        configuration: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : "The setup-driven scene could not be resolved."
+      };
     }
   }, [projection]);
+
+  const { configuration, error: sceneError } = scene;
 
   useEffect(() => {
     if (
@@ -243,10 +255,18 @@ export function ImmersiveSetupDrivenBench({
       data-runtime-mode={configuration.mode}
       data-workflow-id={configuration.workflowId ?? undefined}
     >
+      {/*
+       * data-hovered-equipment / data-selectable-equipment expose which item is
+       * hovered and which are selectable. The two disagreeing is a real bug
+       * class — hover fires but nothing highlights — that the boolean
+       * data-hovered alone cannot surface.
+       */}
       <div
         ref={canvasFrameRef}
         className={sceneStyles.canvasFrame}
         data-hovered={hovered ? "true" : "false"}
+        data-hovered-equipment={hovered ?? "none"}
+        data-selectable-equipment={enabled.join(",")}
         data-look-active={lookActive ? "true" : "false"}
         tabIndex={0}
         role="application"
@@ -397,6 +417,10 @@ export function ImmersiveSetupDrivenBench({
             thermometerPlaced={thermometerPlaced}
             hideCalorimeterLid={activeVisualGesture?.kind === "lid"}
             hideThermometer={activeVisualGesture?.kind === "place_probe"}
+            hideWashBottle={
+              activeVisualGesture?.kind === "pour" &&
+              activeVisualGesture.sourceKind === "wash_bottle"
+            }
             activeVisualGesture={activeVisualGesture}
             onVisualGestureComplete={onVisualGestureComplete}
             buretteAvailableML={burette?.availableML ?? 0}
