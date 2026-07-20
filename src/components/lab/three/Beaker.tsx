@@ -1,3 +1,4 @@
+import { GlassMaterial, type GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
 
 const BEAKER_RADIUS = 0.075;
@@ -8,6 +9,8 @@ interface BeakerProps {
   readonly fillFraction?: number;
   /** Engine-owned contents appearance; "clear" renders as plain water. */
   readonly contentsColor?: string;
+  /** Shared laboratory-glass tier; matches the titration flask. */
+  readonly quality?: GlassQuality;
 }
 
 /**
@@ -34,7 +37,8 @@ function resolveContentsColor(contentsColor: string): string {
  */
 export function Beaker({
   fillFraction = 0,
-  contentsColor = "clear"
+  contentsColor = "clear",
+  quality = "high"
 }: BeakerProps) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
   const liquidHeight = clamped * (BEAKER_HEIGHT - 0.014);
@@ -46,39 +50,18 @@ export function Beaker({
         <cylinderGeometry
           args={[BEAKER_RADIUS, BEAKER_RADIUS * 0.94, BEAKER_HEIGHT, 28, 1, true]}
         />
-        <meshPhysicalMaterial
-          color={LAB_PALETTE.glassFallback}
-          transparent
-          opacity={0.34}
-          roughness={0.08}
-          transmission={0.6}
-          thickness={0.015}
-          side={2}
-        />
+        <GlassMaterial quality={quality} thickness={0.005} />
       </mesh>
 
       <mesh position={[0, 0.004, 0]}>
         <cylinderGeometry args={[BEAKER_RADIUS * 0.94, BEAKER_RADIUS * 0.94, 0.008, 28]} />
-        <meshPhysicalMaterial
-          color={LAB_PALETTE.glassFallback}
-          transparent
-          opacity={0.42}
-          roughness={0.08}
-          transmission={0.5}
-          thickness={0.012}
-        />
+        <GlassMaterial quality={quality} thickness={0.005} />
       </mesh>
 
       {/* Rolled rim. */}
       <mesh position={[0, BEAKER_HEIGHT, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[BEAKER_RADIUS, 0.0035, 8, 32]} />
-        <meshPhysicalMaterial
-          color={LAB_PALETTE.glassFallback}
-          transparent
-          opacity={0.5}
-          roughness={0.06}
-          transmission={0.5}
-        />
+        <GlassMaterial quality={quality} />
       </mesh>
 
       {/* Pour spout — the detail that reads "beaker" rather than "jar". */}
@@ -87,14 +70,7 @@ export function Beaker({
         rotation={[0, 0, -0.42]}
       >
         <cylinderGeometry args={[0.016, 0.022, 0.02, 12, 1, true]} />
-        <meshPhysicalMaterial
-          color={LAB_PALETTE.glassFallback}
-          transparent
-          opacity={0.4}
-          roughness={0.08}
-          transmission={0.5}
-          side={2}
-        />
+        <GlassMaterial quality={quality} />
       </mesh>
 
       {clamped > 0 && (

@@ -6,7 +6,7 @@ import {
   resolveExperimentId
 } from "../../src/components/ui/experimentRoutes";
 import { validateCalorimetryV2 } from "../../src/lab-workflows/definitions/calorimetry";
-import { resolveTitrationSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
+import { resolveLabSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
 import { createSetupDrivenNativeSession } from "../../src/stores/setupDrivenLabSession";
 
 describe("unified student catalog calorimetry practice", () => {
@@ -26,7 +26,7 @@ describe("unified student catalog calorimetry practice", () => {
       },
       workflow
     });
-    const configuration = resolveTitrationSceneConfiguration(
+    const configuration = resolveLabSceneConfiguration(
       session.getProjection()
     );
     expect(configuration.mode).toBe("setup_driven_v2");

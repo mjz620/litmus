@@ -1,5 +1,5 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { type Camera, Vector3 } from "three";
 
 import { useLabUiStore } from "../../../stores/labUiStore";
@@ -54,6 +54,13 @@ export interface LookStepDetail {
 
 interface BenchCameraControlsProps {
   pose: CameraPose;
+  /**
+   * Whether `pose` is the free-look bench overview. Passed rather than compared
+   * by identity: the overview is now derived per scene from what the bench is
+   * holding, so `pose === BENCH_VIEW` silently stopped matching and took look
+   * and pan down with it.
+   */
+  isOverview: boolean;
 }
 
 interface ActiveTween {
@@ -117,7 +124,10 @@ function recordOptionalPerformanceFrame(): void {
  * demand frameloop and snap instantly under prefers-reduced-motion. The full
  * bench has a fixed standing position; focused poses move position and target.
  */
-export function BenchCameraControls({ pose }: BenchCameraControlsProps) {
+export function BenchCameraControls({
+  pose,
+  isOverview
+}: BenchCameraControlsProps) {
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
   const invalidate = useThree((state) => state.invalidate);
@@ -128,7 +138,6 @@ export function BenchCameraControls({ pose }: BenchCameraControlsProps) {
   const lookStateRef = useRef<LookState>(createInitialLookState());
   const isFirstPose = useRef(true);
   const reducedMotionRef = useRef(false);
-  const isOverview = pose === BENCH_VIEW;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -199,9 +208,23 @@ export function BenchCameraControls({ pose }: BenchCameraControlsProps) {
     };
   }, [camera, invalidate, isOverview]);
 
+  /*
+   * Re-aim on the pose's *values*, not its object identity.
+   *
+   * The overview is derived per render from what the bench is holding, so it
+   * arrives as a fresh object every time LabScene re-renders — a titration drip
+   * is enough. Keying the effect on identity re-ran it on each of those,
+   * throwing away accumulated look and pan (below) and re-tweening to centre,
+   * which read as the camera snapping back on its own. Focused poses are
+   * likewise rebuilt per render, so this cannot rely on any caller memoising.
+   */
+  const poseKey = `${pose.position.join(",")}|${pose.target.join(",")}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- poseKey is pose by value
+  const stablePose = useMemo(() => pose, [poseKey]);
+
   useEffect(() => {
-    const toPosition = new Vector3(...pose.position);
-    const toTarget = new Vector3(...pose.target);
+    const toPosition = new Vector3(...stablePose.position);
+    const toTarget = new Vector3(...stablePose.target);
     pointerNdcRef.current = { x: 0, y: 0 };
     lookStateRef.current = createInitialLookState();
 
@@ -224,7 +247,7 @@ export function BenchCameraControls({ pose }: BenchCameraControlsProps) {
       elapsedS: 0
     };
     invalidate();
-  }, [camera, invalidate, pose]);
+  }, [camera, invalidate, stablePose]);
 
   useFrame((_, deltaS) => {
     recordOptionalPerformanceFrame();

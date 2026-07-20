@@ -89,23 +89,8 @@ const safetyPaperMaterial = new MeshStandardMaterial({
   roughness: 0.82,
   metalness: 0
 });
-const muralCoralMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.muralCoral,
-  roughness: 0.78,
-  metalness: 0
-});
-const muralBerryMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.muralBerry,
-  roughness: 0.78,
-  metalness: 0
-});
 const muralBlueMaterial = new MeshStandardMaterial({
   color: LAB_PALETTE.muralBlue,
-  roughness: 0.78,
-  metalness: 0
-});
-const muralSunMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.muralSun,
   roughness: 0.78,
   metalness: 0
 });
@@ -131,12 +116,6 @@ const roomMaterials = {
   wall: wallMaterial,
   ceiling: ceilingMaterial
 } as const;
-const muralMaterials = [
-  muralCoralMaterial,
-  muralBerryMaterial,
-  muralBlueMaterial,
-  muralSunMaterial
-];
 
 interface IslandProps {
   x: number;
@@ -297,7 +276,17 @@ function SinkAndFaucet() {
   );
 }
 
-/** A flat, colorful molecule mural makes the alcove read as a playful lab. */
+/**
+ * A molecule diagram on the classroom whiteboard behind the bench.
+ *
+ * This used to also scatter confetti across the board and run a band of twelve
+ * coloured circles along the back wall. Both were decoration with no referent,
+ * and together they were the most cartoonish thing on screen — which undercuts
+ * the brief: warmth is supposed to come from materials and clear affordances,
+ * not from making the chemistry look less real. A structural formula on a
+ * whiteboard is a real thing to find in a chemistry classroom, so it stays, in
+ * a restrained two-colour treatment rather than four competing pastels.
+ */
 function WhimsicalBackdrop() {
   const nodePositions = [
     [-0.8, 0.12, 0.12],
@@ -312,14 +301,6 @@ function WhimsicalBackdrop() {
     [0.33, 0.01, -0.52],
     [0.7, 0.025, 0.61]
   ] as const;
-  const confetti = [
-    [-1.01, -0.26, 0.07, -0.42],
-    [-0.62, 0.3, 0.06, 0.3],
-    [-0.04, -0.3, 0.075, -0.22],
-    [0.42, 0.3, 0.06, 0.42],
-    [1.06, -0.22, 0.07, -0.42]
-  ] as const;
-  const scallopCount = 12;
 
   return (
     <>
@@ -358,41 +339,18 @@ function WhimsicalBackdrop() {
           <mesh
             key={`node-${index}`}
             position={[x, y, 0.05]}
-            material={muralMaterials[index % muralMaterials.length]}
+            /*
+             * One colour, so it reads as a marker diagram someone drew rather
+             * than as decoration. The camera now frames the wall on tall
+             * benches, which made four competing pastels the loudest thing
+             * behind the apparatus.
+             */
+            material={muralBlueMaterial}
           >
             <circleGeometry args={[radius, 18]} />
           </mesh>
         ))}
-        {confetti.map(([x, y, size, rotation], index) => (
-          <mesh
-            key={`confetti-${index}`}
-            position={[x, y, 0.05]}
-            rotation={[0, 0, rotation]}
-            material={muralMaterials[(index + 1) % muralMaterials.length]}
-          >
-            <boxGeometry args={[size * 0.55, size, 0.02]} />
-          </mesh>
-        ))}
       </group>
-
-      {Array.from({ length: scallopCount }, (_, index) => {
-        const spacing = ROOM.width / scallopCount;
-        const x = -ROOM.width / 2 + spacing * (index + 0.5);
-
-        return (
-          <mesh
-            key={`scallop-${index}`}
-            position={[
-              x,
-              BENCH_ALCOVE.scallopCenterY,
-              ROOM.backWallZ + WALLS.thickness / 2 + 0.02
-            ]}
-            material={muralMaterials[index % muralMaterials.length]}
-          >
-            <circleGeometry args={[BENCH_ALCOVE.scallopRadius, 14]} />
-          </mesh>
-        );
-      })}
     </>
   );
 }

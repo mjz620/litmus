@@ -28,11 +28,6 @@ export interface LabVisualAdapterRegistration {
   readonly selectableEquipmentIds: readonly EquipmentId[];
 }
 
-/** @deprecated Prefer LAB_VISUAL_ADAPTERS; kept as an alias for titration-era imports. */
-export type TitrationVisualAdapterKind = LabVisualAdapterKind;
-/** @deprecated Prefer LabVisualAdapterRegistration. */
-export type TitrationVisualAdapterRegistration = LabVisualAdapterRegistration;
-
 export const LAB_VISUAL_ADAPTERS: Readonly<
   Record<string, LabVisualAdapterRegistration>
 > = Object.freeze({
@@ -90,9 +85,6 @@ export const LAB_VISUAL_ADAPTERS: Readonly<
   })
 });
 
-/** Titration-era alias; includes dilution adapters in the shared map. */
-export const TITRATION_VISUAL_ADAPTERS = LAB_VISUAL_ADAPTERS;
-
 const ACTION_CONTROL_GROUP: Readonly<Record<string, ControlGroupId>> =
   Object.freeze({
     "action.rinse.v1": "prepare",
@@ -140,7 +132,7 @@ export class SetupDrivenSceneError extends Error {
   }
 }
 
-export interface TitrationSceneConfiguration {
+export interface LabSceneConfiguration {
   readonly mode: "legacy" | "setup_driven_v2";
   readonly workflowId: string | null;
   readonly workflowHash: string | null;
@@ -167,7 +159,7 @@ export interface TitrationSceneConfiguration {
   } | null;
 }
 
-const LEGACY_SCENE_CONFIGURATION: TitrationSceneConfiguration = Object.freeze({
+const LEGACY_SCENE_CONFIGURATION: LabSceneConfiguration = Object.freeze({
   mode: "legacy",
   workflowId: null,
   workflowHash: null,
@@ -271,9 +263,9 @@ function fillFractionFor(
  * lab scene. Titration requires burette+flask when those adapters are present;
  * native solution-preparation labs may omit them.
  */
-export function resolveTitrationSceneConfiguration(
+export function resolveLabSceneConfiguration(
   projection: Readonly<SetupDrivenLabProjection> | null
-): Readonly<TitrationSceneConfiguration> {
+): Readonly<LabSceneConfiguration> {
   if (!projection) return LEGACY_SCENE_CONFIGURATION;
 
   const selectableEquipmentIds: EquipmentId[] = [];
@@ -281,12 +273,12 @@ export function resolveTitrationSceneConfiguration(
   const equipmentFillFractions: Record<string, number> = {};
   let buretteState:
     | NonNullable<
-        NonNullable<TitrationSceneConfiguration["projectedState"]>["burette"]
+        NonNullable<LabSceneConfiguration["projectedState"]>["burette"]
       >
     | null = null;
   let flaskState:
     | NonNullable<
-        NonNullable<TitrationSceneConfiguration["projectedState"]>["flask"]
+        NonNullable<LabSceneConfiguration["projectedState"]>["flask"]
       >
     | null = null;
   let hasBuretteAdapter = false;
@@ -463,7 +455,7 @@ export function resolveTitrationSceneConfiguration(
 }
 
 export function visibleControlGroupsForConfiguration(
-  configuration: Readonly<TitrationSceneConfiguration>,
+  configuration: Readonly<LabSceneConfiguration>,
   focused: EquipmentId | null
 ): readonly ControlGroupId[] {
   const focusedGroups = getVisibleControlGroups(focused);

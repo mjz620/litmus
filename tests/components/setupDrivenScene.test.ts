@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   SETUP_DRIVEN_SCENE_ERROR_CODES,
-  TITRATION_VISUAL_ADAPTERS,
+  LAB_VISUAL_ADAPTERS,
   projectionActionsForEquipmentFocus,
-  resolveTitrationSceneConfiguration,
+  resolveLabSceneConfiguration,
   visibleControlGroupsForConfiguration
 } from "../../src/components/lab/titration/setupDrivenScene";
 import { validateSolutionPreparationV2 } from "../../src/lab-workflows/definitions/solution-preparation";
@@ -27,7 +27,7 @@ function session() {
 
 describe("setup-driven titration scene projection", () => {
   it("resolves exact visual adapters, layout slots, and the initial read action", () => {
-    const configuration = resolveTitrationSceneConfiguration(
+    const configuration = resolveLabSceneConfiguration(
       session().getProjection()
     );
 
@@ -100,7 +100,7 @@ describe("setup-driven titration scene projection", () => {
         reportedML: 22
       })
     );
-    const configuration = resolveTitrationSceneConfiguration(
+    const configuration = resolveLabSceneConfiguration(
       runtime.getProjection()
     );
 
@@ -139,7 +139,7 @@ describe("setup-driven titration scene projection", () => {
         };
       })
     };
-    const configuration = resolveTitrationSceneConfiguration(projection);
+    const configuration = resolveLabSceneConfiguration(projection);
 
     expect(configuration.equipmentPoses).toEqual([
       expect.objectContaining({
@@ -161,7 +161,7 @@ describe("setup-driven titration scene projection", () => {
   });
 
   it("keeps the legacy scene and controls unchanged without a setup projection", () => {
-    const configuration = resolveTitrationSceneConfiguration(null);
+    const configuration = resolveLabSceneConfiguration(null);
     expect(configuration.mode).toBe("legacy");
     expect(configuration.selectableEquipmentIds).toEqual([
       "burette",
@@ -180,7 +180,7 @@ describe("setup-driven titration scene projection", () => {
   });
 
   it("registers shared lab visual adapters for titration, dilution, and calorimetry", () => {
-    expect(Object.keys(TITRATION_VISUAL_ADAPTERS).sort()).toEqual([
+    expect(Object.keys(LAB_VISUAL_ADAPTERS).sort()).toEqual([
       "visual-adapter.beaker.v1",
       "visual-adapter.burette.v1",
       "visual-adapter.calorimeter.v1",
@@ -193,7 +193,7 @@ describe("setup-driven titration scene projection", () => {
       "visual-adapter.wash_bottle.v1"
     ]);
     expect(
-      TITRATION_VISUAL_ADAPTERS["visual-adapter.volumetric_pipette.v1"]
+      LAB_VISUAL_ADAPTERS["visual-adapter.volumetric_pipette.v1"]
     ).toMatchObject({
       kind: "volumetric_pipette",
       selectableEquipmentIds: ["volumetricPipette"]
@@ -211,7 +211,7 @@ describe("setup-driven titration scene projection", () => {
       },
       workflow
     });
-    const configuration = resolveTitrationSceneConfiguration(
+    const configuration = resolveLabSceneConfiguration(
       session.getProjection()
     );
     expect(configuration.projectedState?.burette).toBeNull();
@@ -311,7 +311,7 @@ describe("setup-driven titration scene projection", () => {
       structuredClone(session().getProjection()) as SetupDrivenLabProjection
     );
 
-    expect(() => resolveTitrationSceneConfiguration(projection)).toThrowError(
+    expect(() => resolveLabSceneConfiguration(projection)).toThrowError(
       expect.objectContaining({ code: expectedCode })
     );
   });

@@ -5,13 +5,8 @@ import {
   SRGBColorSpace
 } from "three";
 
+import { GlassMaterial, type GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
-
-const washBottleMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.glassFallback,
-  roughness: 0.76,
-  metalness: 0
-});
 
 const spoutMaterial = new MeshStandardMaterial({
   color: LAB_PALETTE.fixtureMetal,
@@ -53,6 +48,8 @@ export interface WashSqueezeBottleProps {
   readonly showLabel?: boolean;
   /** Optional fill fraction for translucent water level (native labs). */
   readonly fillFraction?: number;
+  /** Shared laboratory-glass tier; matches the titration flask. */
+  readonly quality?: GlassQuality;
 }
 
 /**
@@ -61,27 +58,36 @@ export interface WashSqueezeBottleProps {
  */
 export function WashSqueezeBottle({
   showLabel = true,
-  fillFraction
+  fillFraction,
+  quality = "high"
 }: WashSqueezeBottleProps) {
   const waterLabel = useMemo(() => getWaterLabelTexture(), []);
+  /*
+   * Native labs project the engine-owned level; the titration station's
+   * bottle is a decorative fixture with no engine state, so with the body now
+   * transparent glass it renders a fixed presentation-only water level
+   * instead of standing empty.
+   */
   const clamped =
     fillFraction === undefined
-      ? null
+      ? 0.75
       : Math.max(0, Math.min(1, fillFraction));
 
   return (
     <group>
-      <mesh position={[0, 0.095, 0]} material={washBottleMaterial}>
+      <mesh position={[0, 0.095, 0]}>
         <cylinderGeometry args={[0.045, 0.052, 0.15, 14]} />
+        <GlassMaterial quality={quality} thickness={0.003} />
       </mesh>
-      {clamped !== null && clamped > 0 && (
+      {clamped > 0 && (
         <mesh position={[0, 0.02 + clamped * 0.055, 0]}>
           <cylinderGeometry args={[0.04, 0.045, clamped * 0.12, 14]} />
           <meshStandardMaterial color="#8fc9df" transparent opacity={0.68} />
         </mesh>
       )}
-      <mesh position={[0, 0.178, 0]} material={washBottleMaterial}>
+      <mesh position={[0, 0.178, 0]}>
         <cylinderGeometry args={[0.025, 0.042, 0.035, 14]} />
+        <GlassMaterial quality={quality} thickness={0.003} />
       </mesh>
       <mesh
         position={[0.026, 0.212, 0]}

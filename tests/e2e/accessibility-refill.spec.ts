@@ -89,7 +89,7 @@ test("skip navigation and reduced-motion controls remain operable", async ({
   page
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
 
   await page.keyboard.press("Tab");
   const skipLink = page.getByRole("link", { name: "Skip to main content" });

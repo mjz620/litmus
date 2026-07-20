@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveTitrationSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
+import { resolveLabSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
 import {
   createDispenseGestureState,
   reduceDispenseGesture
@@ -20,13 +20,13 @@ describe("setup-driven stopcock dispense", () => {
       setupDrivenSelection: STRICT_TITRATION_SETUP_SELECTION
     });
 
-    const before = resolveTitrationSceneConfiguration(
+    const before = resolveLabSceneConfiguration(
       store.getState().runtimeProjection
     );
     expect(before.availableControlGroups).toEqual(["reading"]);
 
     store.getState().dispatch({ type: "read_meniscus", reportedML: 22 });
-    const after = resolveTitrationSceneConfiguration(
+    const after = resolveLabSceneConfiguration(
       store.getState().runtimeProjection
     );
     expect(after.availableControlGroups).toEqual(["deliver"]);

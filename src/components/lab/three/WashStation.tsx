@@ -7,6 +7,7 @@ import {
 import { MeshBasicMaterial, MeshStandardMaterial } from "three";
 
 import { WASH } from "./benchLayout";
+import { GlassMaterial, type GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
 import { WashSqueezeBottle } from "./WashSqueezeBottle";
 
@@ -18,17 +19,14 @@ interface WashStationProps {
   onWashBottleClick: () => void;
   onTitrantBottleClick: () => void;
   onFunnelClick: () => void;
+  /** Shared laboratory-glass tier; matches the titration flask. */
+  quality?: GlassQuality;
 }
 
 export type WashLiquid = "water" | "titrant";
 
 const trayMaterial = new MeshStandardMaterial({
   color: LAB_PALETTE.muralBlue,
-  roughness: 0.76,
-  metalness: 0
-});
-const reagentBottleMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.woodDark,
   roughness: 0.76,
   metalness: 0
 });
@@ -68,7 +66,8 @@ export function WashStation({
   funnelSelected,
   onWashBottleClick,
   onTitrantBottleClick,
-  onFunnelClick
+  onFunnelClick,
+  quality = "high"
 }: WashStationProps) {
   const hotspotsEnabled = focused && preparationEnabled;
 
@@ -90,7 +89,7 @@ export function WashStation({
         scale={selectedLiquid === "water" ? 1.06 : 1}
         onClick={hotspotsEnabled ? clickHandler(onWashBottleClick) : undefined}
       >
-        <WashSqueezeBottle showLabel />
+        <WashSqueezeBottle showLabel quality={quality} />
         {focused && selectedLiquid === "water" && (
           <SelectionRing radius={0.063} />
         )}
@@ -118,11 +117,24 @@ export function WashStation({
           hotspotsEnabled ? clickHandler(onTitrantBottleClick) : undefined
         }
       >
-        <mesh position={[0, 0.09, 0]} material={reagentBottleMaterial}>
+        {/* Glass reagent bottle, matching the flask's material, with the
+            titrant visible inside at a fixed decorative fixture level. */}
+        <mesh position={[0, 0.09, 0]}>
           <cylinderGeometry args={[0.043, 0.05, 0.14, 14]} />
+          <GlassMaterial quality={quality} thickness={0.003} />
         </mesh>
-        <mesh position={[0, 0.172, 0]} material={reagentBottleMaterial}>
+        <mesh position={[0, 0.065, 0]}>
+          <cylinderGeometry args={[0.038, 0.045, 0.095, 14]} />
+          <meshStandardMaterial
+            color={LAB_PALETTE.buretteLiquid}
+            transparent
+            opacity={0.72}
+            roughness={0.25}
+          />
+        </mesh>
+        <mesh position={[0, 0.172, 0]}>
           <cylinderGeometry args={[0.025, 0.031, 0.035, 12]} />
+          <GlassMaterial quality={quality} thickness={0.003} />
         </mesh>
         <mesh position={[0, 0.2, 0]}>
           <cylinderGeometry args={[0.032, 0.032, 0.022, 12]} />

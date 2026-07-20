@@ -1,3 +1,4 @@
+import { GlassMaterial, type GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
 import {
   WASH_SQUEEZE_BOTTLE_HIT,
@@ -6,10 +7,15 @@ import {
 
 interface LiquidFillProps {
   readonly fillFraction?: number;
+  /** Shared laboratory-glass tier; matches the titration flask. */
+  readonly quality?: GlassQuality;
 }
 
 /** Local-origin verified visual for the registered 10 mL volumetric pipette. */
-export function VolumetricPipette({ fillFraction = 0 }: LiquidFillProps) {
+export function VolumetricPipette({
+  fillFraction = 0,
+  quality = "high"
+}: LiquidFillProps) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
   return (
     <group>
@@ -23,25 +29,11 @@ export function VolumetricPipette({ fillFraction = 0 }: LiquidFillProps) {
       </mesh>
       <mesh position={[0, 0.42, 0]}>
         <cylinderGeometry args={[0.014, 0.009, 0.74, 16]} />
-        <meshPhysicalMaterial
-          color="#dcebea"
-          transparent
-          opacity={0.42}
-          roughness={0.08}
-          transmission={0.55}
-          thickness={0.015}
-        />
+        <GlassMaterial quality={quality} thickness={0.0025} />
       </mesh>
       <mesh position={[0, 0.43, 0]} scale={[1, 1.5, 1]}>
         <sphereGeometry args={[0.032, 18, 12]} />
-        <meshPhysicalMaterial
-          color="#dcebea"
-          transparent
-          opacity={0.42}
-          roughness={0.08}
-          transmission={0.55}
-          thickness={0.015}
-        />
+        <GlassMaterial quality={quality} thickness={0.0025} />
       </mesh>
       {clamped > 0 && (
         <mesh position={[0, 0.1 + clamped * 0.29, 0]}>
@@ -67,20 +59,16 @@ export const VOLUMETRIC_PIPETTE_HIT = {
 } as const;
 
 /** Local-origin verified visual for the registered 100 mL volumetric flask. */
-export function VolumetricFlask({ fillFraction = 0 }: LiquidFillProps) {
+export function VolumetricFlask({
+  fillFraction = 0,
+  quality = "high"
+}: LiquidFillProps) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
   return (
     <group>
       <mesh position={[0, 0.06, 0]} scale={[1, 1.15, 1]}>
         <sphereGeometry args={[0.105, 24, 16]} />
-        <meshPhysicalMaterial
-          color="#dcebea"
-          transparent
-          opacity={0.42}
-          roughness={0.08}
-          transmission={0.55}
-          thickness={0.02}
-        />
+        <GlassMaterial quality={quality} thickness={0.004} />
       </mesh>
       {clamped > 0 && (
         <mesh position={[0, 0.015 + clamped * 0.035, 0]} scale={[1, 0.7, 1]}>
@@ -90,14 +78,7 @@ export function VolumetricFlask({ fillFraction = 0 }: LiquidFillProps) {
       )}
       <mesh position={[0, 0.23, 0]}>
         <cylinderGeometry args={[0.025, 0.035, 0.28, 18, 1, true]} />
-        <meshPhysicalMaterial
-          color="#dcebea"
-          transparent
-          opacity={0.42}
-          roughness={0.08}
-          transmission={0.55}
-          side={2}
-        />
+        <GlassMaterial quality={quality} thickness={0.003} />
       </mesh>
       <mesh position={[0, 0.28, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.028, 0.0018, 6, 30]} />
@@ -123,30 +104,31 @@ export const VOLUMETRIC_FLASK_HIT = {
  * wash station, seated on the local placement origin.
  */
 export function DistilledWaterWashBottle({
-  fillFraction = 0.75
+  fillFraction = 0.75,
+  quality = "high"
 }: LiquidFillProps) {
-  return <WashSqueezeBottle showLabel fillFraction={fillFraction} />;
+  return (
+    <WashSqueezeBottle
+      showLabel
+      fillFraction={fillFraction}
+      quality={quality}
+    />
+  );
 }
 
 export const DISTILLED_WASH_BOTTLE_HIT = WASH_SQUEEZE_BOTTLE_HIT;
 
 /** Local-origin stock-solution / aqueous reagent bottle. */
 export function RegisteredReagentBottle({
-  fillFraction = 0.7
+  fillFraction = 0.7,
+  quality = "high"
 }: LiquidFillProps) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
   return (
     <group>
       <mesh position={[0, 0.1, 0]}>
         <cylinderGeometry args={[0.062, 0.07, 0.24, 20]} />
-        <meshPhysicalMaterial
-          color="#dcebea"
-          transparent
-          opacity={0.54}
-          roughness={0.16}
-          transmission={0.38}
-          thickness={0.02}
-        />
+        <GlassMaterial quality={quality} thickness={0.004} />
       </mesh>
       {clamped > 0 && (
         <mesh position={[0, 0.005 + clamped * 0.085, 0]}>

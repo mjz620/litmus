@@ -19,7 +19,7 @@ test("equipment selection shows contextual controls and completes the titration"
   });
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -132,7 +132,7 @@ test("equipment selection shows contextual controls and completes the titration"
 test("reduced graphics toggle keeps the scene and controls usable", async ({
   page
 }) => {
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -158,7 +158,7 @@ test("compact screens keep immersive utilities reachable without overflow", asyn
   page
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/lab/titration?seed=compact-immersive");
+  await page.goto("/lab/titration?seed=compact-immersive&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

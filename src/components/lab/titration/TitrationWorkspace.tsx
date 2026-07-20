@@ -8,7 +8,7 @@ import { useLabUiStore } from "../../../stores/labUiStore";
 import { TitrationControls } from "./TitrationControls";
 import { EQUIPMENT, getVisibleControlGroups } from "./equipment";
 import {
-  resolveTitrationSceneConfiguration,
+  resolveLabSceneConfiguration,
   visibleControlGroupsForConfiguration
 } from "./setupDrivenScene";
 
@@ -42,7 +42,7 @@ export function TitrationWorkspace() {
   const sceneResolution = useMemo(() => {
     try {
       return {
-        configuration: resolveTitrationSceneConfiguration(runtimeProjection),
+        configuration: resolveLabSceneConfiguration(runtimeProjection),
         error: null
       } as const;
     } catch (error) {

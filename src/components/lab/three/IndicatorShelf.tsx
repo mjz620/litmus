@@ -5,6 +5,7 @@ import { MeshBasicMaterial, MeshStandardMaterial } from "three";
 
 import type { IndicatorId } from "../../../experiments/titration/titration";
 import { SHELF } from "./benchLayout";
+import { GlassMaterial, type GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
 
 interface IndicatorBottle {
@@ -26,6 +27,8 @@ interface IndicatorShelfProps {
    * cannot use.
    */
   availableIndicators?: readonly IndicatorId[];
+  /** Shared laboratory-glass tier; matches the titration flask. */
+  quality?: GlassQuality;
 }
 
 const INDICATOR_BOTTLES: readonly IndicatorBottle[] = [
@@ -49,11 +52,6 @@ const INDICATOR_BOTTLES: readonly IndicatorBottle[] = [
 const shelfMaterial = new MeshStandardMaterial({
   color: LAB_PALETTE.wood,
   roughness: 0.78,
-  metalness: 0
-});
-const bottleMaterial = new MeshStandardMaterial({
-  color: LAB_PALETTE.ceramic,
-  roughness: 0.76,
   metalness: 0
 });
 const hotspotMaterial = new MeshBasicMaterial({
@@ -86,7 +84,8 @@ export function IndicatorShelf({
   selectedIndicator,
   pouringIndicator,
   onBottleClick,
-  availableIndicators
+  availableIndicators,
+  quality = "high"
 }: IndicatorShelfProps) {
   const bottles = availableIndicators
     ? INDICATOR_BOTTLES.filter((bottle) =>
@@ -129,7 +128,8 @@ export function IndicatorShelf({
             visible={pouringIndicator !== bottle.id}
             onClick={focused && selectionEnabled ? handleClick : undefined}
           >
-            <mesh position={[0, bodyCenterY, 0]} material={bottleMaterial}>
+            {/* Glass dropper-bottle body, matching the flask's material. */}
+            <mesh position={[0, bodyCenterY, 0]}>
               <cylinderGeometry
                 args={[
                   SHELF.bottleRadius * 0.88,
@@ -137,6 +137,31 @@ export function IndicatorShelf({
                   SHELF.bottleBodyHeight,
                   12
                 ]}
+              />
+              <GlassMaterial quality={quality} thickness={0.002} />
+            </mesh>
+            {/* The indicator itself, visible through the glass; identity is
+                already carried by the cap colour and the printed label. */}
+            <mesh
+              position={[
+                0,
+                SHELF.riserHeight + SHELF.bottleBodyHeight * 0.32,
+                0
+              ]}
+            >
+              <cylinderGeometry
+                args={[
+                  SHELF.bottleRadius * 0.82,
+                  SHELF.bottleRadius * 0.92,
+                  SHELF.bottleBodyHeight * 0.62,
+                  12
+                ]}
+              />
+              <meshStandardMaterial
+                color={bottle.capColor}
+                transparent
+                opacity={0.82}
+                roughness={0.25}
               />
             </mesh>
             <mesh position={[0, capCenterY, 0]}>

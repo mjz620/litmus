@@ -22,7 +22,9 @@ import {
   WASH,
   WALLS,
   getBuretteLiquidTopY,
-  getMeniscusCameraPose
+  getMeniscusCameraPose,
+  overviewPoseForBenchContents,
+  type BenchContentItem
 } from "../../src/components/lab/three/benchLayout";
 
 const degrees = (radians: number) => (radians * 180) / Math.PI;
@@ -497,5 +499,101 @@ describe("meniscus camera pose", () => {
 
     expect(pose.target[1]).toBeGreaterThanOrEqual(BURETTE.graduationBottomY);
     expect(pose.target[1]).toBeLessThanOrEqual(BURETTE.graduationTopY);
+  });
+});
+
+/*
+ * Representative benches. The framing bug these guard against was not subtle —
+ * a first attempt pitched the camera nearly level so the back wall replaced the
+ * worktop behind the glassware, and a second sat so far back the flask was too
+ * small to read a colour change in. Both looked reasonable in the source.
+ */
+const SHORT_WIDE_BENCH: readonly BenchContentItem[] = [
+  { centerXZ: [-0.28, 0.2], radiusXZ: 0.06, baseY: 0.92, topY: 1.14 },
+  { centerXZ: [0.16, 0.24], radiusXZ: 0.11, baseY: 0.92, topY: 1.21 },
+  { centerXZ: [0.44, 0.22], radiusXZ: 0.04, baseY: 0.92, topY: 1.14 },
+  { centerXZ: [0.78, 0.18], radiusXZ: 0.07, baseY: 0.92, topY: 1.19 }
+];
+
+const TALL_BENCH: readonly BenchContentItem[] = [
+  { centerXZ: [-0.55, 0.05], radiusXZ: 0.29, baseY: 0.92, topY: 1.18 },
+  { centerXZ: [0.18, 0.32], radiusXZ: 0.1, baseY: 0.92, topY: BURETTE.tubeTopY },
+  { centerXZ: [0.18, 0.32], radiusXZ: 0.062, baseY: 0.928, topY: FLASK_RIM_Y }
+];
+
+function framesEveryItem(items: readonly BenchContentItem[]) {
+  const pose = overviewPoseForBenchContents(items);
+
+  for (const item of items) {
+    for (const y of [item.baseY, item.topY]) {
+      for (const dx of [-item.radiusXZ, item.radiusXZ]) {
+        const ndcY = verticalNdcForPose(
+          [item.centerXZ[0] + dx, y, item.centerXZ[1]],
+          pose
+        );
+        expect(Math.abs(ndcY)).toBeLessThan(1);
+      }
+    }
+  }
+
+  return pose;
+}
+
+describe("content-derived bench overview framing", () => {
+  it("falls back to the authored bench view when nothing is placed", () => {
+    expect(overviewPoseForBenchContents([])).toBe(BENCH_VIEW);
+  });
+
+  it("keeps every item on a short wide bench inside the frame", () => {
+    framesEveryItem(SHORT_WIDE_BENCH);
+  });
+
+  it("keeps every item on a tall bench inside the frame", () => {
+    framesEveryItem(TALL_BENCH);
+  });
+
+  it("stands closer to a small bench than a large one", () => {
+    const near = overviewPoseForBenchContents(SHORT_WIDE_BENCH);
+    const far = overviewPoseForBenchContents(TALL_BENCH);
+    const distanceOf = (pose: typeof near) =>
+      Math.hypot(
+        pose.target[0] - pose.position[0],
+        pose.target[1] - pose.position[1],
+        pose.target[2] - pose.position[2]
+      );
+
+    expect(distanceOf(near)).toBeLessThan(distanceOf(far));
+  });
+
+  it("keeps the worktop behind short benches by pitching further down", () => {
+    /*
+     * A level camera puts the back wall behind the apparatus instead of the
+     * bench. Short benches must look down harder than tall ones, where the same
+     * angle would climb over the burette and stare down the tube.
+     */
+    const pitchOf = (items: readonly BenchContentItem[]) => {
+      const pose = overviewPoseForBenchContents(items);
+      const rise = pose.position[1] - pose.target[1];
+      const run = Math.hypot(
+        pose.target[0] - pose.position[0],
+        pose.target[2] - pose.position[2]
+      );
+      return Math.atan2(rise, run);
+    };
+
+    expect(degrees(pitchOf(SHORT_WIDE_BENCH))).toBeGreaterThan(
+      degrees(pitchOf(TALL_BENCH))
+    );
+    expect(degrees(pitchOf(TALL_BENCH))).toBeGreaterThan(0);
+  });
+
+  it("stays inside the sealed room", () => {
+    for (const items of [SHORT_WIDE_BENCH, TALL_BENCH]) {
+      const pose = overviewPoseForBenchContents(items);
+      expect(pose.position[1]).toBeGreaterThan(ISLAND.topY);
+      expect(pose.position[1]).toBeLessThan(WALLS.height);
+      expect(pose.position[2]).toBeLessThan(ROOM.frontWallZ);
+      expect(Math.abs(pose.position[0])).toBeLessThan(ROOM.sideWallX);
+    }
   });
 });

@@ -1,10 +1,24 @@
 import { expect, test } from "@playwright/test";
 
-test("default titration student route loads setup-driven runtime", async ({
+test("default titration student route loads the capability-native runtime", async ({
   page
 }) => {
   test.setTimeout(60_000);
-  await page.goto("/lab/titration?seed=default-setup-driven");
+  await page.goto("/lab/titration?seed=default-native");
+  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
+    timeout: 30_000
+  });
+  await expect(page.locator("[data-workflow-id]").first()).toHaveAttribute(
+    "data-workflow-id",
+    "workflow.acid_base_titration.full.native.v2"
+  );
+});
+
+test("?runtime=setup-v2 keeps the strangler rollback loading its workflow", async ({
+  page
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/lab/titration?seed=default-setup-driven&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

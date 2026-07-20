@@ -18,7 +18,7 @@ test("titration controls dispatch typed actions and update engine state", async 
   });
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

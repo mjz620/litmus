@@ -41,7 +41,7 @@ import {
 } from "./procedureStage";
 import { DISPENSE_RESIDUE_ML, useDispenseGesture } from "./useDispenseGesture";
 import { useTitrationIntents } from "./useTitrationIntents";
-import type { TitrationSceneConfiguration } from "./setupDrivenScene";
+import type { LabSceneConfiguration } from "./setupDrivenScene";
 
 import styles from "./TitrationScene.module.css";
 
@@ -120,7 +120,7 @@ function getContextualPrompt(
  * simulation remains the student's primary workspace.
  */
 interface TitrationSceneProps {
-  configuration: Readonly<TitrationSceneConfiguration>;
+  configuration: Readonly<LabSceneConfiguration>;
   precisionControlsOpen: boolean;
   onPrecisionControlsChange: (open: boolean) => void;
 }
@@ -703,7 +703,7 @@ export function TitrationScene({
         <p className={styles.instructions} aria-live="polite">
           {infoEquipment
             ? `${EQUIPMENT[infoEquipment].name}: ${EQUIPMENT[infoEquipment].purpose}${buretteStopcockHint}`
-            : "Click the simulation panel to initiate panning, then move the cursor toward its edges. Select equipment to focus on it."}
+            : "Click the bench to look around, or click any equipment to use it."}
         </p>
         <div className={styles.coachDock}>
           {coachOpen && (

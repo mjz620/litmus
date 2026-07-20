@@ -14,7 +14,14 @@
   --lab-hud-dark: rgb(32 43 45 / 88%);
   --lab-card-shadow: var(--shadow-card);
   --lab-floating-shadow: var(--shadow-floating);
-  --simulation-canvas-height: clamp(42rem, 79vh, 64rem);
+  /*
+   * Sized against what is left of the viewport, not against a floor taller than
+   * the screen. The old floor was 42rem — 672px — so on a 1366x768 Chromebook
+   * the canvas could not shrink to fit and pushed its own bottom HUD below the
+   * fold. Routes that stack extra chrome above the bench raise
+   * --lab-chrome-allowance rather than redefining this.
+   */
+  --simulation-canvas-height: clamp(20rem, calc(100svh - var(--lab-chrome-allowance, 11rem)), 60rem);
 
   min-height: 100vh;
   overflow: hidden;
@@ -419,7 +426,7 @@
 
 @media (max-width: 46rem) {
   .page {
-    --simulation-canvas-height: clamp(34rem, 76svh, 46rem);
+    --simulation-canvas-height: clamp(18rem, calc(100svh - var(--lab-chrome-allowance, 11rem)), 46rem);
   }
 
   .drawer {
@@ -433,5 +440,114 @@
   .actionError {
     top: 10.5rem;
     width: calc(100% - 1rem);
+  }
+}
+
+/*
+ * Registered enum choices (rinse solvent, indicator, lid state) render as
+ * selects beside the numeric fields in both keyboard panels; sizing matches
+ * the existing inputs of each panel.
+ */
+.controlPanel select,
+.focusedActionList select {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--lab-surface);
+  color: var(--lab-ink);
+}
+
+.controlPanel select {
+  min-height: 2.75rem;
+}
+
+/* Hold-to-dispense stopcock block inside the focused-burette action panel. */
+.stopcockControl {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-sm);
+  background: var(--lab-surface-muted);
+}
+
+.stopcockControl button[data-dispensing="true"] {
+  background: var(--lab-primary);
+  color: var(--lab-instrument-ink, #eff6f2);
+}
+
+/*
+ * Accessory tray below the native bench (pH curve, notebook) mirrors the
+ * strangler route's tray so the rehearsal surfaces stay in the same place
+ * when a student switches runtimes.
+ */
+.accessoryTray {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: min(100%, 116rem);
+  margin: 0.75rem auto 0;
+}
+
+.accessoryCard {
+  overflow: hidden;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-lg);
+  background: var(--lab-surface);
+}
+
+.accessoryCard summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.25rem;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.accessoryCard summary::-webkit-details-marker {
+  display: none;
+}
+
+.accessoryCard summary > span:first-child {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--lab-primary-soft);
+  color: var(--lab-primary);
+}
+
+.accessoryCard summary > span:last-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.accessoryCard summary small {
+  color: var(--lab-ink-muted);
+}
+
+.accessoryCard[open] summary {
+  border-bottom: 1px solid var(--lab-border);
+  background: var(--lab-surface-muted);
+}
+
+.accessoryCard summary:focus-visible {
+  outline: 3px solid var(--lab-focus);
+  outline-offset: -3px;
+}
+
+.accessoryContent {
+  padding: 1rem;
+}
+
+@media (max-width: 52rem) {
+  .accessoryTray {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -458,6 +458,105 @@ export const CAMERA_POSES: Record<
   }
 };
 
+/** Vertical field of view of the bench cameras, in degrees. */
+export const BENCH_CAMERA_FOV_DEGREES = 42;
+
+/** One item's bounding cylinder on the bench, in world coordinates. */
+export interface BenchContentItem {
+  readonly centerXZ: readonly [number, number];
+  readonly radiusXZ: number;
+  readonly baseY: number;
+  readonly topY: number;
+}
+
+/**
+ * Frame the overview on what this particular bench is actually holding.
+ *
+ * A single fixed BENCH_VIEW had to be sized for the tallest lab — titration,
+ * whose burette reaches y 1.9 — so every shorter bench inherited a camera
+ * standing well back and pitched down at an empty worktop. Silver-chloride
+ * precipitation, which puts two items on the island, spent roughly 60% of the
+ * frame on bare countertop, and the burette it was sized for was still clipped
+ * at the top edge.
+ *
+ * Deriving the pose from the content bounds fixes both directions at once, and
+ * it is the same contract as focusPoseForBenchItem: add equipment to a lab and
+ * the framing follows it, with no new hand-authored pose. Falls back to
+ * BENCH_VIEW when a scene reports nothing to frame.
+ */
+export function overviewPoseForBenchContents(
+  items: readonly BenchContentItem[]
+): CameraPose {
+  if (items.length === 0) return BENCH_VIEW;
+
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const item of items) {
+    const [x, z] = item.centerXZ;
+    minX = Math.min(minX, x - item.radiusXZ);
+    maxX = Math.max(maxX, x + item.radiusXZ);
+    minZ = Math.min(minZ, z - item.radiusXZ);
+    maxZ = Math.max(maxZ, z + item.radiusXZ);
+    minY = Math.min(minY, item.baseY);
+    maxY = Math.max(maxY, item.topY);
+  }
+
+  const centerX = (minX + maxX) / 2;
+  const centerZ = (minZ + maxZ) / 2;
+  const centerY = (minY + maxY) / 2;
+  const contentWidth = maxX - minX;
+  const contentHeight = maxY - minY;
+  const contentDepth = maxZ - minZ;
+
+  /*
+   * Leave headroom around the content. The HUD pins equipment chips to the top
+   * edge and an instruction bar to the bottom, so a flush fit would put
+   * apparatus under chrome — but 1.5 pushed a spread-out bench (titration, with
+   * its indicator shelf at one end and wash station at the other) far enough
+   * back that the flask became too small to read a colour change in.
+   */
+  const framingMargin = 1.25;
+  const fovY = (BENCH_CAMERA_FOV_DEGREES * Math.PI) / 180;
+  // Benches render into a landscape frame, so width binds on short, wide labs
+  // (calorimetry) while height binds on tall ones (titration). Fit both.
+  const frameAspect = 16 / 9;
+  const fovX = 2 * Math.atan(Math.tan(fovY / 2) * frameAspect);
+  const distance =
+    Math.max(
+      0.86,
+      (contentHeight * framingMargin) / (2 * Math.tan(fovY / 2)),
+      (contentWidth * framingMargin) / (2 * Math.tan(fovX / 2))
+    ) +
+    contentDepth / 2;
+
+  /*
+   * Pitch down harder on short benches than tall ones.
+   *
+   * Neither constant works. A fixed rise goes nearly level on a two-item bench,
+   * which puts the back wall behind the glassware instead of the worktop. A
+   * fixed angle is worse the other way: applied at titration's viewing distance
+   * it climbs over the burette and looks down the tube. Interpolating between
+   * the two keeps the worktop as the backdrop on short scenes and stays near
+   * eye level on tall ones.
+   */
+  const heightFraction = Math.max(
+    0,
+    Math.min(1, (contentHeight - 0.3) / 0.7)
+  );
+  const pitchRadians = ((22 - 12 * heightFraction) * Math.PI) / 180;
+  const rise = distance * Math.tan(pitchRadians);
+
+  return {
+    position: [centerX + distance * 0.1, centerY + rise, centerZ + distance],
+    target: [centerX, centerY, centerZ]
+  };
+}
+
 /**
  * Frame any bench item from its world position and hit volume.
  *

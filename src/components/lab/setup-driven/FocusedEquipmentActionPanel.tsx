@@ -1,10 +1,26 @@
 "use client";
 
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent
+} from "react";
+
 import type { SetupDrivenLabProjection } from "../../../stores/setupDrivenLabSession";
-import { EQUIPMENT, type EquipmentId } from "../titration/equipment";
+import { EQUIPMENT, type EquipmentId } from "./equipment";
+import { enumValueLabel, registeredEnumParameters } from "./actionParameters";
+import {
+  FLOW_RATES_ML_PER_S,
+  type DispenseGestureController,
+  type FlowDetent
+} from "./useDispenseGesture";
 
 import sceneStyles from "../titration/TitrationScene.module.css";
 import styles from "./SetupDrivenWorkspace.module.css";
+
+export interface FocusedDispenseControl {
+  readonly controller: DispenseGestureController;
+  readonly enabled: boolean;
+}
 
 export interface FocusedEquipmentActionPanelProps {
   readonly focused: EquipmentId;
@@ -30,6 +46,12 @@ export interface FocusedEquipmentActionPanelProps {
     action: SetupDrivenLabProjection["actions"][number]
   ) => void;
   readonly onClearFocus: () => void;
+  /**
+   * Optional hold-to-dispense stopcock control rendered with the focused
+   * dispense action. Pointer-hold or holding Space drives continuous
+   * delivery; the typed volume + Apply below remains the precise entry path.
+   */
+  readonly dispense?: FocusedDispenseControl | null;
 }
 
 /**
@@ -46,9 +68,44 @@ export function FocusedEquipmentActionPanel({
   parameterValue,
   onParameterChange,
   onDispatch,
-  onClearFocus
+  onClearFocus,
+  dispense = null
 }: FocusedEquipmentActionPanelProps) {
   const equipment = EQUIPMENT[focused];
+  const isDispensing = dispense?.controller.state.isHolding ?? false;
+  const canHoldDispense = Boolean(
+    dispense?.enabled &&
+      dispense.controller.state.selectedDetent !== "closed"
+  );
+
+  function handleHoldPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!dispense || !canHoldDispense) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dispense.controller.start();
+  }
+
+  function handleHoldPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!dispense || !isDispensing) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dispense.controller.end("pointer_up");
+  }
+
+  function handleHoldKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== " " || event.repeat || !dispense || !canHoldDispense) {
+      return;
+    }
+    event.preventDefault();
+    dispense.controller.start();
+  }
+
+  function handleHoldKeyUp(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== " " || !dispense || !isDispensing) return;
+    event.preventDefault();
+    dispense.controller.end("pointer_up");
+  }
   return (
     <section
       className={sceneStyles.washSetup}
@@ -88,6 +145,61 @@ export function FocusedEquipmentActionPanel({
                         .join(", ")}`
                     : ""}
                 </p>
+                {dispense && action.actionId === "action.dispense.v1" && (
+                  <div className={styles.stopcockControl}>
+                    <label>
+                      Flow detent
+                      <span>
+                        <select
+                          value={dispense.controller.state.selectedDetent}
+                          onChange={(event) =>
+                            dispense.controller.setDetent(
+                              event.currentTarget.value as FlowDetent
+                            )
+                          }
+                          disabled={!dispense.enabled && !isDispensing}
+                        >
+                          <option value="closed">Closed — 0 mL/s</option>
+                          <option value="dropwise">
+                            Dropwise — {FLOW_RATES_ML_PER_S.dropwise.toFixed(2)}{" "}
+                            mL/s
+                          </option>
+                          <option value="slow">
+                            Slow — {FLOW_RATES_ML_PER_S.slow.toFixed(2)} mL/s
+                          </option>
+                          <option value="open">
+                            Open — {FLOW_RATES_ML_PER_S.open.toFixed(2)} mL/s
+                          </option>
+                        </select>
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      aria-pressed={isDispensing}
+                      data-dispensing={isDispensing ? "true" : "false"}
+                      disabled={!canHoldDispense}
+                      onPointerDown={handleHoldPointerDown}
+                      onPointerUp={handleHoldPointerUp}
+                      onPointerCancel={() =>
+                        dispense.controller.end("pointer_cancel")
+                      }
+                      onKeyDown={handleHoldKeyDown}
+                      onKeyUp={handleHoldKeyUp}
+                      onBlur={() => {
+                        if (isDispensing) dispense.controller.end("blur");
+                      }}
+                    >
+                      {isDispensing ? "Dispensing…" : "Hold to dispense"}
+                    </button>
+                    <small role="status" aria-live="polite">
+                      {isDispensing
+                        ? `Valve open at ${FLOW_RATES_ML_PER_S[
+                            dispense.controller.state.activeDetent
+                          ].toFixed(2)} mL/s · ${dispense.controller.state.pendingML.toFixed(3)} mL pending`
+                        : "Valve closed. Hold the button or Space key to dispense, or enter an exact volume below."}
+                    </small>
+                  </div>
+                )}
                 {action.numericParameterBounds.map((bounds) => (
                   <label key={bounds.parameterKey}>
                     {parameterLabel(bounds.parameterKey)}
@@ -105,6 +217,7 @@ export function FocusedEquipmentActionPanel({
                             event.currentTarget.value
                           )
                         }
+                        disabled={isDispensing}
                       />
                       {bounds.unitId === "unit.ml.v1"
                         ? " mL"
@@ -114,7 +227,34 @@ export function FocusedEquipmentActionPanel({
                     </span>
                   </label>
                 ))}
-                <button type="button" onClick={() => onDispatch(action)}>
+                {registeredEnumParameters(action.actionId).map((parameter) => (
+                  <label key={parameter.key}>
+                    {parameterLabel(parameter.key)}
+                    <span>
+                      <select
+                        value={parameterValue(action, parameter.key)}
+                        onChange={(event) =>
+                          onParameterChange(
+                            action,
+                            parameter.key,
+                            event.currentTarget.value
+                          )
+                        }
+                      >
+                        {parameter.allowedValues.map((value) => (
+                          <option key={value} value={value}>
+                            {enumValueLabel(value)}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </label>
+                ))}
+                <button
+                  type="button"
+                  disabled={isDispensing}
+                  onClick={() => onDispatch(action)}
+                >
                   Apply
                 </button>
                 {(completionMessage || unavailableMessage) && (

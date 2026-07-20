@@ -17,7 +17,7 @@ test("look mode activates, contains canvas scroll, supports keyboard, and releas
   test.setTimeout(60_000);
   const browserErrors = trackBrowserErrors(page);
 
-  await page.goto("/lab/titration?seed=t0103-camera");
+  await page.goto("/lab/titration?seed=t0103-camera&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -144,7 +144,7 @@ test("reduced motion disables continuous edge pan but keeps step look", async ({
   const browserErrors = trackBrowserErrors(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
 
-  await page.goto("/lab/titration?seed=t0103-reduced");
+  await page.goto("/lab/titration?seed=t0103-reduced&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

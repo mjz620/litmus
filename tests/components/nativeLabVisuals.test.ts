@@ -5,7 +5,7 @@ import { gestureForNativeAction } from "../../src/components/lab/three/gestures/
 import { resolveEquipmentPose } from "../../src/lab-workflows/registries/scene-placements";
 import { validateCalorimetryV2 } from "../../src/lab-workflows/definitions/calorimetry";
 import { createSetupDrivenNativeSession } from "../../src/stores/setupDrivenLabSession";
-import { resolveTitrationSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
+import { resolveLabSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
 import { ISLAND } from "../../src/components/lab/three/benchLayout";
 
 describe("native equipment pose seating", () => {
@@ -37,7 +37,7 @@ describe("native equipment pose seating", () => {
     });
     const projection = session.getProjection();
     const poses =
-      resolveTitrationSceneConfiguration(projection).equipmentPoses;
+      resolveLabSceneConfiguration(projection).equipmentPoses;
     const pour = projection.actions.find(
       ({ actionId }) => actionId === "action.pour_liquid.v1"
     );

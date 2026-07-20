@@ -7,7 +7,7 @@ import {
 } from "../../src/components/ui/experimentRoutes";
 import { validateSolutionPreparationV2 } from "../../src/lab-workflows/definitions/solution-preparation";
 import { createSetupDrivenNativeSession } from "../../src/stores/setupDrivenLabSession";
-import { resolveTitrationSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
+import { resolveLabSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
 
 describe("unified student catalog dilution practice", () => {
   it("exposes a guest practice path that is not a family-dispatch route", () => {
@@ -28,7 +28,7 @@ describe("unified student catalog dilution practice", () => {
       },
       workflow
     });
-    const configuration = resolveTitrationSceneConfiguration(
+    const configuration = resolveLabSceneConfiguration(
       session.getProjection()
     );
     expect(configuration.mode).toBe("setup_driven_v2");

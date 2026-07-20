@@ -26,6 +26,12 @@ export interface LabSessionOptions {
   setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
   labDefinitionVersionId?: string;
   labDefinitionCanonicalHash?: string;
+  /**
+   * Bump to abandon the current session and initialize a fresh one with a new
+   * session ID (the native workspace's "Restart attempt"). Identical options
+   * with the same token never re-initialize.
+   */
+  restartToken?: number;
 }
 
 /**
@@ -44,7 +50,8 @@ export function useLabSession({
   setupDrivenSelection,
   setupDrivenWorkflow,
   labDefinitionVersionId,
-  labDefinitionCanonicalHash
+  labDefinitionCanonicalHash,
+  restartToken
 }: LabSessionOptions) {
   const startedKey = useRef<string | null>(null);
   const status = useLabStore((store) => store.status);
@@ -70,7 +77,8 @@ export function useLabSession({
       workflowId: setupDrivenSelection?.workflowId,
       workflowHash: setupDrivenSelection?.workflowHash,
       labDefinitionVersionId,
-      labDefinitionCanonicalHash
+      labDefinitionCanonicalHash,
+      restartToken
     });
     if (startedKey.current === initializationKey) return;
     startedKey.current = initializationKey;
@@ -108,6 +116,7 @@ export function useLabSession({
     mode,
     parentSessionId,
     replaySeed,
+    restartToken,
     retrySkillId,
     runtimeMode,
     setupDrivenSelection,

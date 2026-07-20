@@ -11,7 +11,7 @@ test("the burette hint reflects whether the stopcock will respond", async ({
   page
 }) => {
   test.setTimeout(120_000);
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -26,7 +26,7 @@ test("the burette hint reflects whether the stopcock will respond", async ({
 
 test("the instruction bar stays clear of the flask", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

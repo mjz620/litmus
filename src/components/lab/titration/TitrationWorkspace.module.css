@@ -1,5 +1,12 @@
 .workspace {
-  --simulation-canvas-height: clamp(42rem, 79vh, 64rem);
+  /*
+   * Sized against what is left of the viewport, not against a floor taller than
+   * the screen. The old floor was 42rem — 672px — so on a 1366x768 Chromebook
+   * the canvas could not shrink to fit and pushed its own bottom HUD below the
+   * fold. Routes that stack extra chrome above the bench raise
+   * --lab-chrome-allowance rather than redefining this.
+   */
+  --simulation-canvas-height: clamp(20rem, calc(100svh - var(--lab-chrome-allowance, 11rem)), 60rem);
 
   position: relative;
   min-width: 0;
@@ -176,7 +183,7 @@
 
 @media (max-width: 46rem) {
   .workspace {
-    --simulation-canvas-height: clamp(34rem, 76svh, 46rem);
+    --simulation-canvas-height: clamp(18rem, calc(100svh - var(--lab-chrome-allowance, 11rem)), 46rem);
   }
 
   .drawer {

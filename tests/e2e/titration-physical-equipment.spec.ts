@@ -19,7 +19,7 @@ test("physical shelf and wash-station gestures complete a titration", async ({
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
   // This deterministic session has a 20.00 mL equivalence point.
-  await page.goto("/lab/titration?seed=t0112-physical-3");
+  await page.goto("/lab/titration?seed=t0112-physical-3&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

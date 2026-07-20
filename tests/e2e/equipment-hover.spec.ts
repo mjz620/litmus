@@ -73,7 +73,7 @@ test("equipment on the titration bench responds to canvas hover", async ({
   page
 }) => {
   test.setTimeout(180_000);
-  await page.goto("/lab/titration?seed=hover-guard-1");
+  await page.goto("/lab/titration?seed=hover-guard-1&runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

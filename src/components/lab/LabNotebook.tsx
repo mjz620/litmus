@@ -1,9 +1,12 @@
 "use client";
 
+import type { SemanticEvent } from "../../experiments/shared";
 import {
   formatBuretteVolume,
   formatPH
 } from "../../experiments/titration/display";
+import type { TitrationState } from "../../experiments/titration/titration";
+import type { NativeTitrationBenchFacts } from "./setup-driven/nativeTitrationFacts";
 import { isTitrationState, useLabStore } from "../../stores/labStore";
 import {
   getProcedureStage,
@@ -12,6 +15,31 @@ import {
 
 import styles from "./LabNotebook.module.css";
 
+interface LabNotebookProps {
+  /**
+   * Explicit session projection for hosts that do not use the shared lab
+   * store. Both values must be provided together; without them the notebook
+   * reads the store as before.
+   */
+  state?: Readonly<TitrationState> | null;
+  events?: readonly SemanticEvent[];
+  /**
+   * Native-truth projection for the native setup-driven workspace: facts read
+   * from equipment-owned observables and registry metadata, with `events` as
+   * the emitted envelope payloads. Takes precedence over `state`.
+   */
+  facts?: Readonly<NativeTitrationBenchFacts> | null;
+}
+
+interface NotebookView {
+  readonly analyteName: string;
+  readonly analyteVolumeML: number;
+  readonly titrantName: string;
+  readonly titrantConcentrationM: number;
+  readonly indicatorName: string;
+  readonly stageLabel: string;
+}
+
 /**
  * Student-facing lab notebook. Shows only information a student would have at
  * a real bench: the objective, procedure stage, known sample and titrant
@@ -19,15 +47,42 @@ import styles from "./LabNotebook.module.css";
  * render the unknown analyte concentration, equivalence volume, session seed,
  * or other internal engine values.
  */
-export function LabNotebook() {
-  const state = useLabStore((store) =>
+export function LabNotebook({
+  state: stateProp,
+  events: eventsProp,
+  facts
+}: LabNotebookProps = {}) {
+  const storeState = useLabStore((store) =>
     isTitrationState(store.state) ? store.state : null
   );
-  const eventQueue = useLabStore((store) => store.eventQueue);
+  const storeEventQueue = useLabStore((store) => store.eventQueue);
+  const state = stateProp !== undefined ? stateProp : storeState;
+  const eventQueue = eventsProp ?? storeEventQueue;
 
-  if (!state) return null;
+  const view: NotebookView | null = facts
+    ? {
+        analyteName: facts.analyteName,
+        analyteVolumeML: facts.analyteVolumeML,
+        titrantName: facts.titrantName,
+        titrantConcentrationM: facts.titrantConcentrationM,
+        indicatorName: facts.indicatorName,
+        stageLabel: facts.stageLabel
+      }
+    : state
+      ? {
+          analyteName: state.config.analyte.name,
+          analyteVolumeML: state.config.analyte.volumeML,
+          titrantName: state.config.titrant.name,
+          titrantConcentrationM: state.config.titrant.concentrationM,
+          indicatorName: state.config.indicator.replaceAll("_", " "),
+          stageLabel: getProcedureStageLabel(
+            getProcedureStage(state, eventQueue)
+          )
+        }
+      : null;
 
-  const stage = getProcedureStage(state, eventQueue);
+  if (!view) return null;
+
   const recordedReadings = eventQueue
     .filter(({ type }) => type === "read_meniscus")
     .map(({ observation }) => observation.reportedML)
@@ -47,15 +102,14 @@ export function LabNotebook() {
       <section className={styles.section} aria-label="Objective">
         <h3>Objective</h3>
         <p>
-          Determine the concentration of the {state.config.analyte.name} sample
-          by titrating it with the standardized {state.config.titrant.name}{" "}
-          solution.
+          Determine the concentration of the {view.analyteName} sample by
+          titrating it with the standardized {view.titrantName} solution.
         </p>
       </section>
 
       <section className={styles.section} aria-label="Current stage">
         <h3>Current stage</h3>
-        <p className={styles.stage}>{getProcedureStageLabel(stage)}</p>
+        <p className={styles.stage}>{view.stageLabel}</p>
       </section>
 
       <section className={styles.section} aria-label="Known values">
@@ -64,22 +118,19 @@ export function LabNotebook() {
           <div>
             <dt>Sample</dt>
             <dd>
-              {state.config.analyte.volumeML.toFixed(1)} mL{" "}
-              {state.config.analyte.name}, concentration unknown
+              {view.analyteVolumeML.toFixed(1)} mL {view.analyteName},
+              concentration unknown
             </dd>
           </div>
           <div>
             <dt>Titrant</dt>
             <dd>
-              {state.config.titrant.concentrationM.toFixed(3)} M{" "}
-              {state.config.titrant.name}
+              {view.titrantConcentrationM.toFixed(3)} M {view.titrantName}
             </dd>
           </div>
           <div>
             <dt>Indicator</dt>
-            <dd className={styles.indicator}>
-              {state.config.indicator.replaceAll("_", " ")}
-            </dd>
+            <dd className={styles.indicator}>{view.indicatorName}</dd>
           </div>
         </dl>
       </section>

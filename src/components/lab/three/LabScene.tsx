@@ -41,11 +41,15 @@ import {
   BURETTE,
   CAMERA_POSES,
   FLASK,
+  FLASK_RIM_Y,
+  ISLAND,
   SHELF,
   WASH,
   focusPoseForBenchItem,
   getBuretteLiquidTopY,
-  getMeniscusCameraPose
+  getMeniscusCameraPose,
+  overviewPoseForBenchContents,
+  type BenchContentItem
 } from "./benchLayout";
 import type { GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
@@ -247,6 +251,94 @@ export function LabScene({
   const buretteHighlightHeight = BURETTE.tubeTopY - BURETTE.tipBottomY + 0.03;
   const flaskCenterY = FLASK.baseY + (FLASK.bodyHeight + FLASK.neckHeight) / 2;
   const flaskHighlightHeight = FLASK.bodyHeight + FLASK.neckHeight + 0.03;
+  /*
+   * What this bench is holding, in world coordinates, so the overview can be
+   * framed on it. Every entry is gated on the same flag that renders it: the
+   * first cut keyed the reagent bottle off WASH.x while the bottle is actually
+   * registry-placed, which dragged the framing centre toward a phantom item and
+   * pushed the real glassware to the edge of the frame.
+   */
+  const benchContents: BenchContentItem[] = [];
+  const addPlacedContent = (
+    equipmentPose: ResolvedEquipmentPose | undefined,
+    hit: {
+      readonly radius: number;
+      readonly height: number;
+      readonly centerY: number;
+    }
+  ) => {
+    if (!equipmentPose) return;
+    const [x, baseY, z] = worldPositionForEquipmentPose(equipmentPose);
+    benchContents.push({
+      centerXZ: [x, z],
+      radiusXZ: hit.radius,
+      baseY,
+      topY: baseY + hit.centerY + hit.height / 2
+    });
+  };
+  const addFixedContent = (
+    translation: readonly [number, number, number],
+    x: number,
+    z: number,
+    radiusXZ: number,
+    topY: number
+  ) => {
+    benchContents.push({
+      centerXZ: [x + translation[0], z + translation[2]],
+      radiusXZ,
+      baseY: ISLAND.topY + translation[1],
+      topY: topY + translation[1]
+    });
+  };
+
+  if (pipettePose && enabledEquipmentIds.includes("volumetricPipette")) {
+    addPlacedContent(pipettePose, VOLUMETRIC_PIPETTE_HIT);
+  }
+  if (volumetricFlaskPose && enabledEquipmentIds.includes("volumetricFlask")) {
+    addPlacedContent(volumetricFlaskPose, VOLUMETRIC_FLASK_HIT);
+  }
+  if (washBottlePose && enabledEquipmentIds.includes("washBottle")) {
+    addPlacedContent(washBottlePose, DISTILLED_WASH_BOTTLE_HIT);
+  }
+  if (calorimeterPose && enabledEquipmentIds.includes("calorimeter")) {
+    addPlacedContent(calorimeterPose, CALORIMETER_HIT);
+  }
+  if (thermometerPose && enabledEquipmentIds.includes("thermometer")) {
+    addPlacedContent(thermometerPose, THERMOMETER_HIT);
+  }
+  if (beakerPose && enabledEquipmentIds.includes("beaker")) {
+    addPlacedContent(beakerPose, BEAKER_HIT);
+  }
+  if (showReagentBottle) {
+    addPlacedContent(washPose, REAGENT_BOTTLE_HIT);
+  }
+  if (showBurette) {
+    // The stand carries the burette, so the pair frames as one tall column.
+    addFixedContent(buretteTranslation, BURETTE.x, BURETTE.z, 0.1, BURETTE.tubeTopY);
+  }
+  if (showFlask) {
+    addFixedContent(flaskTranslation, FLASK.x, FLASK.z, FLASK.baseRadius, FLASK_RIM_Y);
+  }
+  if (showShelf) {
+    addFixedContent(
+      shelfTranslation,
+      SHELF.x,
+      SHELF.z,
+      SHELF.width / 2,
+      SHELF.baseY + SHELF.totalHeight
+    );
+  }
+  if (showWashStation) {
+    addFixedContent(
+      washTranslation,
+      WASH.x,
+      WASH.z,
+      WASH.width / 2,
+      WASH.baseY + WASH.totalHeight
+    );
+  }
+
+  const overviewPose = overviewPoseForBenchContents(benchContents);
   const basePose =
     selected === "burette"
       ? CAMERA_POSES.burette
@@ -264,8 +356,8 @@ export function LabScene({
                   selected === "reagentBottle" ||
                   selected === "calorimeter" ||
                   selected === "thermometer"
-                ? CAMERA_POSES.overview
-                : CAMERA_POSES.overview;
+                ? overviewPose
+                : overviewPose;
   const selectedPose =
     selected === "burette" || selected === "meniscus"
       ? burettePose
@@ -481,6 +573,7 @@ export function LabScene({
             selectedIndicator={selectedIndicator}
             pouringIndicator={indicatorAddition?.indicator ?? null}
             onBottleClick={onIndicatorBottleClick}
+            quality={quality}
           />
         </Interactable>
       </group>
@@ -525,6 +618,7 @@ export function LabScene({
             onWashBottleClick={onWashBottleClick}
             onTitrantBottleClick={onTitrantBottleClick}
             onFunnelClick={onFunnelClick}
+            quality={quality}
           />
         </Interactable>
       </group>
@@ -562,6 +656,7 @@ export function LabScene({
           >
             <VolumetricPipette
               fillFraction={fillOf("visual-adapter.volumetric_pipette.v1")}
+              quality={quality}
             />
           </Interactable>
         </group>
@@ -600,6 +695,7 @@ export function LabScene({
             >
               <VolumetricFlask
                 fillFraction={fillOf("visual-adapter.volumetric_flask.v1")}
+                quality={quality}
               />
             </Interactable>
           </group>
@@ -640,6 +736,7 @@ export function LabScene({
             {!hideWashBottle && (
               <DistilledWaterWashBottle
                 fillFraction={fillOf("visual-adapter.wash_bottle.v1", 0.75)}
+                quality={quality}
               />
             )}
           </Interactable>
@@ -678,6 +775,7 @@ export function LabScene({
           >
             <RegisteredReagentBottle
               fillFraction={fillOf("visual-adapter.reagent_bottle.v1", 0.7)}
+              quality={quality}
             />
           </Interactable>
         </group>
@@ -716,6 +814,7 @@ export function LabScene({
             <Beaker
               fillFraction={fillOf("visual-adapter.beaker.v1", 0)}
               contentsColor={beakerContentsColor}
+              quality={quality}
             />
           </Interactable>
         </group>
@@ -833,7 +932,7 @@ export function LabScene({
         onComplete={onVisualGestureComplete ?? (() => undefined)}
       />
 
-      <BenchCameraControls pose={pose} />
+      <BenchCameraControls pose={pose} isOverview={pose === overviewPose} />
     </>
   );
 }

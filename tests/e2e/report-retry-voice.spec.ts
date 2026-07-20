@@ -149,7 +149,7 @@ test("hold-to-ask makes a transcript editable and sends it through the coach rou
       value: FakeSpeechRecognition
     });
   });
-  await page.goto("/lab/titration?seed=voice-transcript-e2e");
+  await page.goto("/lab/titration?seed=voice-transcript-e2e&runtime=setup-v2");
   await openLabCoach(page);
 
   const holdButton = page.getByRole("button", { name: "Hold to Ask" });
@@ -198,7 +198,7 @@ test("microphone denial leaves the canonical text fallback operable", async ({
       value: DeniedSpeechRecognition
     });
   });
-  await page.goto("/lab/titration?seed=voice-denial-e2e");
+  await page.goto("/lab/titration?seed=voice-denial-e2e&runtime=setup-v2");
   await openLabCoach(page);
 
   const holdButton = page.getByRole("button", { name: "Hold to Ask" });

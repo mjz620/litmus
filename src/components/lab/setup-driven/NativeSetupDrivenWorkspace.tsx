@@ -23,17 +23,31 @@ import {
 } from "../../../stores/labStore";
 import {
   createSetupDrivenNativeSession,
+  nativeTitrationCurvePoints,
   type SetupDrivenLabProjection,
   type SetupDrivenNativeSession
 } from "../../../stores/setupDrivenLabSession";
 import { useLabUiStore } from "../../../stores/labUiStore";
+import type { SaveStatus } from "../../../lib/persistence";
+import type { SemanticEvent } from "../../../experiments/shared";
+import type { IndicatorId } from "../../../experiments/titration/titration";
+import { LabNotebook } from "../LabNotebook";
+import { nativeTitrationBenchFacts } from "./nativeTitrationFacts";
+import { PHCurve } from "../PHCurve";
 import { ProcedureGuide } from "../ProcedureGuide";
+import {
+  enumValueLabel,
+  registeredEnumParameters
+} from "./actionParameters";
 import { procedureGuideStepsFromWorkflow } from "./procedureGuideSteps";
 import { ImmersiveSetupDrivenBench } from "./ImmersiveSetupDrivenBench";
+import { IndicatorSelectionDialog } from "./IndicatorSelectionDialog";
 import {
   projectionActionsForEquipmentFocus,
-  resolveTitrationSceneConfiguration
-} from "../titration/setupDrivenScene";
+  resolveLabSceneConfiguration,
+  type LabSceneConfiguration
+} from "./labScene";
+import type { DispenseCommit } from "./useDispenseGesture";
 import type { LabVisualGesture } from "../three/gestures/LabVisualGestures";
 import { gestureForNativeAction } from "../three/gestures/nativeActionGestures";
 import { getLabSounds } from "../three/labSounds";
@@ -50,8 +64,20 @@ const PARAMETER_LABELS: Readonly<Record<string, string>> = Object.freeze({
   volumeML: "Volume",
   finalVolumeML: "Final volume",
   inversions: "Number of inversions",
-  reportedC: "Reported temperature"
+  reportedC: "Reported temperature",
+  durationS: "Delivery time (seconds)",
+  reportedML: "Reported burette reading",
+  solvent: "Rinse liquid",
+  indicator: "Indicator"
 });
+
+function asIndicatorId(value: string): IndicatorId | null {
+  return value === "phenolphthalein" ||
+    value === "bromothymol_blue" ||
+    value === "methyl_orange"
+    ? value
+    : null;
+}
 
 function createSession(
   workflow: Readonly<ValidatedLabWorkflowSpecV2>,
@@ -70,7 +96,28 @@ function createSession(
   });
 }
 
-function snapshot(session: SetupDrivenNativeSession): WorkspaceSnapshot {
+/**
+ * Session access for the native workspace. The workspace owns a local
+ * capability session by default (teacher preview, assignments); a host that
+ * needs shared-store persistence — the practice route, whose checkpoints and
+ * report flow live in the lab store — injects a port over that store instead.
+ * Dispatch throws on runtime rejection (session state unchanged) and returns
+ * the emitted semantic events on success.
+ */
+export interface NativeWorkspaceSessionPort {
+  readonly sessionId: string;
+  getProjection(): Readonly<SetupDrivenLabProjection>;
+  getGenericState(): Readonly<GenericLabState>;
+  dispatch(action: NormalizedLabAction): readonly SemanticEvent[];
+  restart(): void;
+}
+
+type WorkspaceSessionSource = Pick<
+  NativeWorkspaceSessionPort,
+  "getProjection" | "getGenericState"
+>;
+
+function snapshot(session: WorkspaceSessionSource): WorkspaceSnapshot {
   return Object.freeze({
     projection: session.getProjection(),
     state: session.getGenericState()
@@ -81,10 +128,15 @@ function initialParameterValue(
   action: SetupDrivenLabProjection["actions"][number],
   key: string
 ): string {
+  const enumParameter = registeredEnumParameters(action.actionId).find(
+    (parameter) => parameter.key === key
+  );
+  if (enumParameter) return enumParameter.allowedValues[0] ?? "";
   const bounds = action.numericParameterBounds.find(
     ({ parameterKey }) => parameterKey === key
   );
   if (key === "inversions") return "10";
+  if (key === "durationS") return "4";
   if (
     bounds?.effectiveMaximum !== null &&
     bounds?.effectiveMaximum !== undefined
@@ -275,13 +327,31 @@ export function NativeSetupDrivenWorkspace({
   replaySeed,
   mode = "preview",
   title,
-  sessionIdPrefix
+  sessionIdPrefix,
+  sessionPort,
+  saveStatus,
+  saveError,
+  onRetrySave,
+  reportHref
 }: {
   readonly workflow: Readonly<ValidatedLabWorkflowSpecV2>;
   readonly replaySeed: string;
   readonly mode?: "preview" | "assignment" | "practice";
   readonly title?: string;
   readonly sessionIdPrefix?: string;
+  /**
+   * Externally-owned session (the lab-store-backed practice route). When
+   * provided the workspace never creates a local session, restarts delegate
+   * to the host (which remounts the workspace with a fresh session), and all
+   * dispatches flow through the port so the host can persist checkpoints.
+   */
+  readonly sessionPort?: NativeWorkspaceSessionPort;
+  /** Checkpoint save status from the persisting host; omitted when unsaved. */
+  readonly saveStatus?: SaveStatus;
+  readonly saveError?: string | null;
+  readonly onRetrySave?: () => void;
+  /** Link to the lab report route when the host supports report submission. */
+  readonly reportHref?: string;
 }) {
   const prefix =
     sessionIdPrefix ??
@@ -298,10 +368,25 @@ export function NativeSetupDrivenWorkspace({
         ? "Practice lab"
         : "Teacher preview");
   const [run, setRun] = useState(1);
-  const [session, setSession] = useState(() =>
-    createSession(workflow, replaySeed, 1, prefix)
-  );
-  const [current, setCurrent] = useState(() => snapshot(session));
+  const [localSession, setLocalSession] =
+    useState<SetupDrivenNativeSession | null>(() =>
+      sessionPort ? null : createSession(workflow, replaySeed, 1, prefix)
+    );
+  const port: NativeWorkspaceSessionPort = useMemo(() => {
+    if (sessionPort) return sessionPort;
+    if (!localSession) {
+      throw new Error("The native workspace session is unavailable.");
+    }
+    const session = localSession;
+    return {
+      sessionId: `${prefix}-${run}`,
+      getProjection: session.getProjection,
+      getGenericState: session.getGenericState,
+      dispatch: (action: NormalizedLabAction) => session.dispatch(action).events,
+      restart: () => undefined
+    };
+  }, [sessionPort, localSession, prefix, run]);
+  const [current, setCurrent] = useState(() => snapshot(port));
   const [values, setValues] = useState<Readonly<Record<string, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
@@ -313,6 +398,10 @@ export function NativeSetupDrivenWorkspace({
   const [coachError, setCoachError] = useState<string | null>(null);
   const [activeVisualGesture, setActiveVisualGesture] =
     useState<LabVisualGesture | null>(null);
+  const [pendingIndicator, setPendingIndicator] = useState<{
+    readonly action: SetupDrivenLabProjection["actions"][number];
+    readonly indicator: IndicatorId;
+  } | null>(null);
   const gestureSequenceRef = useRef(0);
   const coachClient = useRef(new HttpCoachClient()).current;
   const coachMessageSequence = useRef(0);
@@ -363,11 +452,11 @@ export function NativeSetupDrivenWorkspace({
     try {
       const authoredContext = createAuthoredCoachWorkflowContext(
         workflow,
-        session.getGenericState()
+        port.getGenericState()
       );
       const coachRequest: AnyCoachRequest = {
         contractVersion: AUTHORED_COACH_CONTRACT_VERSION,
-        sessionId: `${prefix}-${run}`,
+        sessionId: port.sessionId,
         experimentId: workflow.id,
         workflowContext: authoredContext,
         studentQuestion,
@@ -410,19 +499,31 @@ export function NativeSetupDrivenWorkspace({
     void requestCoach(undefined, "event", 2, freshReasons);
   }
 
-  function dispatch(action: SetupDrivenLabProjection["actions"][number]) {
-    const parameters: NormalizedLabAction["parameters"] =
-      action.numericParameterBounds.map(({ parameterKey }) => ({
+  function dispatch(
+    action: SetupDrivenLabProjection["actions"][number],
+    parameterOverrides?: Readonly<Record<string, string>>
+  ) {
+    const parameters: NormalizedLabAction["parameters"] = [
+      ...action.numericParameterBounds.map(({ parameterKey }) => ({
         key: parameterKey,
         valueType: "number" as const,
         value: Number(parameterValue(action, parameterKey))
-      }));
+      })),
+      // Registered enum choices (rinse solvent, indicator, lid state) are as
+      // required as the numeric bounds; omitting them made every enum-typed
+      // titration step undispatchable from the keyboard panels.
+      ...registeredEnumParameters(action.actionId).map(({ key }) => ({
+        key,
+        valueType: "enum" as const,
+        value: parameterOverrides?.[key] ?? parameterValue(action, key)
+      }))
+    ];
     try {
       let poses: ReturnType<
-        typeof resolveTitrationSceneConfiguration
+        typeof resolveLabSceneConfiguration
       >["equipmentPoses"] = [];
       try {
-        poses = resolveTitrationSceneConfiguration(
+        poses = resolveLabSceneConfiguration(
           current.projection
         ).equipmentPoses;
       } catch {
@@ -443,8 +544,22 @@ export function NativeSetupDrivenWorkspace({
         } else {
           getLabSounds().playFromGesture("indicator");
         }
+      } else if (
+        action.actionId === "action.rinse.v1" ||
+        action.actionId === "action.fill.v1"
+      ) {
+        // Titration bench steps reuse the existing sound layer; the burette
+        // meshes animate through BuretteDispenseProvider, not a new system.
+        getLabSounds().playFromGesture("rinse_fill");
+      } else if (
+        action.actionId === "action.add_indicator.v1" ||
+        action.actionId === "action.select_indicator.v1"
+      ) {
+        getLabSounds().playFromGesture("indicator");
+      } else if (action.actionId === "action.dispense.v1") {
+        getLabSounds().playFromGesture("drop");
       }
-      session.dispatch({
+      port.dispatch({
         schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
         permissionId: action.permissionId,
         actionId: action.actionId,
@@ -453,7 +568,7 @@ export function NativeSetupDrivenWorkspace({
         targetEquipmentInstanceIds: action.targetEquipmentInstanceIds,
         parameters
       });
-      const nextSnapshot = snapshot(session);
+      const nextSnapshot = snapshot(port);
       setCurrent(nextSnapshot);
       setError(null);
       triggerCoachOnDiagnoses(nextSnapshot.state);
@@ -462,11 +577,98 @@ export function NativeSetupDrivenWorkspace({
     }
   }
 
+  /**
+   * Panel entry point for a step. Indicator additions are gated behind the
+   * shared review dialog (transition range shown before one committed
+   * addition); every other action dispatches directly.
+   */
+  function requestDispatch(action: SetupDrivenLabProjection["actions"][number]) {
+    const hasIndicatorChoice = registeredEnumParameters(action.actionId).some(
+      ({ key }) => key === "indicator"
+    );
+    if (hasIndicatorChoice) {
+      const candidate = asIndicatorId(parameterValue(action, "indicator"));
+      if (candidate) {
+        setPendingIndicator({ action, indicator: candidate });
+        return;
+      }
+    }
+    dispatch(action);
+  }
+
+  /** 3D indicator-shelf path into the same review dialog as the panels. */
+  function handleIndicatorShelfSelect(indicator: IndicatorId) {
+    const action = current.projection.actions.find(
+      (candidate) =>
+        candidate.available &&
+        registeredEnumParameters(candidate.actionId).some(
+          ({ key }) => key === "indicator"
+        )
+    );
+    if (!action) return;
+    setPendingIndicator({ action, indicator });
+  }
+
+  /**
+   * Session sink for one hold-to-dispense commit: dispatches the normalized
+   * `action.dispense.v1` with the gesture's exact volume and duration through
+   * the native runtime. Returns false when the runtime rejects it so the
+   * gesture closes the valve instead of continuing against a refused permit.
+   */
+  function dispatchDispenseCommit(commit: DispenseCommit): boolean {
+    const action = port
+      .getProjection()
+      .actions.find(
+        (candidate) =>
+          candidate.actionId === "action.dispense.v1" && candidate.available
+      );
+    if (!action) return false;
+    try {
+      const events = port.dispatch({
+        schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
+        permissionId: action.permissionId,
+        actionId: action.actionId,
+        sourceEquipmentInstanceId:
+          action.sourceEquipmentInstanceId ?? undefined,
+        targetEquipmentInstanceIds: action.targetEquipmentInstanceIds,
+        parameters: [
+          { key: "volumeML", valueType: "number", value: commit.volumeML },
+          { key: "durationS", valueType: "number", value: commit.durationS }
+        ]
+      });
+      if (
+        events.some(
+          (event) =>
+            event.flags.includes("endpoint_overshoot") ||
+            event.evidence.some(
+              ({ reason }) => reason === "controlled_addition_near_endpoint"
+            )
+        )
+      ) {
+        getLabSounds().playFromGesture("endpoint", port.sessionId);
+      }
+      const nextSnapshot = snapshot(port);
+      setCurrent(nextSnapshot);
+      setError(null);
+      triggerCoachOnDiagnoses(nextSnapshot.state);
+      return true;
+    } catch (dispatchError) {
+      setError(actionErrorMessage(dispatchError));
+      return false;
+    }
+  }
+
   function restart() {
+    if (sessionPort) {
+      // The host owns the session: it initializes a fresh one and remounts
+      // this workspace, which resets the local UI state below.
+      sessionPort.restart();
+      return;
+    }
     const nextRun = run + 1;
     const nextSession = createSession(workflow, replaySeed, nextRun, prefix);
     setRun(nextRun);
-    setSession(nextSession);
+    setLocalSession(nextSession);
     setCurrent(snapshot(nextSession));
     setValues({});
     setError(null);
@@ -475,6 +677,7 @@ export function NativeSetupDrivenWorkspace({
     setCoachStatus("idle");
     setCoachError(null);
     setActiveVisualGesture(null);
+    setPendingIndicator(null);
     servedCoachReasons.current = new Set();
   }
 
@@ -526,20 +729,49 @@ export function NativeSetupDrivenWorkspace({
     () => procedureGuideStepsFromWorkflow(workflow, current.state.diagnoses),
     [workflow, current.state.diagnoses]
   );
-  const drawerActions = useMemo(() => {
+  const sceneConfiguration = useMemo((): Readonly<LabSceneConfiguration> | null => {
     try {
-      const configuration = resolveTitrationSceneConfiguration(
-        current.projection
-      );
-      const focus =
-        focused && configuration.selectableEquipmentIds.includes(focused)
-          ? focused
-          : null;
-      return projectionActionsForEquipmentFocus(current.projection, focus);
+      return resolveLabSceneConfiguration(current.projection);
     } catch {
-      return current.projection.actions;
+      return null;
     }
-  }, [current.projection, focused]);
+  }, [current.projection]);
+  const drawerActions = useMemo(() => {
+    if (!sceneConfiguration) return current.projection.actions;
+    const focus =
+      focused && sceneConfiguration.selectableEquipmentIds.includes(focused)
+        ? focused
+        : null;
+    return projectionActionsForEquipmentFocus(current.projection, focus);
+  }, [current.projection, focused, sceneConfiguration]);
+  /**
+   * Accessory tray data for titration benches: the pH curve is projected from
+   * engine-emitted add_titrant observations, its axis from the projected
+   * burette capacity, and the notebook facts from equipment-owned observables
+   * plus registry metadata (never the legacy TitrationState bridge, never
+   * chemistry ground truth). Seeded drills begin mid-procedure with no
+   * emitted add_titrant events, so the curve deliberately starts at the first
+   * native measurement.
+   */
+  const titrationAccessories = useMemo((): {
+    readonly curvePoints: readonly { volumeML: number; pH: number }[];
+    readonly chartMaxVolumeML: number;
+    readonly facts: ReturnType<typeof nativeTitrationBenchFacts>;
+    readonly events: readonly SemanticEvent[];
+  } | null => {
+    const burette = sceneConfiguration?.projectedState?.burette;
+    if (!burette || burette.capacityML <= 0) return null;
+    return {
+      curvePoints: nativeTitrationCurvePoints(current.state),
+      chartMaxVolumeML: Math.max(
+        burette.capacityML,
+        Math.ceil(burette.deliveredML / burette.capacityML) *
+          burette.capacityML
+      ),
+      facts: nativeTitrationBenchFacts(workflow, current.state),
+      events: current.state.eventEnvelopes.map(({ payload }) => payload)
+    };
+  }, [current.state, sceneConfiguration, workflow]);
 
   return (
     <div
@@ -565,7 +797,13 @@ export function NativeSetupDrivenWorkspace({
             )}
             <div className={sessionBarStyles.titleRow}>
               <h1>{workflow.metadata.title}</h1>
-              <span className={sessionBarStyles.stage}>{statusLabel}</span>
+              <span
+                className={sessionBarStyles.stage}
+                role="status"
+                aria-live="polite"
+              >
+                {statusLabel}
+              </span>
             </div>
           </div>
         </div>
@@ -575,13 +813,29 @@ export function NativeSetupDrivenWorkspace({
             role="status"
             aria-live="polite"
           >
-            {mode === "preview"
-              ? "Teacher preview"
-              : mode === "assignment"
-                ? "Assigned lab"
-                : "Practice mode — ready"}
+            {saveStatus === "pending"
+              ? "Saving progress…"
+              : saveStatus === "saved"
+                ? "Progress saved"
+                : saveStatus === "error"
+                  ? `Save failed${saveError ? `: ${saveError}` : ""}`
+                  : mode === "preview"
+                    ? "Teacher preview"
+                    : mode === "assignment"
+                      ? "Assigned lab"
+                      : "Practice mode — ready"}
           </span>
           <div className={sessionBarStyles.actions}>
+            {saveStatus === "error" && onRetrySave && (
+              <button type="button" onClick={onRetrySave}>
+                Retry save
+              </button>
+            )}
+            {reportHref && (
+              <Link href={reportHref}>
+                Open report <span aria-hidden="true">→</span>
+              </Link>
+            )}
             {procedureSteps.length > 0 && (
               <button
                 type="button"
@@ -606,14 +860,25 @@ export function NativeSetupDrivenWorkspace({
         <ImmersiveSetupDrivenBench
           projection={current.projection}
           prompt={prompt}
-          statusLabel={statusLabel}
           precisionControlsOpen={controlsOpen}
           onPrecisionControlsChange={setControlsOpen}
           coachMessages={coachMessages}
           coachStatus={coachStatus}
           coachError={coachError}
-          coachSessionId={`${prefix}-${run}`}
+          coachSessionId={port.sessionId}
           askCoach={askCoach}
+          titrationBenchStatus={
+            titrationAccessories?.facts
+              ? {
+                  buretteFillFraction:
+                    titrationAccessories.facts.buretteFillFraction,
+                  buretteConditioned:
+                    titrationAccessories.facts.buretteConditioned,
+                  indicatorAdded: titrationAccessories.facts.indicatorAdded,
+                  procedureStage: titrationAccessories.facts.stage
+                }
+              : null
+          }
           equipmentLabels={equipmentLabels}
           actionLabel={(action) => actionLabel(action, current.projection)}
           completedActionMessage={(action) =>
@@ -629,7 +894,9 @@ export function NativeSetupDrivenWorkspace({
               [`${action.permissionId}:${key}`]: value
             }));
           }}
-          onDispatch={dispatch}
+          onDispatch={requestDispatch}
+          dispatchDispenseCommit={dispatchDispenseCommit}
+          onIndicatorShelfSelect={handleIndicatorShelfSelect}
           activeVisualGesture={activeVisualGesture}
           onVisualGestureComplete={(sequence) => {
             setActiveVisualGesture((currentGesture) =>
@@ -762,7 +1029,36 @@ export function NativeSetupDrivenWorkspace({
                         </label>
                       );
                     })}
-                    <button type="button" onClick={() => dispatch(action)}>
+                    {registeredEnumParameters(action.actionId).map(
+                      (parameter) => (
+                        <label key={parameter.key}>
+                          {PARAMETER_LABELS[parameter.key] ?? "Choice"}
+                          <span>
+                            <select
+                              value={parameterValue(action, parameter.key)}
+                              onChange={(event) => {
+                                const nextValue = event.currentTarget.value;
+                                setValues((currentValues) => ({
+                                  ...currentValues,
+                                  [`${action.permissionId}:${parameter.key}`]:
+                                    nextValue
+                                }));
+                              }}
+                            >
+                              {parameter.allowedValues.map((value) => (
+                                <option key={value} value={value}>
+                                  {enumValueLabel(value)}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                        </label>
+                      )
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => requestDispatch(action)}
+                    >
                       Apply step
                     </button>
                     {(completionMessage || unavailableMessage) && (
@@ -837,6 +1133,57 @@ export function NativeSetupDrivenWorkspace({
           </div>
         )}
       </div>
+
+      {titrationAccessories && (
+        <div className={styles.accessoryTray}>
+          {titrationAccessories.facts && (
+            <details className={styles.accessoryCard}>
+              <summary>
+                <span aria-hidden="true">▤</span>
+                <span>
+                  <strong>Lab notebook</strong>
+                  <small>Observations and recorded readings</small>
+                </span>
+              </summary>
+              <div className={styles.accessoryContent}>
+                <aside aria-labelledby="notebook-heading">
+                  <LabNotebook
+                    facts={titrationAccessories.facts}
+                    events={titrationAccessories.events}
+                  />
+                </aside>
+              </div>
+            </details>
+          )}
+          <details className={styles.accessoryCard}>
+            <summary>
+              <span aria-hidden="true">⌁</span>
+              <span>
+                <strong>Live pH graph</strong>
+                <small>Open the measurement curve</small>
+              </span>
+            </summary>
+            <div className={styles.accessoryContent}>
+              <PHCurve
+                points={titrationAccessories.curvePoints}
+                maxVolumeML={titrationAccessories.chartMaxVolumeML}
+              />
+            </div>
+          </details>
+        </div>
+      )}
+
+      {pendingIndicator && (
+        <IndicatorSelectionDialog
+          indicator={pendingIndicator.indicator}
+          onCancel={() => setPendingIndicator(null)}
+          onConfirm={() => {
+            const confirmed = pendingIndicator;
+            setPendingIndicator(null);
+            dispatch(confirmed.action, { indicator: confirmed.indicator });
+          }}
+        />
+      )}
     </div>
   );
 }

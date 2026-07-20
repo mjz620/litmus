@@ -18,18 +18,26 @@ import {
   LOOK_STEP_EVENT,
   type LookStepDetail
 } from "../three/BenchCameraControls";
+import { BuretteDispenseProvider } from "../three/Burette";
 import { LabScene } from "../three/LabScene";
 import { CAMERA_POSES } from "../three/benchLayout";
 import type { GlassQuality } from "../three/glassMaterials";
 import { getLabSounds } from "../three/labSounds";
+import { getFlaskLiquidColor } from "../three/sceneProjection";
 import type { LabVisualGesture } from "../three/gestures/LabVisualGestures";
-import { EQUIPMENT, type EquipmentId } from "../titration/equipment";
+import type { IndicatorId } from "../../../experiments/titration/titration";
+import { EQUIPMENT, type EquipmentId } from "./equipment";
 import {
   projectionActionsForEquipmentFocus,
-  resolveTitrationSceneConfiguration,
-  type TitrationSceneConfiguration
-} from "../titration/setupDrivenScene";
+  resolveLabSceneConfiguration,
+  type LabSceneConfiguration
+} from "./labScene";
 import { FocusedEquipmentActionPanel } from "./FocusedEquipmentActionPanel";
+import {
+  DISPENSE_RESIDUE_ML,
+  useDispenseGesture,
+  type DispenseCommit
+} from "./useDispenseGesture";
 
 import sceneStyles from "../titration/TitrationScene.module.css";
 import styles from "./SetupDrivenWorkspace.module.css";
@@ -37,7 +45,6 @@ import styles from "./SetupDrivenWorkspace.module.css";
 interface ImmersiveSetupDrivenBenchProps {
   readonly projection: Readonly<SetupDrivenLabProjection>;
   readonly prompt: string;
-  readonly statusLabel: string;
   readonly precisionControlsOpen: boolean;
   readonly onPrecisionControlsChange: (open: boolean) => void;
   readonly coachMessages: readonly CoachMessage[];
@@ -65,8 +72,29 @@ interface ImmersiveSetupDrivenBenchProps {
   readonly onDispatch: (
     action: SetupDrivenLabProjection["actions"][number]
   ) => void;
+  /**
+   * Session sink for one hold-to-dispense commit (normalized
+   * action.dispense.v1). The stopcock gesture activates only when this is
+   * provided and the projection currently offers an available dispense action
+   * on the focused burette.
+   */
+  readonly dispatchDispenseCommit?: (commit: DispenseCommit) => boolean;
+  /** Opens the indicator review dialog for a 3D shelf-bottle selection. */
+  readonly onIndicatorShelfSelect?: (indicator: IndicatorId) => void;
   readonly activeVisualGesture?: LabVisualGesture | null;
   readonly onVisualGestureComplete?: (sequence: number) => void;
+  /**
+   * Deterministic titration bench status projected from equipment-owned
+   * observables, exposed as the same data attributes the legacy
+   * TitrationScene publishes so browser tests read one contract on either
+   * bench. Null on non-titration benches.
+   */
+  readonly titrationBenchStatus?: {
+    readonly buretteFillFraction: number;
+    readonly buretteConditioned: boolean;
+    readonly indicatorAdded: boolean;
+    readonly procedureStage: string;
+  } | null;
 }
 
 /**
@@ -77,7 +105,6 @@ interface ImmersiveSetupDrivenBenchProps {
 export function ImmersiveSetupDrivenBench({
   projection,
   prompt,
-  statusLabel,
   precisionControlsOpen,
   onPrecisionControlsChange,
   coachMessages,
@@ -92,8 +119,11 @@ export function ImmersiveSetupDrivenBench({
   parameterValue,
   onParameterChange,
   onDispatch,
+  dispatchDispenseCommit,
+  onIndicatorShelfSelect,
   activeVisualGesture = null,
-  onVisualGestureComplete
+  onVisualGestureComplete,
+  titrationBenchStatus = null
 }: ImmersiveSetupDrivenBenchProps) {
   const canvasFrameRef = useRef<HTMLDivElement>(null);
   const [webGLReady, setWebGLReady] = useState(false);
@@ -117,11 +147,11 @@ export function ImmersiveSetupDrivenBench({
    * the memo off its own state write.
    */
   const scene = useMemo(():
-    | { readonly configuration: TitrationSceneConfiguration; readonly error: null }
+    | { readonly configuration: LabSceneConfiguration; readonly error: null }
     | { readonly configuration: null; readonly error: string } => {
     try {
       return {
-        configuration: resolveTitrationSceneConfiguration(projection),
+        configuration: resolveLabSceneConfiguration(projection),
         error: null
       };
     } catch (error) {
@@ -172,6 +202,37 @@ export function ImmersiveSetupDrivenBench({
     [projection, selectedEquipmentId]
   );
 
+  /*
+   * Hold-to-dispense stopcock gesture, activated only when the projection
+   * offers an available action.dispense.v1 and the host supplied a session
+   * sink. The same reducer drives the titration strangler; here every commit
+   * dispatches the normalized action through the native session.
+   */
+  const projectedBurette = configuration?.projectedState?.burette ?? null;
+  const dispenseAction =
+    projection.actions.find(
+      (action) => action.actionId === "action.dispense.v1"
+    ) ?? null;
+  const dispenseMinimumML =
+    configuration?.minDispenseVolumeML ?? DISPENSE_RESIDUE_ML;
+  const dispenseEnabled = Boolean(
+    dispatchDispenseCommit &&
+      dispenseAction?.available &&
+      projectedBurette &&
+      projectedBurette.availableML >= dispenseMinimumML
+  );
+  const dispense = useDispenseGesture({
+    availableML: projectedBurette?.availableML ?? 0,
+    minimumCommitML: dispenseMinimumML,
+    maximumCommitML: configuration?.maxDispenseVolumeML ?? null,
+    enabled: dispenseEnabled,
+    dispatchCommit: dispatchDispenseCommit,
+    onCommit: () => getLabSounds().playFromGesture("drop"),
+    onDetentChange: () => getLabSounds().playFromGesture("valve"),
+    onGestureStart: () => getLabSounds().playFromGesture("valve"),
+    onGestureEnd: () => getLabSounds().playFromGesture("valve")
+  });
+
   if (sceneError || !configuration) {
     return (
       <div className={styles.setupError} role="alert">
@@ -187,6 +248,18 @@ export function ImmersiveSetupDrivenBench({
     hovered && enabled.includes(hovered) ? hovered : selected;
   const quality: GlassQuality = reducedGraphics ? "low" : autoQuality;
   const burette = configuration.projectedState?.burette;
+  const flask = configuration.projectedState?.flask;
+  const indicatorSelectionEnabled = Boolean(
+    onIndicatorShelfSelect &&
+      flask &&
+      !flask.indicatorAdded &&
+      projection.actions.some(
+        (action) =>
+          action.available &&
+          (action.actionId === "action.add_indicator.v1" ||
+            action.actionId === "action.select_indicator.v1")
+      )
+  );
   const calorimeterLidClosed = Boolean(
     projection.equipment.find(
       ({ equipmentDefinitionId }) =>
@@ -254,6 +327,28 @@ export function ImmersiveSetupDrivenBench({
       data-testid="setup-driven-student-bench"
       data-runtime-mode={configuration.mode}
       data-workflow-id={configuration.workflowId ?? undefined}
+      data-burette-fill={
+        titrationBenchStatus
+          ? titrationBenchStatus.buretteFillFraction.toFixed(3)
+          : undefined
+      }
+      data-burette-conditioned={
+        titrationBenchStatus
+          ? titrationBenchStatus.buretteConditioned
+            ? "true"
+            : "false"
+          : undefined
+      }
+      data-indicator-added={
+        titrationBenchStatus
+          ? titrationBenchStatus.indicatorAdded
+            ? "true"
+            : "false"
+          : undefined
+      }
+      data-procedure-stage={
+        titrationBenchStatus ? titrationBenchStatus.procedureStage : undefined
+      }
     >
       {/*
        * data-hovered-equipment / data-selectable-equipment expose which item is
@@ -284,14 +379,13 @@ export function ImmersiveSetupDrivenBench({
                 <h2 id="native-scene-heading">Interactive lab bench</h2>
               </div>
             </div>
+            {/*
+              The workflow status lives in the session bar directly above and is
+              not repeated here: it was the same string from the same source,
+              rendered twice within 72px, and it crowded out the bench controls
+              this HUD exists to hold.
+            */}
             <div className={sceneStyles.headingActions}>
-              <span
-                className={sceneStyles.status}
-                role="status"
-                aria-live="polite"
-              >
-                {statusLabel}
-              </span>
               <button
                 type="button"
                 className={sceneStyles.utilityButton}
@@ -409,40 +503,47 @@ export function ImmersiveSetupDrivenBench({
             </div>
           }
         >
-          <LabScene
-            enabledEquipmentIds={enabled}
-            equipmentPoses={configuration.equipmentPoses}
-            equipmentFillFractions={configuration.equipmentFillFractions}
-            calorimeterLidClosed={calorimeterLidClosed}
-            thermometerPlaced={thermometerPlaced}
-            hideCalorimeterLid={activeVisualGesture?.kind === "lid"}
-            hideThermometer={activeVisualGesture?.kind === "place_probe"}
-            hideWashBottle={
-              activeVisualGesture?.kind === "pour" &&
-              activeVisualGesture.sourceKind === "wash_bottle"
-            }
-            activeVisualGesture={activeVisualGesture}
-            onVisualGestureComplete={onVisualGestureComplete}
-            buretteAvailableML={burette?.availableML ?? 0}
-            buretteCapacityML={burette?.capacityML ?? 50}
-            flaskLiquidColor="#dbe9e7"
-            selectedIndicator={null}
-            indicatorSelectionEnabled={false}
-            indicatorAddition={null}
-            canPrepareBurette={false}
-            selectedWashLiquid={null}
-            funnelSelected={false}
-            quality={quality}
-            selected={selected}
-            hovered={hovered && enabled.includes(hovered) ? hovered : null}
-            onHover={(equipment) => setHovered(equipment)}
-            onSelect={handleSelect}
-            onIndicatorBottleClick={() => undefined}
-            onIndicatorAdditionComplete={() => undefined}
-            onWashBottleClick={() => undefined}
-            onTitrantBottleClick={() => undefined}
-            onFunnelClick={() => undefined}
-          />
+          <BuretteDispenseProvider
+            controller={dispense}
+            enabled={selected === "burette" && dispenseEnabled}
+          >
+            <LabScene
+              enabledEquipmentIds={enabled}
+              equipmentPoses={configuration.equipmentPoses}
+              equipmentFillFractions={configuration.equipmentFillFractions}
+              calorimeterLidClosed={calorimeterLidClosed}
+              thermometerPlaced={thermometerPlaced}
+              hideCalorimeterLid={activeVisualGesture?.kind === "lid"}
+              hideThermometer={activeVisualGesture?.kind === "place_probe"}
+              hideWashBottle={
+                activeVisualGesture?.kind === "pour" &&
+                activeVisualGesture.sourceKind === "wash_bottle"
+              }
+              activeVisualGesture={activeVisualGesture}
+              onVisualGestureComplete={onVisualGestureComplete}
+              buretteAvailableML={burette?.availableML ?? 0}
+              buretteCapacityML={burette?.capacityML ?? 50}
+              flaskLiquidColor={getFlaskLiquidColor(flask?.observableColor)}
+              selectedIndicator={null}
+              indicatorSelectionEnabled={indicatorSelectionEnabled}
+              indicatorAddition={null}
+              canPrepareBurette={false}
+              selectedWashLiquid={null}
+              funnelSelected={false}
+              quality={quality}
+              selected={selected}
+              hovered={hovered && enabled.includes(hovered) ? hovered : null}
+              onHover={(equipment) => setHovered(equipment)}
+              onSelect={handleSelect}
+              onIndicatorBottleClick={(indicator) =>
+                onIndicatorShelfSelect?.(indicator)
+              }
+              onIndicatorAdditionComplete={() => undefined}
+              onWashBottleClick={() => undefined}
+              onTitrantBottleClick={() => undefined}
+              onFunnelClick={() => undefined}
+            />
+          </BuretteDispenseProvider>
         </Canvas>
 
         {lookActive && (
@@ -467,13 +568,18 @@ export function ImmersiveSetupDrivenBench({
             onParameterChange={onParameterChange}
             onDispatch={onDispatch}
             onClearFocus={clearFocus}
+            dispense={
+              dispatchDispenseCommit
+                ? { controller: dispense, enabled: dispenseEnabled }
+                : null
+            }
           />
         )}
 
         <p className={sceneStyles.instructions} aria-live="polite">
           {infoEquipment
             ? `${EQUIPMENT[infoEquipment].name}: ${EQUIPMENT[infoEquipment].purpose}`
-            : "Click the simulation panel to initiate panning, then move the cursor toward its edges. Select equipment to focus on it."}
+            : "Click the bench to look around, or click any equipment to use it."}
         </p>
 
         <div className={sceneStyles.coachDock}>

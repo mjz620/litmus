@@ -9,7 +9,7 @@ test("procedural sound mute is accessible and persists for the session", async (
   });
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
-  await page.goto("/lab/titration");
+  await page.goto("/lab/titration?runtime=setup-v2");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
