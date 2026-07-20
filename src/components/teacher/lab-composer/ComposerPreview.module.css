@@ -50,12 +50,15 @@
 
 .failure {
   display: grid;
-  place-content: center;
+  justify-items: start;
   gap: var(--space-4);
-  min-height: 100vh;
-  padding: var(--space-6);
-  background: var(--color-canvas);
-  text-align: center;
+}
+
+.failureEyebrow {
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--type-ui-semibold);
+  letter-spacing: 0.035em;
 }
 
 .failure p,
@@ -63,13 +66,15 @@
   margin: 0;
 }
 
-.failure div[role="alert"] {
+/* Informational, not an error: left-aligned and in the neutral notice tone. */
+.failure div[role="status"] {
   max-width: 42rem;
   padding: var(--space-4);
-  border: 1px solid var(--color-danger);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  line-height: 1.6;
 }
 
 @media (max-width: 42rem) {

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { ProductShell } from "../../ui/ProductShell";
 import { useEffect, useState } from "react";
 
 import { LabRouteShell } from "../../../app/lab/[experimentId]/LabRouteShell";
@@ -46,7 +48,7 @@ export function ComposerPreview() {
         setState({
           workflow: null,
           error:
-            "This preview is no longer available. Return to the Composer, check the lab, and open Preview again."
+            "This preview has expired. Previews are held for one visit, so head back to the Composer, run Check lab, and open Preview again."
         });
       }
     }, 0);
@@ -54,13 +56,22 @@ export function ComposerPreview() {
   }, []);
 
   if (state.error) {
+    /*
+     * Rendered inside the product shell, and as a status rather than an alert.
+     * A stranded preview link used to drop the reader on a bare page with no
+     * header and one button out, and styled an ordinary expired token in full
+     * danger red — nothing has gone wrong here, the preview simply is not held
+     * past its one visit.
+     */
     return (
-      <main className={styles.failure}>
-        <p>Lab Composer preview</p>
-        <h1>Preview unavailable</h1>
-        <div role="alert">{state.error}</div>
-        <Link href="/teacher/lab-composer">Return to the Composer</Link>
-      </main>
+      <ProductShell width="narrow">
+        <div className={styles.failure}>
+          <p className={styles.failureEyebrow}>Lab Composer preview</p>
+          <h1>Preview expired</h1>
+          <div role="status">{state.error}</div>
+          <Link href="/teacher/lab-composer">Return to the Composer</Link>
+        </div>
+      </ProductShell>
     );
   }
 
