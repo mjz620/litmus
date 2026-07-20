@@ -7,19 +7,33 @@ import {
 } from "../../src/components/lab/titration/equipment";
 
 describe("selectable equipment metadata", () => {
-  it("keeps the original equipment names and appends the two new stations", () => {
+  it("keeps the original titration names and appends the setup-driven stations", () => {
     expect(EQUIPMENT_IDS).toEqual([
       "burette",
       "flask",
       "meniscus",
       "indicatorShelf",
-      "washStation"
+      "washStation",
+      "volumetricPipette",
+      "volumetricFlask",
+      "washBottle",
+      "reagentBottle",
+      "calorimeter",
+      "thermometer",
+      "beaker"
     ]);
     expect(EQUIPMENT.burette.name).toBe("Burette");
     expect(EQUIPMENT.flask.name).toBe("Flask & indicator");
     expect(EQUIPMENT.meniscus.name).toBe("Meniscus");
     expect(EQUIPMENT.indicatorShelf.name).toBe("Indicator shelf");
     expect(EQUIPMENT.washStation.name).toBe("Wash station");
+    expect(EQUIPMENT.volumetricPipette.name).toBe("Volumetric pipette");
+    expect(EQUIPMENT.volumetricFlask.name).toBe("Volumetric flask");
+    expect(EQUIPMENT.washBottle.name).toBe("Wash bottle");
+    expect(EQUIPMENT.reagentBottle.name).toBe("Stock bottle");
+    expect(EQUIPMENT.calorimeter.name).toBe("Coffee-cup calorimeter");
+    expect(EQUIPMENT.thermometer.name).toBe("Digital thermometer");
+    expect(EQUIPMENT.beaker.name).toBe("Beaker");
   });
 
   it("names every selectable equipment item with a purpose", () => {
@@ -35,7 +49,9 @@ describe("selectable equipment metadata", () => {
       "prepare",
       "indicator",
       "deliver",
-      "reading"
+      "reading",
+      "solution",
+      "calorimetry"
     ]);
   });
 

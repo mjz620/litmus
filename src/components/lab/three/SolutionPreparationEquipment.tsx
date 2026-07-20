@@ -58,10 +58,12 @@ export function VolumetricPipette({ fillFraction = 0 }: LiquidFillProps) {
 }
 
 export const VOLUMETRIC_PIPETTE_HIT = {
-  radius: 0.05,
-  height: 0.78,
+  // Spans the stand base (r 0.09) and the offset support rod at x -0.072,
+  // both of which are part of the visual and were previously unclickable.
+  radius: 0.095,
+  height: 0.8,
   centerY: 0.4,
-  labelY: 0.82
+  labelY: 0.84
 } as const;
 
 /** Local-origin verified visual for the registered 100 mL volumetric flask. */
@@ -171,7 +173,28 @@ export const REAGENT_BOTTLE_HIT = {
   labelY: 0.34
 } as const;
 
-/** Local-origin coffee-cup calorimeter for the shared immersive bench. */
+/** Expanded-polystyrene surface: matte, unlit-looking, no specular sheen. */
+const STYROFOAM_MATERIAL = {
+  color: "#f7f6f2",
+  roughness: 0.97,
+  metalness: 0
+} as const;
+
+/** Lid cut from the same foam stock, shaded a touch darker to read separately. */
+const STYROFOAM_LID_MATERIAL = {
+  color: "#e9e7e0",
+  roughness: 0.95,
+  metalness: 0
+} as const;
+
+const CUP_RIM_Y = 0.16;
+const CUP_LID_OPEN_Y = 0.26;
+
+/**
+ * Local-origin coffee-cup calorimeter: two nested expanded-polystyrene cups
+ * with a foam lid, which is what "coffee-cup calorimetry" actually uses. It is
+ * not a ceramic mug — there is no handle, and the taper widens toward the rim.
+ */
 export function Calorimeter({
   fillFraction = 0,
   lidClosed = true,
@@ -183,50 +206,75 @@ export function Calorimeter({
   const clamped = Math.max(0, Math.min(1, fillFraction));
   return (
     <group>
-      <mesh position={[0, 0.07, 0]}>
-        <cylinderGeometry args={[0.095, 0.1, 0.16, 24]} />
-        <meshStandardMaterial color="#f2f0ea" roughness={0.78} />
+      {/* Outer cup — the insulating sleeve of the nested pair. */}
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.1, 0.074, CUP_RIM_Y, 28, 1, true]} />
+        <meshStandardMaterial {...STYROFOAM_MATERIAL} side={2} />
       </mesh>
-      <mesh position={[0, 0.07, 0]}>
-        <cylinderGeometry args={[0.082, 0.086, 0.14, 24, 1, true]} />
-        <meshPhysicalMaterial
-          color="#fff8f0"
-          transparent
-          opacity={0.35}
-          roughness={0.2}
-          transmission={0.4}
-          thickness={0.02}
-          side={2}
-        />
+      <mesh position={[0, 0.002, 0]}>
+        <cylinderGeometry args={[0.074, 0.074, 0.004, 28]} />
+        <meshStandardMaterial {...STYROFOAM_MATERIAL} />
       </mesh>
+
+      {/* Inner cup — seated inside, holding the reaction mixture. */}
+      <mesh position={[0, 0.088, 0]}>
+        <cylinderGeometry args={[0.092, 0.068, 0.148, 28, 1, true]} />
+        <meshStandardMaterial {...STYROFOAM_MATERIAL} side={2} />
+      </mesh>
+      <mesh position={[0, 0.016, 0]}>
+        <cylinderGeometry args={[0.068, 0.068, 0.004, 28]} />
+        <meshStandardMaterial {...STYROFOAM_MATERIAL} />
+      </mesh>
+
+      {/* Rolled rim — the thick lip a foam cup is recognisable by. */}
+      <mesh position={[0, CUP_RIM_Y, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.098, 0.006, 8, 32]} />
+        <meshStandardMaterial {...STYROFOAM_MATERIAL} />
+      </mesh>
+
       {clamped > 0 && (
-        <mesh position={[0, 0.01 + clamped * 0.05, 0]}>
-          <cylinderGeometry args={[0.078, 0.08, clamped * 0.11, 20]} />
+        <mesh position={[0, 0.022 + clamped * 0.05, 0]}>
+          <cylinderGeometry args={[0.082, 0.07, clamped * 0.1, 24]} />
           <meshStandardMaterial color="#8fc9df" transparent opacity={0.72} />
         </mesh>
       )}
+
       {!hideLid && (
-        <mesh position={[0, lidClosed ? 0.155 : 0.28, 0]}>
-          <cylinderGeometry args={[0.1, 0.1, 0.018, 24]} />
-          <meshStandardMaterial color="#d9d3c7" roughness={0.7} />
-        </mesh>
+        <group position={[0, lidClosed ? CUP_RIM_Y + 0.012 : CUP_LID_OPEN_Y, 0]}>
+          <mesh>
+            <cylinderGeometry args={[0.103, 0.103, 0.012, 28]} />
+            <meshStandardMaterial {...STYROFOAM_LID_MATERIAL} />
+          </mesh>
+          {/* Port the thermometer probe drops through. */}
+          <mesh position={[0, 0.007, 0]}>
+            <cylinderGeometry args={[0.011, 0.011, 0.004, 12]} />
+            <meshStandardMaterial color="#4a544f" roughness={0.8} />
+          </mesh>
+        </group>
       )}
-      <mesh position={[0.11, 0.09, 0]}>
-        <torusGeometry args={[0.035, 0.008, 8, 16, Math.PI]} />
-        <meshStandardMaterial color="#d9d3c7" roughness={0.65} />
-      </mesh>
     </group>
   );
 }
 
 export const CALORIMETER_HIT = {
-  radius: 0.12,
-  height: 0.22,
-  centerY: 0.1,
-  labelY: 0.26
+  // Tall enough to keep the lifted lid inside the hit volume.
+  radius: 0.11,
+  height: 0.29,
+  centerY: 0.145,
+  labelY: 0.33
 } as const;
 
 /** Local-origin digital thermometer probe for coffee-cup calorimetry. */
+/** Vertical drop applied to the probe while it rests at its own station. */
+export const THERMOMETER_PLACED_DROP = 0.04;
+
+/**
+ * Lift applied to the probe when it is seated in a vessel, measured so the
+ * bulb (local y -0.11) sits just above the cup floor while the readout head
+ * stays clear of the rim.
+ */
+export const THERMOMETER_SEATED_LIFT = 0.14;
+
 export function Thermometer({
   placed = false,
   hidden = false
@@ -236,7 +284,7 @@ export function Thermometer({
 }) {
   if (hidden) return null;
   return (
-    <group position={[0, placed ? -0.04 : 0, 0]}>
+    <group position={[0, placed ? -THERMOMETER_PLACED_DROP : 0, 0]}>
       <mesh position={[0, 0.16, 0]}>
         <boxGeometry args={[0.045, 0.09, 0.02]} />
         <meshStandardMaterial color="#2f3d3a" roughness={0.55} />
@@ -266,8 +314,9 @@ export function Thermometer({
 }
 
 export const THERMOMETER_HIT = {
+  // Spans the readout head down to the bulb tip at y -0.11.
   radius: 0.04,
-  height: 0.34,
-  centerY: 0.08,
+  height: 0.33,
+  centerY: 0.05,
   labelY: 0.28
 } as const;

@@ -19,7 +19,8 @@ export type LabVisualAdapterKind =
   | "wash_bottle"
   | "reagent_bottle"
   | "calorimeter"
-  | "thermometer";
+  | "thermometer"
+  | "beaker";
 
 export interface LabVisualAdapterRegistration {
   readonly visualAdapterDefinitionId: string;
@@ -81,6 +82,11 @@ export const LAB_VISUAL_ADAPTERS: Readonly<
     visualAdapterDefinitionId: "visual-adapter.thermometer.v1",
     kind: "thermometer",
     selectableEquipmentIds: Object.freeze(["thermometer"] as const)
+  }),
+  "visual-adapter.beaker.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.beaker.v1",
+    kind: "beaker",
+    selectableEquipmentIds: Object.freeze(["beaker"] as const)
   })
 });
 
@@ -285,7 +291,6 @@ export function resolveTitrationSceneConfiguration(
     | null = null;
   let hasBuretteAdapter = false;
   let hasFlaskAdapter = false;
-  let hasVolumetricAdapter = false;
   const equipmentIds = new Set(
     projection.equipment.map(({ instanceId }) => instanceId)
   );
@@ -297,13 +302,6 @@ export function resolveTitrationSceneConfiguration(
         equipment.visualAdapterDefinitionId,
         `No exact lab visual adapter is registered for ${equipment.visualAdapterDefinitionId}.`
       );
-    }
-    if (
-      adapter.kind === "volumetric_pipette" ||
-      adapter.kind === "volumetric_flask" ||
-      adapter.kind === "wash_bottle"
-    ) {
-      hasVolumetricAdapter = true;
     }
     try {
       equipmentPoses.push(
@@ -351,9 +349,17 @@ export function resolveTitrationSceneConfiguration(
     ) {
       continue;
     }
-    const selectableId: EquipmentId = hasVolumetricAdapter
-      ? "reagentBottle"
-      : "washStation";
+    /*
+     * A reagent bottle is only titration's wash station when the bench
+     * actually has a burette. Keying off the volumetric flask instead meant
+     * every lab without one — calorimetry, precipitation — classified its
+     * stock bottles as "washStation", so LabScene drew titration's wash
+     * station (which has bespoke hotspots and no Interactable) in place of the
+     * bottles, and the precipitation bench listed equipment it does not have.
+     */
+    const selectableId: EquipmentId = hasBuretteAdapter
+      ? "washStation"
+      : "reagentBottle";
     if (!selectableEquipmentIds.includes(selectableId)) {
       selectableEquipmentIds.push(selectableId);
     }

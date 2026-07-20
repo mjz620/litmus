@@ -433,8 +433,16 @@ export const CAMERA_POSES: Record<
 > = {
   overview: BENCH_VIEW,
   burette: {
-    position: [BURETTE.x + 0.55, 1.32, BURETTE.z + 1.25],
-    target: [BURETTE.x, 1.4, BURETTE.z]
+    /*
+     * Framed to keep the flask in shot, not just the burette. The target used
+     * to sit at 1.4, which pushed the flask body (y 0.93–1.05) to the bottom
+     * edge where the instruction bar covers it — and the endpoint colour
+     * change is the thing being watched. Lowering the target alone drops the
+     * tube top (y 1.9) out of frame, so the distance grows with it; the
+     * frustum invariant in tests/components/benchLayout.test.ts pins both.
+     */
+    position: [BURETTE.x + 0.63, 1.46, BURETTE.z + 1.5],
+    target: [BURETTE.x, 1.36, BURETTE.z]
   },
   flask: {
     position: [FLASK.x + 0.24, FLASK.baseY + 0.24, FLASK.z + 0.5],
@@ -449,6 +457,34 @@ export const CAMERA_POSES: Record<
     target: [WASH.x, WASH.baseY + WASH.totalHeight * 0.48, WASH.z]
   }
 };
+
+/**
+ * Frame any bench item from its world position and hit volume.
+ *
+ * The static CAMERA_POSES map only covers titration-era apparatus, so every
+ * registry-placed item (calorimeter, beaker, bottles, probes) fell through to
+ * the overview pose and selecting it did nothing. Deriving the pose means new
+ * equipment gets a working zoom without another hardcoded entry — the same
+ * contract that makes glassware swappable.
+ */
+export function focusPoseForBenchItem(
+  worldPosition: readonly [number, number, number],
+  itemHeight: number,
+  itemCenterY: number
+): CameraPose {
+  const [x, baseY, z] = worldPosition;
+  const centerY = baseY + itemCenterY;
+  // Tall items need to be viewed from further back to stay in frame.
+  const distance = Math.max(0.42, itemHeight * 2.4);
+  return {
+    position: [
+      x + distance * 0.42,
+      centerY + Math.max(0.14, itemHeight * 0.55),
+      z + distance
+    ],
+    target: [x, centerY, z]
+  };
+}
 
 /**
  * Map remaining burette volume to the bottom of the concave meniscus. Reading

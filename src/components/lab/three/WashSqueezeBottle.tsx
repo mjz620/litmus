@@ -100,10 +100,20 @@ export function WashSqueezeBottle({
   );
 }
 
-/** Bounding shell for Interactable hover / hit targeting. */
+/**
+ * Bounding shell for Interactable hover / hit targeting. Sized to contain the
+ * angled spout, whose tip reaches x ≈ 0.067 and y ≈ 0.236 and previously sat
+ * outside the hit volume on both axes.
+ */
 export const WASH_SQUEEZE_BOTTLE_HIT = {
-  radius: 0.06,
-  height: 0.24,
-  centerY: 0.11,
-  labelY: 0.26
+  radius: 0.075,
+  height: 0.26,
+  centerY: 0.12,
+  labelY: 0.29
 } as const;
+
+/**
+ * Local-space spout tip, so a pour can be aligned by the nozzle rather than by
+ * the bottle's bench origin.
+ */
+export const WASH_SQUEEZE_BOTTLE_SPOUT_TIP = [0.067, 0.236, 0] as const;

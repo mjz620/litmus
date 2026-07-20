@@ -181,6 +181,7 @@ describe("setup-driven titration scene projection", () => {
 
   it("registers shared lab visual adapters for titration, dilution, and calorimetry", () => {
     expect(Object.keys(TITRATION_VISUAL_ADAPTERS).sort()).toEqual([
+      "visual-adapter.beaker.v1",
       "visual-adapter.burette.v1",
       "visual-adapter.calorimeter.v1",
       "visual-adapter.erlenmeyer_flask.v1",

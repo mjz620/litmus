@@ -109,6 +109,9 @@ export function IndicatorShelf({
         const x = (index - (bottles.length - 1) / 2) * SHELF.bottleSpacing;
         const isSelected = selectedIndicator === bottle.id;
         const bodyCenterY = SHELF.riserHeight + SHELF.bottleBodyHeight / 2;
+        const hotspotHeight =
+          SHELF.bottleBodyHeight + SHELF.bottleCapHeight + 0.02;
+        const hotspotCenterY = SHELF.riserHeight + hotspotHeight / 2 - 0.01;
         const capCenterY =
           SHELF.riserHeight +
           SHELF.bottleBodyHeight +
@@ -182,8 +185,13 @@ export function IndicatorShelf({
 
             {focused && selectionEnabled && (
               <>
-                <mesh position={[0, bodyCenterY, 0]} material={hotspotMaterial}>
-                  <boxGeometry args={[0.12, 0.16, 0.11]} />
+                {/* Spans body and cap; a body-only box left the cone tip
+                    unclickable at the top of the bottle. */}
+                <mesh
+                  position={[0, hotspotCenterY, 0]}
+                  material={hotspotMaterial}
+                >
+                  <boxGeometry args={[0.12, hotspotHeight, 0.11]} />
                 </mesh>
                 <Html
                   position={[0, bodyCenterY, 0]}

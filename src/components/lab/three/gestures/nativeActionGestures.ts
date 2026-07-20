@@ -1,6 +1,9 @@
 import type { ResolvedEquipmentPose } from "../../../../lab-workflows/registries/scene-placements";
 import type { SetupDrivenLabProjection } from "../../../../stores/setupDrivenLabSession";
-import { worldPositionForEquipmentPose } from "../equipmentPose";
+import {
+  mouthPositionForEquipmentPose,
+  worldPositionForEquipmentPose
+} from "../equipmentPose";
 import type { LabVisualGesture } from "./LabVisualGestures";
 
 function poseForInstance(
@@ -16,6 +19,14 @@ function poseForInstance(
 function raised(pose: ResolvedEquipmentPose, lift = 0.18) {
   const [x, y, z] = worldPositionForEquipmentPose(pose);
   return [x, y + lift, z] as const;
+}
+
+function sourceKindFor(
+  pose: ResolvedEquipmentPose
+): "wash_bottle" | "generic" {
+  return pose.visualAdapterDefinitionId === "visual-adapter.wash_bottle.v1"
+    ? "wash_bottle"
+    : "generic";
 }
 
 /**
@@ -37,22 +48,17 @@ export function gestureForNativeAction(input: {
     case "action.pour_liquid.v1":
     case "action.transfer_liquid.v1":
     case "action.rinse_transfer_device.v1":
-      if (!source || !target) return null;
-      return {
-        kind: "pour",
-        sequence,
-        from: raised(source, 0.16),
-        to: raised(target, 0.2),
-        color: "#8fc9df"
-      };
     case "action.fill_to_mark.v1":
       if (!source || !target) return null;
       return {
         kind: "pour",
         sequence,
-        from: raised(source, 0.14),
-        to: raised(target, 0.22),
-        color: "#8fc9df"
+        from: worldPositionForEquipmentPose(source),
+        // Aim at the receiving vessel's actual rim.
+        to: mouthPositionForEquipmentPose(target),
+        color: "#8fc9df",
+        sourceInstanceId: source.equipmentInstanceId,
+        sourceKind: sourceKindFor(source)
       };
     case "action.mix_solution.v1":
     case "action.mix_calorimeter.v1": {

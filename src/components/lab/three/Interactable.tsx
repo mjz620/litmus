@@ -27,6 +27,11 @@ interface InteractableProps {
   id: EquipmentId;
   label: string;
   highlightShape: InteractableHighlightShape;
+  /**
+   * Hit volume, when the shape a student should be able to click differs from
+   * the shape worth drawing (a thin ring, say). Defaults to `highlightShape`.
+   */
+  hitShape?: InteractableHighlightShape;
   children: ReactNode;
   enabled?: boolean;
   /** Pointer is over this equipment (and it is not the reason for focus alone). */
@@ -67,6 +72,7 @@ export function Interactable({
   id,
   label,
   highlightShape,
+  hitShape,
   children,
   enabled = true,
   hovered,
@@ -78,21 +84,42 @@ export function Interactable({
   const pointerInsideRef = useRef(false);
   const invalidate = useThree((state) => state.invalidate);
   const highlighted = enabled && (hovered || selected);
+  /*
+   * The emissive shell is a hover affordance only. Keeping it on while an item
+   * is selected washed the whole viewport teal once the camera zoomed inside
+   * the shell, hiding the very controls the zoom exists to reach. Selection is
+   * already communicated by the camera move and the floating label.
+   */
+  const showHighlightShell = enabled && hovered && !selected;
+
+  /*
+   * Held in a ref so the effects below do not depend on the callback's
+   * identity. Callers pass an inline arrow, so its identity changes on every
+   * parent render — and hovering causes a parent render. Depending on it made
+   * the unmount cleanup re-run immediately after each hover and call
+   * onHover(null), clearing the hover that had just been set. Equipment fired
+   * pointerover correctly and then appeared completely unhoverable.
+   */
+  const onHoverRef = useRef(onHover);
+  // Kept current in an effect: assigning during render is impure.
+  useEffect(() => {
+    onHoverRef.current = onHover;
+  });
 
   useEffect(
     () => () => {
-      if (pointerInsideRef.current) onHover(null);
+      if (pointerInsideRef.current) onHoverRef.current(null);
     },
-    [onHover]
+    []
   );
 
   useEffect(() => {
     if (!enabled && pointerInsideRef.current) {
       pointerInsideRef.current = false;
-      onHover(null);
+      onHoverRef.current(null);
     }
     invalidate();
-  }, [enabled, highlighted, invalidate, onHover]);
+  }, [enabled, highlighted, invalidate]);
 
   useFrame((_, deltaS) => {
     const pulseGroup = pulseGroupRef.current;
@@ -133,6 +160,15 @@ export function Interactable({
     onSelect(id);
   }
 
+  const hit = hitShape ?? highlightShape;
+
+  /*
+   * Handlers sit on the wrapping group so the whole visible object is
+   * targetable. Scoping them to the collider alone was a regression: the
+   * colliders are far smaller than the meshes they stand in for, so only a
+   * few pixels of each item responded and hovering appeared not to work.
+   * The collider below still widens thin glassware; it is additive.
+   */
   return (
     <group
       onPointerOver={enabled ? handlePointerOver : undefined}
@@ -141,54 +177,65 @@ export function Interactable({
     >
       <group ref={pulseGroupRef}>
         {children}
-        {/* Invisible hit volume so thin glassware remains easy to target. */}
+        {/*
+         * Additive hit volume so thin glassware stays targetable. Kept exactly
+         * as it was: making it a rendered, double-sided mesh let it intercept
+         * rays it used to pass through, which risks stealing pointerdown from
+         * nested controls such as the burette stopcock handle.
+         */}
         <mesh
-          position={highlightShape.position}
-          rotation={highlightShape.rotation}
+          position={hit.position}
+          rotation={hit.rotation}
           visible={false}
         >
-          {isValidElement(highlightShape.geometry)
-            ? cloneElement(highlightShape.geometry as ReactElement)
-            : highlightShape.geometry}
+          {isValidElement(hit.geometry)
+            ? cloneElement(hit.geometry as ReactElement)
+            : hit.geometry}
           <meshBasicMaterial />
         </mesh>
+        {showHighlightShell && (
+          <mesh
+            position={highlightShape.position}
+            rotation={highlightShape.rotation}
+          >
+            {isValidElement(highlightShape.geometry)
+              ? cloneElement(highlightShape.geometry as ReactElement)
+              : highlightShape.geometry}
+            <meshStandardMaterial
+              color={LAB_PALETTE.hoverMint}
+              emissive={LAB_PALETTE.selectionTeal}
+              emissiveIntensity={0.9}
+              roughness={0.8}
+              transparent
+              opacity={0.24}
+              depthWrite={false}
+            />
+          </mesh>
+        )}
         {highlighted && (
-          <>
-            <mesh
-              position={highlightShape.position}
-              rotation={highlightShape.rotation}
+          <Html
+            position={highlightShape.labelPosition}
+            center
+            /*
+             * The wrapper must ignore the pointer, not just the span. When the
+             * label mounts under the cursor it otherwise covers the canvas,
+             * the browser fires pointerout, hover clears, the label unmounts,
+             * and the pointer is back over the canvas — a flicker that leaves
+             * equipment looking completely unhoverable.
+             */
+            pointerEvents="none"
+            style={{ pointerEvents: "none" }}
+            zIndexRange={[2, 0]}
+            aria-hidden="true"
+          >
+            <span
+              data-equipment-hover-label={id}
+              data-equipment-selected={selected ? "true" : "false"}
+              style={LABEL_STYLE}
             >
-              {isValidElement(highlightShape.geometry)
-                ? cloneElement(highlightShape.geometry as ReactElement)
-                : highlightShape.geometry}
-              <meshStandardMaterial
-                color={
-                  selected ? LAB_PALETTE.selectionTeal : LAB_PALETTE.hoverMint
-                }
-                emissive={LAB_PALETTE.selectionTeal}
-                emissiveIntensity={selected ? 1.15 : 0.9}
-                roughness={0.8}
-                transparent
-                opacity={selected ? 0.34 : 0.24}
-                depthWrite={false}
-              />
-            </mesh>
-            <Html
-              position={highlightShape.labelPosition}
-              center
-              pointerEvents="none"
-              zIndexRange={[2, 0]}
-              aria-hidden="true"
-            >
-              <span
-                data-equipment-hover-label={id}
-                data-equipment-selected={selected ? "true" : "false"}
-                style={LABEL_STYLE}
-              >
-                {label}
-              </span>
-            </Html>
-          </>
+              {label}
+            </span>
+          </Html>
         )}
       </group>
     </group>

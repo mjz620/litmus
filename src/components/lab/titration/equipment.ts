@@ -15,7 +15,8 @@ export type EquipmentId =
   | "washBottle"
   | "reagentBottle"
   | "calorimeter"
-  | "thermometer";
+  | "thermometer"
+  | "beaker";
 
 export type ControlGroupId =
   | "prepare"
@@ -98,6 +99,12 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentInfo> = {
     name: "Digital thermometer",
     purpose: "Place the probe and record the calorimeter temperature.",
     controlGroups: ["calorimetry"]
+  },
+  beaker: {
+    id: "beaker",
+    name: "Beaker",
+    purpose: "Receive poured solutions and observe the combined contents.",
+    controlGroups: ["solution"]
   }
 };
 
@@ -112,7 +119,8 @@ export const EQUIPMENT_IDS: readonly EquipmentId[] = [
   "washBottle",
   "reagentBottle",
   "calorimeter",
-  "thermometer"
+  "thermometer",
+  "beaker"
 ];
 
 const ALL_CONTROL_GROUPS: readonly ControlGroupId[] = [

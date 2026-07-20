@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { completedActionMessage } from "../../src/components/lab/setup-driven/NativeSetupDrivenWorkspace";
-import { resolveSetupDrivenPoses } from "../../src/components/lab/setup-driven/SetupDrivenBench";
+import { resolveSetupDrivenPoses } from "../../src/components/lab/setup-driven/setupDrivenPoses";
 import {
   SOLUTION_PREPARATION_V2_EXPECTED_HASH,
   validateSolutionPreparationV2

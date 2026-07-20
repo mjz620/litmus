@@ -94,9 +94,11 @@ export function WashStation({
         {focused && selectedLiquid === "water" && (
           <SelectionRing radius={0.063} />
         )}
+        {/* Hotspot is widened to contain the angled spout, which reached
+            past the old box on both the x and y axes. */}
         {hotspotsEnabled && (
-          <mesh position={[0, 0.11, 0]} material={hotspotMaterial}>
-            <boxGeometry args={[0.11, 0.22, 0.12]} />
+          <mesh position={[0.008, 0.12, 0]} material={hotspotMaterial}>
+            <boxGeometry args={[0.15, 0.26, 0.12]} />
           </mesh>
         )}
         {focused && (

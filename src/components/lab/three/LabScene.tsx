@@ -14,6 +14,7 @@ import { IndicatorShelf } from "./IndicatorShelf";
 import { Interactable } from "./Interactable";
 import { SceneEnvironment } from "./SceneEnvironment";
 import { SkyDome } from "./SkyDome";
+import { BEAKER_HIT, Beaker } from "./Beaker";
 import {
   CALORIMETER_HIT,
   Calorimeter,
@@ -22,6 +23,8 @@ import {
   REAGENT_BOTTLE_HIT,
   RegisteredReagentBottle,
   THERMOMETER_HIT,
+  THERMOMETER_PLACED_DROP,
+  THERMOMETER_SEATED_LIFT,
   Thermometer,
   VOLUMETRIC_FLASK_HIT,
   VOLUMETRIC_PIPETTE_HIT,
@@ -40,6 +43,7 @@ import {
   FLASK,
   SHELF,
   WASH,
+  focusPoseForBenchItem,
   getBuretteLiquidTopY,
   getMeniscusCameraPose
 } from "./benchLayout";
@@ -51,9 +55,12 @@ interface LabSceneProps {
   equipmentPoses?: readonly ResolvedEquipmentPose[];
   equipmentFillFractions?: Readonly<Record<string, number>>;
   calorimeterLidClosed?: boolean;
+  /** Engine-owned appearance projected into the beaker contents. */
+  beakerContentsColor?: string;
   thermometerPlaced?: boolean;
   hideCalorimeterLid?: boolean;
   hideThermometer?: boolean;
+  hideWashBottle?: boolean;
   activeVisualGesture?: LabVisualGesture | null;
   onVisualGestureComplete?: (sequence: number) => void;
   buretteAvailableML: number;
@@ -128,9 +135,11 @@ export function LabScene({
   equipmentPoses = [],
   equipmentFillFractions = {},
   calorimeterLidClosed = true,
+  beakerContentsColor = "clear",
   thermometerPlaced = false,
   hideCalorimeterLid = false,
   hideThermometer = false,
+  hideWashBottle = false,
   activeVisualGesture = null,
   onVisualGestureComplete,
   buretteAvailableML,
@@ -173,6 +182,46 @@ export function LabScene({
   const washBottlePose = poseFor("visual-adapter.wash_bottle.v1");
   const calorimeterPose = poseFor("visual-adapter.calorimeter.v1");
   const thermometerPose = poseFor("visual-adapter.thermometer.v1");
+  const beakerPose = poseFor("visual-adapter.beaker.v1");
+  /* Probe seats inside the vessel it measures, rather than at its own stand. */
+  const seatedInVessel = thermometerPlaced && calorimeterPose != null;
+  const calorimeterWorldPosition = calorimeterPose
+    ? worldPositionForEquipmentPose(calorimeterPose)
+    : ([0, 0, 0] as const);
+  const focusFor = (
+    equipmentPose: ResolvedEquipmentPose | undefined,
+    hit: { readonly height: number; readonly centerY: number }
+  ) =>
+    equipmentPose
+      ? focusPoseForBenchItem(
+          worldPositionForEquipmentPose(equipmentPose),
+          hit.height,
+          hit.centerY
+        )
+      : null;
+  /*
+   * Registry-placed equipment frames itself. Without this every native item
+   * fell back to the overview pose, so selecting a calorimeter, beaker, probe
+   * or bottle produced no zoom at all.
+   */
+  const derivedFocusPose =
+    selected === "volumetricPipette"
+      ? focusFor(pipettePose, VOLUMETRIC_PIPETTE_HIT)
+      : selected === "volumetricFlask"
+        ? focusFor(volumetricFlaskPose, VOLUMETRIC_FLASK_HIT)
+        : selected === "washBottle"
+          ? focusFor(washBottlePose, DISTILLED_WASH_BOTTLE_HIT)
+          : selected === "reagentBottle"
+            ? focusFor(washPose, REAGENT_BOTTLE_HIT)
+            : selected === "calorimeter"
+              ? focusFor(calorimeterPose, CALORIMETER_HIT)
+              : selected === "thermometer"
+                ? focusFor(thermometerPose, THERMOMETER_HIT)
+                : selected === "beaker"
+                  ? focusFor(beakerPose, BEAKER_HIT)
+                  : null;
+  const thermometerDrop =
+    thermometerPlaced && !seatedInVessel ? THERMOMETER_PLACED_DROP : 0;
   const showBurette = show("burette", "visual-adapter.burette.v1");
   const showFlask = show("flask", "visual-adapter.erlenmeyer_flask.v1");
   const showMeniscus = showBurette && enabledEquipmentIds.includes("meniscus");
@@ -247,7 +296,9 @@ export function LabScene({
           : selected === "washStation"
             ? [WASH.x, 0, WASH.z]
             : [0, 0, 0];
-  const pose = selectedPose
+  const pose = derivedFocusPose
+    ? derivedFocusPose
+    : selectedPose
     ? transformCameraPose(
         basePose,
         selectedPose.translation,
@@ -361,15 +412,21 @@ export function LabScene({
             rotation: [Math.PI / 2, 0, 0],
             labelPosition: [0, 0.08, 0]
           }}
+          /* A 2 mm ring is too thin to click; target the liquid surface disc
+             instead, kept narrow enough not to steal the burette's tube. */
+          hitShape={{
+            geometry: (
+              <cylinderGeometry args={[0.03, 0.03, 0.014, 16, 1, true]} />
+            ),
+            labelPosition: [0, 0.08, 0]
+          }}
           hovered={hovered === "meniscus"}
             selected={selected === "meniscus"}
           onHover={onHover}
           onSelect={onSelect}
         >
-          <mesh>
-            <sphereGeometry args={[0.05, 10, 10]} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          </mesh>
+          {/* No visual of its own — the hit volume above is the hotspot. */}
+          {null}
         </Interactable>
         {selected === "meniscus" && (
           <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -578,9 +635,13 @@ export function LabScene({
             onHover={onHover}
             onSelect={onSelect}
           >
-            <DistilledWaterWashBottle
-              fillFraction={fillOf("visual-adapter.wash_bottle.v1", 0.75)}
-            />
+            {/* Hidden while a pour clip animates it, so the student sees one
+                bottle in motion rather than a duplicate beside the original. */}
+            {!hideWashBottle && (
+              <DistilledWaterWashBottle
+                fillFraction={fillOf("visual-adapter.wash_bottle.v1", 0.75)}
+              />
+            )}
           </Interactable>
         </group>
       )}
@@ -617,6 +678,44 @@ export function LabScene({
           >
             <RegisteredReagentBottle
               fillFraction={fillOf("visual-adapter.reagent_bottle.v1", 0.7)}
+            />
+          </Interactable>
+        </group>
+      )}
+
+      {beakerPose && enabledEquipmentIds.includes("beaker") && (
+        <group
+          position={[...worldPositionForEquipmentPose(beakerPose)]}
+          rotation={[0, beakerPose.yawRadians, 0]}
+        >
+          <Interactable
+            id="beaker"
+            enabled
+            label={EQUIPMENT.beaker.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[
+                    BEAKER_HIT.radius,
+                    BEAKER_HIT.radius,
+                    BEAKER_HIT.height,
+                    20,
+                    1,
+                    true
+                  ]}
+                />
+              ),
+              position: [0, BEAKER_HIT.centerY, 0],
+              labelPosition: [0, BEAKER_HIT.labelY, 0]
+            }}
+            hovered={hovered === "beaker"}
+            selected={selected === "beaker"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <Beaker
+              fillFraction={fillOf("visual-adapter.beaker.v1", 0)}
+              contentsColor={beakerContentsColor}
             />
           </Interactable>
         </group>
@@ -663,8 +762,28 @@ export function LabScene({
 
       {thermometerPose && enabledEquipmentIds.includes("thermometer") && (
         <group
-          position={[...worldPositionForEquipmentPose(thermometerPose)]}
-          rotation={[0, thermometerPose.yawRadians, 0]}
+          /*
+           * A placed probe stays in the vessel it is measuring. It used to keep
+           * its bench-station position and merely drop 4 cm, so after the
+           * place-probe clip animated it over to the cup it appeared to snap
+           * straight back to the stand.
+           */
+          position={
+            seatedInVessel
+              ? [
+                  calorimeterWorldPosition[0],
+                  calorimeterWorldPosition[1] + THERMOMETER_SEATED_LIFT,
+                  calorimeterWorldPosition[2]
+                ]
+              : [...worldPositionForEquipmentPose(thermometerPose)]
+          }
+          rotation={[
+            0,
+            seatedInVessel && calorimeterPose
+              ? calorimeterPose.yawRadians
+              : thermometerPose.yawRadians,
+            0
+          ]}
         >
           <Interactable
             id="thermometer"
@@ -683,15 +802,18 @@ export function LabScene({
                   ]}
                 />
               ),
-              position: [0, THERMOMETER_HIT.centerY, 0],
-              labelPosition: [0, THERMOMETER_HIT.labelY, 0]
+              position: [0, THERMOMETER_HIT.centerY - thermometerDrop, 0],
+              labelPosition: [0, THERMOMETER_HIT.labelY - thermometerDrop, 0]
             }}
             hovered={hovered === "thermometer"}
             selected={selected === "thermometer"}
             onHover={onHover}
             onSelect={onSelect}
           >
-            <Thermometer placed={thermometerPlaced} hidden={hideThermometer} />
+            <Thermometer
+              placed={thermometerPlaced && !seatedInVessel}
+              hidden={hideThermometer}
+            />
           </Interactable>
         </group>
       )}
