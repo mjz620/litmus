@@ -314,13 +314,18 @@ export const ACTION_REGISTRY_ENTRIES = [
     id: "action.pour_liquid.v1",
     version: "1.0.0",
     purpose:
-      "Pour a bounded distilled-water volume from a registered source into a coffee-cup calorimeter.",
+      "Pour a bounded liquid volume from a registered source into any registered receiving vessel.",
     engineActionType: null,
     actorComponentIds: [
       "component.wash_bottle.v1",
       "component.reagent_bottle.v1"
     ],
-    targetComponentIds: ["component.calorimeter.v1"],
+    /*
+     * No component allowlist: any vessel declaring the required capabilities
+     * below can receive a pour, so glassware stays swappable between labs
+     * without editing this entry to name each new one.
+     */
+    targetComponentIds: [],
     requiredSourceCapabilityIds: [
       "capability.contain_liquid.v1",
       "capability.dispense_liquid.v1"

@@ -290,8 +290,14 @@ function validateActionConnection(
       `${path}.sourceEquipmentInstanceId`,
       registries
     ).definition;
+    /*
+     * Empty component allowlist means capability-gated only, matching the
+     * runtime validator. Authoring and validation must agree, or a draft a
+     * teacher can build would fail validation (or the reverse).
+     */
     if (
-      !action.actorComponentIds.includes(source.id) ||
+      (action.actorComponentIds.length > 0 &&
+        !action.actorComponentIds.includes(source.id)) ||
       action.requiredSourceCapabilityIds.some(
         (capabilityId) => !source.capabilityIds.includes(capabilityId)
       )
@@ -311,7 +317,8 @@ function validateActionConnection(
       registries
     ).definition;
     if (
-      !action.targetComponentIds.includes(target.id) ||
+      (action.targetComponentIds.length > 0 &&
+        !action.targetComponentIds.includes(target.id)) ||
       action.requiredTargetCapabilityIds.some(
         (capabilityId) => !target.capabilityIds.includes(capabilityId)
       )

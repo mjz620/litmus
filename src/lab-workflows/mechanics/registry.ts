@@ -16,6 +16,7 @@ import {
   LIQUID_MECHANICS_ERROR_CODES as ERROR,
   LiquidMechanicsError
 } from "./errors";
+import { BEAKER_MECHANICAL_ADAPTER } from "./vesselAdapters";
 
 export const LIQUID_MECHANICAL_ADAPTERS = Object.freeze([
   BURETTE_MECHANICAL_ADAPTER,
@@ -26,7 +27,8 @@ export const LIQUID_MECHANICAL_ADAPTERS = Object.freeze([
   VOLUMETRIC_FLASK_MECHANICAL_ADAPTER,
   WASH_BOTTLE_MECHANICAL_ADAPTER,
   CALORIMETER_MECHANICAL_ADAPTER,
-  THERMOMETER_MECHANICAL_ADAPTER
+  THERMOMETER_MECHANICAL_ADAPTER,
+  BEAKER_MECHANICAL_ADAPTER
 ] as const satisfies readonly GenericMechanicalAdapterPort[]);
 
 const ADAPTER_BY_ID = new Map(

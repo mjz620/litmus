@@ -73,6 +73,7 @@ import type {
 import {
   labWorkflowDraftV2Schema,
   labWorkflowSpecV2Schema,
+  materialBindingInitialization,
   validatedLabWorkflowSpecV2Schema,
   validationResultV2Schema,
   validationResultV2_0Schema,
@@ -1267,9 +1268,19 @@ function validateActions(context: ValidationContext): void {
         CHECK.actions
       );
     } else if (source) {
+      /*
+       * An empty component allowlist means "no component restriction" — the
+       * required capabilities below are the gate. That is what makes equipment
+       * swappable: a new vessel declares its capabilities and existing actions
+       * accept it without being edited to name it. A non-empty allowlist is
+       * still honoured exactly, for actions that genuinely bind to one
+       * apparatus.
+       */
       if (
-        !entry.actorComponentIds.includes(source.id) ||
-        !source.allowedActionIds.includes(entry.id)
+        (entry.actorComponentIds.length > 0 &&
+          !entry.actorComponentIds.includes(source.id)) ||
+        (source.allowedActionIds.length > 0 &&
+          !source.allowedActionIds.includes(entry.id))
       ) {
         addIssue(
           context,
@@ -1339,7 +1350,11 @@ function validateActions(context: ValidationContext): void {
         );
         return;
       }
-      if (!entry.targetComponentIds.includes(target.id)) {
+      // Empty allowlist = capability-gated only; see the source check above.
+      if (
+        entry.targetComponentIds.length > 0 &&
+        !entry.targetComponentIds.includes(target.id)
+      ) {
         addIssue(
           context,
           5,
@@ -1460,8 +1475,17 @@ function validateActions(context: ValidationContext): void {
         )
       ].some(
         (participant) =>
-          participant?.mechanicalAdapterId === entry.mechanicalAdapterId &&
-          participant.mechanicalAdapterAvailability === "verified"
+          participant?.mechanicalAdapterAvailability === "verified" &&
+          /*
+           * Either the participant uses the adapter this action nominates, or
+           * it owns a verified adapter and explicitly allows this action. The
+           * second branch is what lets a new vessel accept an existing action:
+           * the action names one apparatus's adapter, but equipment resolves
+           * its own adapter at runtime. Equipment must still opt in via
+           * allowedActionIds, so this does not open every action to everything.
+           */
+          (participant.mechanicalAdapterId === entry.mechanicalAdapterId ||
+            participant.allowedActionIds.includes(entry.id))
       )
     ) {
       addIssue(
@@ -1681,8 +1705,8 @@ function resolveTitrationMaterialConcentrationM(
   );
   if (!profile || !binding) return null;
   const initialization =
-    context.spec.schemaVersion === "2.1.0" && "initialization" in binding
-      ? binding.initialization
+    context.spec.schemaVersion === "2.1.0"
+      ? materialBindingInitialization(binding)
       : undefined;
   if (initialization) {
     const contract = profile.concentrationAuthoring;

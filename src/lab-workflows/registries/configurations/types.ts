@@ -37,6 +37,7 @@ export type ConfigurationScope =
 
 export type ConfigurationSchemaId =
   | ActionParameterSchemaId
+  | "schema.equipment_configuration.beaker.v1"
   | "schema.equipment_configuration.burette.v1"
   | "schema.equipment_configuration.calorimeter.v1"
   | "schema.equipment_configuration.erlenmeyer_flask.v1"
@@ -49,6 +50,7 @@ export type ConfigurationSchemaId =
   | "schema.layout_configuration.calorimetry_bench.v1"
   | "schema.layout_configuration.titration_bench.v1"
   | "schema.layout_configuration.solution_preparation_bench.v1"
+  | "schema.layout_configuration.precipitation_bench.v1"
   | "schema.material_initialization.aqueous_solution.v1"
   | "schema.material_initialization.bounded_concentration.v1"
   | "schema.material_initialization.indicator.v1"
@@ -77,7 +79,9 @@ export type QuantityPresetId =
   | "quantity-preset.sodium_hydroxide_solution_25ml.v1"
   | "quantity-preset.sodium_hydroxide_solution_50ml.v1"
   | "quantity-preset.sodium_chloride_1_000m_50ml.v1"
-  | "quantity-preset.sodium_chloride_solution_50ml.v1";
+  | "quantity-preset.sodium_chloride_solution_50ml.v1"
+  | "quantity-preset.silver_nitrate_0_100m_50ml.v1"
+  | "quantity-preset.sodium_chloride_0_100m_50ml.v1";
 
 interface ConfigurationRegistryEntryBase {
   readonly id: string;

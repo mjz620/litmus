@@ -37,7 +37,10 @@ export const ENGINE_REGISTRY_ENTRIES = [
     engineConfigIds: [
       "engine_config.titration.strong_acid_strong_base_25ml.v1"
     ],
-    seedTemplateIds: ["seed.titration.near_endpoint_22ml.v1"],
+    seedTemplateIds: [
+      "seed.titration.near_endpoint_22ml.v1",
+      "seed.titration.fresh_bench.v1"
+    ],
     semanticEventTypes: [
       "rinse_burette",
       "fill_burette",

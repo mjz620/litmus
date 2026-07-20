@@ -136,8 +136,10 @@ describe("verified component entry metadata", () => {
   });
 
   it("keeps unrelated planned component families out of the verified registry", () => {
+    // component.beaker.v1 is registered now that a general-purpose vessel
+    // exists; the rest remain planned.
+    expect(componentRegistry.has("component.beaker.v1")).toBe(true);
     for (const id of [
-      "component.beaker.v1",
       "component.graduated_cylinder.v1",
       "component.balance.v1",
       "component.heat_source_bunsen.v1"

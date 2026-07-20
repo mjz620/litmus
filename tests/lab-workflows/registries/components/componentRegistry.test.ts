@@ -10,7 +10,7 @@ import {
 
 describe("component registry", () => {
   it("lists the verified titration and solution-preparation component contracts", () => {
-    expect(componentRegistry.snapshotId).toBe("components.3.3.0");
+    expect(componentRegistry.snapshotId).toBe("components.3.4.0");
     expect(componentRegistry.list().map(({ id }) => id)).toEqual([
       "component.burette.v1",
       "component.erlenmeyer_flask.v1",
@@ -20,7 +20,8 @@ describe("component registry", () => {
       "component.volumetric_flask.v1",
       "component.wash_bottle.v1",
       "component.calorimeter.v1",
-      "component.thermometer.v1"
+      "component.thermometer.v1",
+      "component.beaker.v1"
     ]);
     expect(componentRegistrySnapshot.entries).toBe(componentRegistry.list());
   });
@@ -28,13 +29,17 @@ describe("component registry", () => {
   it("uses exact lookup and fails closed for an unknown or future ID", () => {
     expect(componentRegistry.has("component.burette.v1")).toBe(true);
     expect(componentRegistry.get("component.burette.v1").version).toBe("1.0.0");
-    expect(componentRegistry.has("component.beaker.v1")).toBe(false);
+    expect(componentRegistry.has("component.graduated_cylinder.v1")).toBe(
+      false
+    );
 
-    expect(() => componentRegistry.get("component.beaker.v1")).toThrowError(
+    expect(() =>
+      componentRegistry.get("component.graduated_cylinder.v1")
+    ).toThrowError(
       expect.objectContaining({
         name: "ComponentRegistryError",
         code: "component_registry.unknown_id",
-        registryId: "component.beaker.v1"
+        registryId: "component.graduated_cylinder.v1"
       })
     );
   });

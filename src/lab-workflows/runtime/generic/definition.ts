@@ -163,10 +163,32 @@ function validateEquipment(
   return parsed.data;
 }
 
+/**
+ * Resolve the mechanic that will apply this action.
+ *
+ * An action nominates one apparatus's adapter (`pour_liquid` names the
+ * calorimeter's), which would pin every pour to that one vessel. So prefer an
+ * adapter belonging to a participating equipment instance that supports both
+ * this equipment and this action, and fall back to the action's nominee. This
+ * is what lets a beaker and a calorimeter both receive the same pour while
+ * each keeps its own mechanics.
+ */
 function adapterFor(
   compiled: CompiledGenericRuntime,
-  binding: CompiledActionBinding
+  binding: CompiledActionBinding,
+  participantEquipmentDefinitionIds: readonly string[] = []
 ): GenericMechanicalAdapterPort {
+  const participantAdapter = compiled.ports.mechanicalAdapters.find(
+    (candidate) =>
+      candidate.supportedActionIds.includes(binding.permission.actionId) &&
+      participantEquipmentDefinitionIds.some((equipmentDefinitionId) =>
+        candidate.supportedEquipmentDefinitionIds.includes(
+          equipmentDefinitionId
+        )
+      )
+  );
+  if (participantAdapter) return participantAdapter;
+
   const adapter = compiled.ports.mechanicalAdapters.find(
     ({ adapterId }) => adapterId === binding.mechanicalAdapterId
   );
@@ -1145,7 +1167,13 @@ export function createGenericLabDefinition(
         );
       }
     } else {
-      const adapter = adapterFor(compiled, resolved.binding);
+      const adapter = adapterFor(
+        compiled,
+        resolved.binding,
+        [resolved.source, ...resolved.targets]
+          .filter((participant) => participant != null)
+          .map(({ equipmentDefinitionId }) => equipmentDefinitionId)
+      );
       runCheck(
         () => adapter.checkPreconditions(mechanicalContext),
         ERROR.preconditionFailed,

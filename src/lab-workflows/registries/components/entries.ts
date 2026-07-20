@@ -771,5 +771,95 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     safetyConstraintIds: ["safety.virtual_calorimetry_ppe_notice.v1"],
     compatibleFamilyIds: [],
     performanceTier: "core"
+  },
+  {
+    /*
+     * General-purpose vessel. Deliberately family-neutral and role-open: it is
+     * the swappable default any lab can pour into, gated by capability rather
+     * than by an allowlist naming it.
+     */
+    id: "component.beaker.v1",
+    version: "1.0.0",
+    displayName: "Beaker",
+    capabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.receive_liquid.v1",
+      "capability.observe_color.v1",
+      "capability.mix.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.beaker.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.beaker.250ml.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.beaker.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.beaker.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Receive poured liquids from any registered source, show the resulting appearance, and mix combined solutions.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "capacityML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Configured beaker working volume."
+        },
+        {
+          key: "totalVolumeML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Total liquid volume held in the beaker."
+        },
+        {
+          key: "observableColor",
+          valueType: "string",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Engine-owned appearance projected into the contents."
+        },
+        {
+          key: "mixed",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether the beaker contents have been mixed."
+        },
+        {
+          key: "mixCount",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Number of completed mix actions."
+        }
+      ]
+    },
+    allowedActionIds: ["action.pour_liquid.v1", "action.mix_solution.v1"],
+    allowedRoleIds: ["reaction_vessel", "calorimetry_vessel"],
+    emittedEventTypes: ["pour_liquid", "mix_solution"],
+    measurement: {
+      kind: "approximate_volume",
+      unitId: "unit.ml.v1",
+      capacityML: 250,
+      graduationIncrementML: 50,
+      reportIncrementML: 25,
+      toleranceML: 25,
+      quantitative: false,
+      description:
+        "Moulded graduations only; a beaker is for holding and observing, not for measuring."
+    },
+    visualAdapterId: "Beaker",
+    accessibilityRequirements: [
+      "Expose contents volume and appearance as text.",
+      "Provide keyboard pour and mix controls.",
+      "Do not rely on colour alone to communicate a reaction outcome."
+    ],
+    safetyConstraintIds: [SOLUTION_PREPARATION_SAFETY_NOTICE_ID],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
   }
 ] as const satisfies readonly ComponentRegistryEntry[];

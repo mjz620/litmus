@@ -102,6 +102,16 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "seed.titration.fresh_bench.v1",
+    "seed_template",
+    "Verified ground-state titration bench: dry burette, no indicator added.",
+    {
+      adapterKey: "titration.createInitialState:fresh",
+      scope: "model",
+      schemaId: "schema.model_configuration.strong_acid_strong_base_25ml.v1"
+    }
+  ),
+  entry(
     "seed.titration.near_endpoint_22ml.v1",
     "seed_template",
     "Verified endpoint-control seed with 22.00 mL already delivered.",
@@ -205,6 +215,17 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
       compatibleFamilyIds: [],
       scope: "equipment",
       schemaId: "schema.equipment_configuration.calorimeter.v1"
+    }
+  ),
+  entry(
+    "component_config.beaker.250ml.v1",
+    "component_configuration",
+    "Verified 250 mL general-purpose beaker configuration.",
+    {
+      compatibleComponentIds: ["component.beaker.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.beaker.v1"
     }
   ),
   entry(
@@ -365,6 +386,39 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "placement.bench_vessel_center.v1",
+    "placement",
+    "General-purpose vessel at the verified bench center.",
+    {
+      compatibleComponentIds: ["component.beaker.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.precipitation_bench.v1"
+    }
+  ),
+  entry(
+    "placement.precipitation_stock_left.v1",
+    "placement",
+    "Left ionic-stock bottle at the verified precipitation bench.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.precipitation_bench.v1"
+    }
+  ),
+  entry(
+    "placement.precipitation_stock_right.v1",
+    "placement",
+    "Right ionic-stock bottle at the verified precipitation bench.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.precipitation_bench.v1"
+    }
+  ),
+  entry(
     "placement.calorimeter_center.v1",
     "placement",
     "Coffee-cup calorimeter at the verified calorimetry bench center.",
@@ -459,6 +513,24 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "observable.precipitate_observed.v1",
+    "observable",
+    "Whether combining the vessel contents produced an insoluble product.",
+    {
+      adapterKey: "precipitateObserved",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
+    "observable.precipitate_color.v1",
+    "observable",
+    "Reported colour of the precipitate, or clear when no reaction occurred.",
+    {
+      adapterKey: "precipitateColor",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
     "observable.calorimeter_temperature_c.v1",
     "observable",
     "Equilibrium coffee-cup calorimeter temperature in Celsius from conserved thermal energy.",
@@ -528,6 +600,12 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Assess directly from deterministic event performance evidence."
   ),
   entry(
+    "assessment.observation_entry.v1",
+    "assessment_mode",
+    "Assess from a student-entered observation checked against deterministic truth.",
+    { compatibleFamilyIds: [] }
+  ),
+  entry(
     "submission.initial_burette_reading.v1",
     "submission_field",
     "Structured initial burette-reading field."
@@ -573,6 +651,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "schema.equipment_configuration.burette.v1",
     "equipment",
     "Strict metadata contract for registered burette configurations."
+  ),
+  schema(
+    "schema.equipment_configuration.beaker.v1",
+    "equipment",
+    "Strict metadata contract for registered general-purpose beaker configurations."
   ),
   schema(
     "schema.equipment_configuration.calorimeter.v1",
@@ -623,6 +706,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "schema.layout_configuration.solution_preparation_bench.v1",
     "layout",
     "Strict metadata contract for bounded solution-preparation placements."
+  ),
+  schema(
+    "schema.layout_configuration.precipitation_bench.v1",
+    "layout",
+    "Strict metadata contract for bounded precipitation-bench placements."
   ),
   schema(
     "schema.layout_configuration.calorimetry_bench.v1",
@@ -758,5 +846,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     50,
     "unit.ml.v1",
     ["reagent.sodium_chloride_aqueous.v1"]
-  )
+  ),
+  quantity("quantity-preset.silver_nitrate_0_100m_50ml.v1", 50, "unit.ml.v1", [
+    "reagent.silver_nitrate_0_100m.v1"
+  ]),
+  quantity("quantity-preset.sodium_chloride_0_100m_50ml.v1", 50, "unit.ml.v1", [
+    "reagent.sodium_chloride_0_100m.v1"
+  ])
 ] as const satisfies readonly ConfigurationRegistryEntry[];

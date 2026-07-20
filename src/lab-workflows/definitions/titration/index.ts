@@ -1,4 +1,5 @@
 import serializedEndpointControl from "./endpoint-control.v2.json";
+import serializedFullTitration from "./full-titration.v2.json";
 
 import { hashLabWorkflowSpec } from "../../hash";
 import {
@@ -52,6 +53,36 @@ export function validateStrictMigratedTitrationV2(
       `The serialized titration v2 definition is not current and runnable${
         issueCodes.length > 0 ? `: ${issueCodes}` : "."
       }`
+    );
+  }
+  return outcome.spec;
+}
+
+/**
+ * Complete titration from a ground-state bench: condition and fill the burette,
+ * add an indicator, titrate, and read. This is what a student demo should open
+ * onto; `endpoint-control` is a remediation drill that starts mid-procedure and
+ * belongs to the retry flow.
+ */
+export const FULL_TITRATION_V2_DRAFT = deepFreeze(
+  labWorkflowDraftV2Schema.parse(serializedFullTitration)
+);
+
+export const FULL_TITRATION_V2_SOURCE_HASH = hashLabWorkflowSpec(
+  FULL_TITRATION_V2_DRAFT
+);
+
+export function validateFullTitrationV2(
+  checkedAt: string
+): Readonly<ValidatedLabWorkflowSpecV2> {
+  const outcome = validateLabWorkflowSpecV2(FULL_TITRATION_V2_DRAFT, {
+    checkedAt
+  });
+  if (!outcome.schemaValid || !outcome.validation.runnable) {
+    throw new Error(
+      `The full titration v2 definition is not runnable: ${outcome.issues
+        .map(({ code, path }) => `${code}@${path}`)
+        .join(", ")}`
     );
   }
   return outcome.spec;

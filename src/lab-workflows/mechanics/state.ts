@@ -246,6 +246,14 @@ export function initializeLiquidEquipmentState(
         mixCount: 0
       });
     }
+    case "component.beaker.v1":
+      return createState(binding, {
+        capacityML: capacity(binding),
+        totalVolumeML: containedVolumeML,
+        observableColor: "clear",
+        mixed: false,
+        mixCount: 0
+      });
     default:
       fail(
         `Equipment ${binding.equipmentDefinitionId} has no liquid initializer.`,

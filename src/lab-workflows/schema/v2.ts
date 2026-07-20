@@ -421,6 +421,23 @@ export type MaterialBindingV2 = MaterialBindingV2_0 | MaterialBindingV2_1;
 export type BoundedConcentrationInitializationV2_1 = z.infer<
   typeof boundedConcentrationInitializationV2_1Schema
 >;
+
+/**
+ * Authored concentration initialization for a material binding, or undefined
+ * on v2.0 bindings that cannot carry one.
+ *
+ * Callers must not reach for `binding.initialization` behind an `in` check.
+ * `materialBindingV2Schema` is a strict object without the key, so on that
+ * union member TypeScript widens the property to `unknown`, and a truthiness
+ * guard then narrows it to `{}` — losing every field. Going through the schema
+ * keeps the result typed and matches what validation already accepted.
+ */
+export function materialBindingInitialization(
+  binding: Readonly<MaterialBindingV2>
+): BoundedConcentrationInitializationV2_1 | undefined {
+  const parsed = materialBindingV2_1Schema.safeParse(binding);
+  return parsed.success ? parsed.data.initialization : undefined;
+}
 export type PhysicalPlacementV2 = z.infer<typeof physicalPlacementV2Schema>;
 export type PhysicalLayoutSpecV2 = z.infer<typeof physicalLayoutSpecV2Schema>;
 export type PermittedActionSpecV2 = z.infer<typeof permittedActionSpecV2Schema>;

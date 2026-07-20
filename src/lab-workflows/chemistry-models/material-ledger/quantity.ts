@@ -20,9 +20,21 @@ export function quantityToIntegerUnits(
   }
   const scale = unitId === "unit.ml.v1" ? VOLUME_UNITS_PER_ML : 1;
   const scaled = Math.round(amount * scale);
+  /*
+   * Tolerance scales with magnitude. A fixed absolute epsilon rejected totals
+   * that had merely accumulated float error: ~50 dropwise 0.1 mL additions sum
+   * to 23.299999999999997, which is representable to the micro-litre but drifts
+   * past a fixed bound — so a student titrating dropwise hit a hard runtime
+   * failure partway down the burette. Genuinely sub-unit quantities are still
+   * rejected, because their error is a fraction of the amount, not of its ulp.
+   */
+  const tolerance = Math.max(
+    Number.EPSILON * 16,
+    Math.abs(amount) * Number.EPSILON * 16
+  );
   if (
     !Number.isSafeInteger(scaled) ||
-    Math.abs(scaled / scale - amount) > Number.EPSILON * 16
+    Math.abs(scaled / scale - amount) > tolerance
   ) {
     throw new MaterialLedgerError(
       ERROR.invalidAmount,

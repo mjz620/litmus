@@ -24,7 +24,10 @@ import {
 } from "../../chemistry-models/material-ledger";
 import { canonicalBoundedDecimalToNumber } from "../../material-initialization";
 import { materialRegistry } from "../../registries/reagents";
-import type { ValidatedLabWorkflowSpecV2 } from "../../schema/v2";
+import {
+  materialBindingInitialization,
+  type ValidatedLabWorkflowSpecV2
+} from "../../schema/v2";
 import type {
   CompiledGenericLabProgram,
   GenericChemistryProjection,
@@ -46,7 +49,18 @@ import {
 const STATE_SCHEMA_ID = "schema.compatibility_state.titration.v1";
 const ENGINE_CONFIG_ID =
   "engine_config.titration.strong_acid_strong_base_25ml.v1";
-const INITIALIZATION_PRESET_ID = "seed.titration.near_endpoint_22ml.v1";
+/**
+ * Seeds this adapter can start from. The endpoint preset drops the student
+ * into the last stage for retry practice; the fresh preset is a ground-state
+ * bench, which is what a full procedure needs.
+ */
+const ENDPOINT_INITIALIZATION_PRESET_ID =
+  "seed.titration.near_endpoint_22ml.v1";
+const FRESH_INITIALIZATION_PRESET_ID = "seed.titration.fresh_bench.v1";
+const SUPPORTED_INITIALIZATION_PRESET_IDS = Object.freeze([
+  ENDPOINT_INITIALIZATION_PRESET_ID,
+  FRESH_INITIALIZATION_PRESET_ID
+]);
 
 const indicatorSchema = z.enum([
   "phenolphthalein",
@@ -236,7 +250,9 @@ function exactBindings(
       LEGACY_TITRATION_RUNTIME_ADAPTER.version ||
     compatibility.engineId !== LEGACY_TITRATION_RUNTIME_ADAPTER.engineId ||
     compatibility.engineConfigurationPresetId !== ENGINE_CONFIG_ID ||
-    compatibility.initializationPresetId !== INITIALIZATION_PRESET_ID
+    !SUPPORTED_INITIALIZATION_PRESET_IDS.includes(
+      compatibility.initializationPresetId
+    )
   ) {
     fail(ERROR.contractMismatch, "Workflow legacy compatibility is not exact.");
   }
@@ -344,8 +360,7 @@ function resolveMaterialConcentrationM(
     );
   }
   const profile = materialRegistry.get(binding.materialProfileId);
-  const initialization =
-    "initialization" in binding ? binding.initialization : undefined;
+  const initialization = materialBindingInitialization(binding);
   if (initialization) {
     const contract = profile.concentrationAuthoring;
     if (
@@ -850,15 +865,28 @@ export function createLegacyTitrationRuntimePorts(
         );
       }
       const config = resolveTitrationConfigFromWorkflow(workflow, bindings);
-      const scenario = createTitrationRetryScenario(
-        "endpoint_control",
-        context.config.sessionSeed,
-        config
-      );
-      const state = titration.createInitialState(
-        scenario.config,
-        scenario.seed
-      );
+      /*
+       * A ground-state bench is the plain initial state: dry burette, no
+       * indicator, nothing delivered. Only the endpoint preset replays a
+       * partially completed titration.
+       */
+      const state =
+        workflow.compatibility?.initializationPresetId ===
+        FRESH_INITIALIZATION_PRESET_ID
+          ? titration.createInitialState(config, {
+              sessionSeed: context.config.sessionSeed
+            })
+          : (() => {
+              const scenario = createTitrationRetryScenario(
+                "endpoint_control",
+                context.config.sessionSeed!,
+                config
+              );
+              return titration.createInitialState(
+                scenario.config,
+                scenario.seed
+              );
+            })();
       return projection(context.program, state, bindings, [], []);
     },
     checkPreconditions(context) {

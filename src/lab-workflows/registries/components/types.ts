@@ -12,7 +12,8 @@ export type ComponentRegistryId =
   | "component.volumetric_flask.v1"
   | "component.wash_bottle.v1"
   | "component.calorimeter.v1"
-  | "component.thermometer.v1";
+  | "component.thermometer.v1"
+  | "component.beaker.v1";
 
 export type EquipmentStateSchemaId =
   | "schema.equipment_state.burette.v1"
@@ -23,7 +24,8 @@ export type EquipmentStateSchemaId =
   | "schema.equipment_state.volumetric_flask.v1"
   | "schema.equipment_state.wash_bottle.v1"
   | "schema.equipment_state.calorimeter.v1"
-  | "schema.equipment_state.thermometer.v1";
+  | "schema.equipment_state.thermometer.v1"
+  | "schema.equipment_state.beaker.v1";
 
 export type ComponentConfigurationPresetId =
   | "component_config.burette.50ml.v1"
@@ -35,7 +37,8 @@ export type ComponentConfigurationPresetId =
   | "component_config.volumetric_flask.100ml.v1"
   | "component_config.wash_bottle.250ml.v1"
   | "component_config.calorimeter.coffee_cup_100ml.v1"
-  | "component_config.thermometer.digital_0_1c.v1";
+  | "component_config.thermometer.digital_0_1c.v1"
+  | "component_config.beaker.250ml.v1";
 
 export type VisualAdapterDefinitionId =
   | "visual-adapter.burette.v1"
@@ -46,7 +49,8 @@ export type VisualAdapterDefinitionId =
   | "visual-adapter.volumetric_flask.v1"
   | "visual-adapter.wash_bottle.v1"
   | "visual-adapter.calorimeter.v1"
-  | "visual-adapter.thermometer.v1";
+  | "visual-adapter.thermometer.v1"
+  | "visual-adapter.beaker.v1";
 
 export type MechanicalAdapterId =
   | "mechanical-adapter.burette.v1"
@@ -57,7 +61,8 @@ export type MechanicalAdapterId =
   | "mechanical-adapter.volumetric_flask.v1"
   | "mechanical-adapter.wash_bottle.v1"
   | "mechanical-adapter.calorimeter.v1"
-  | "mechanical-adapter.thermometer.v1";
+  | "mechanical-adapter.thermometer.v1"
+  | "mechanical-adapter.beaker.v1";
 
 export type ComponentStateValueType =
   | "boolean"
@@ -127,6 +132,7 @@ export interface ComponentRegistryEntry {
    * New contracts use visualAdapterDefinitionId, which is an exact registry ID.
    */
   readonly visualAdapterId:
+    | "Beaker"
     | "Burette"
     | "Calorimeter"
     | "ErlenmeyerFlask"
@@ -143,7 +149,7 @@ export interface ComponentRegistryEntry {
 }
 
 export interface ComponentRegistrySnapshot {
-  readonly snapshotId: "components.3.3.0";
+  readonly snapshotId: "components.3.4.0";
   readonly entries: readonly ComponentRegistryEntry[];
 }
 
@@ -153,7 +159,8 @@ export const LEGACY_COMPONENT_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "components.2.1.0",
   "components.3.0.0",
   "components.3.1.0",
-  "components.3.2.0"
+  "components.3.2.0",
+  "components.3.3.0"
 ] as const);
 
 export type ComponentRegistryErrorCode =

@@ -137,10 +137,10 @@ describe("serialized strict migrated titration v2 definition", () => {
           capabilities: "capabilities.2.2.0",
           actions: "actions.3.1.0",
           chemistryModels: "chemistry-models.2.1.0",
-          components: "components.3.3.0",
-          configurations: "configurations.5.2.0",
+          components: "components.3.4.0",
+          configurations: "configurations.5.4.0",
           scenePlacements: "scene-placements.2.1.0",
-          materials: "reagents.5.1.0"
+          materials: "reagents.5.2.0"
         })
       },
       compatibility: {
