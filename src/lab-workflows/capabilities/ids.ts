@@ -32,7 +32,8 @@ export const CHEMISTRY_CAPABILITY_IDS = Object.freeze([
   "chemistry.acid_base_equilibrium.v1",
   "chemistry.indicator_response.v1",
   "chemistry.instrument_observables.v1",
-  "chemistry.thermal_energy.v1"
+  "chemistry.thermal_energy.v1",
+  "chemistry.precipitation_solubility.v1"
 ] as const);
 
 export type ChemistryCapabilityId = (typeof CHEMISTRY_CAPABILITY_IDS)[number];

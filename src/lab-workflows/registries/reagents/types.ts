@@ -21,7 +21,9 @@ export type ReagentRegistryId =
   | "reagent.sodium_hydroxide_0_100m.v1"
   | "reagent.sodium_hydroxide_aqueous.v1"
   | "reagent.sodium_chloride_aqueous.v1"
-  | "reagent.sodium_chloride_1_000m.v1";
+  | "reagent.sodium_chloride_1_000m.v1"
+  | "reagent.silver_nitrate_0_100m.v1"
+  | "reagent.sodium_chloride_0_100m.v1";
 
 export type MaterialProfileId = ReagentRegistryId;
 export type MaterialPhase = "aqueous_solution" | "indicator" | "pure_liquid";

@@ -124,10 +124,11 @@ describe("Lab Composer supporting registries", () => {
       configurationRegistry.get(id);
     }
     for (const id of engine.workflowEventTypeIds) eventTypeRegistry.get(id);
-    expect(engineRegistry.snapshotId).toBe("engines.1.2.0");
+    expect(engineRegistry.snapshotId).toBe("engines.1.3.0");
     expect(LEGACY_ENGINE_REGISTRY_SNAPSHOT_IDS).toEqual([
       "engines.1.0.0",
-      "engines.1.1.0"
+      "engines.1.1.0",
+      "engines.1.2.0"
     ]);
 
     for (const flag of eventFlagRegistry.list()) {
@@ -294,7 +295,9 @@ describe("Lab Composer supporting registries", () => {
   it("keeps planned families, engines, and reagents unavailable while retaining the safety rejection policy", () => {
     expect(engineRegistry.has("engine.precipitation.v1")).toBe(false);
     expect(engineRegistry.has("engine.calorimetry.v1")).toBe(false);
-    expect(reagentRegistry.has("reagent.silver_nitrate_0_100m.v1")).toBe(false);
+    // Silver nitrate is registered now that native precipitation chemistry
+    // exists; the precipitation *engine* remains planned.
+    expect(reagentRegistry.has("reagent.silver_nitrate_0_100m.v1")).toBe(true);
     expect(configurationRegistry.has("seed.precipitation.unmixed.v1")).toBe(
       false
     );

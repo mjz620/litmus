@@ -58,13 +58,23 @@ describe("chemistry model metadata registry", () => {
         ]
       }),
       expect.objectContaining({
+        id: "chemistry-model.precipitation.v1",
+        availability: "verified",
+        providedCapabilityIds: ["chemistry.precipitation_solubility.v1"],
+        requiredCapabilityIds: [
+          "chemistry.material_ledger.v1",
+          "chemistry.volume_conservation.v1",
+          "chemistry.solution_mixing.v1"
+        ]
+      }),
+      expect.objectContaining({
         id: "chemistry-model.legacy_titration.v1",
         availability: "verified",
         compatibilityRuntimeAdapterId: "runtime-adapter.titration.v1"
       })
     ]);
     expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.2.1.0");
-    expect(chemistryModelRegistry.list()).toHaveLength(4);
+    expect(chemistryModelRegistry.list()).toHaveLength(5);
     expect(chemistryModelRegistrySnapshot.entries).toBe(
       chemistryModelRegistry.list()
     );

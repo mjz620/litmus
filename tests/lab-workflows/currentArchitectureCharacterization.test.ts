@@ -29,10 +29,9 @@ import {
  * an explicit compatibility/migration test instead of silently deleting it.
  */
 describe("current Lab Composer architecture characterization", () => {
-  it("has two static experiment plugins but only one Composer engine", () => {
+  it("has one static experiment plugin and one Composer engine", () => {
     expect(listExperimentManifests().map(({ id }) => id)).toEqual([
-      "acid_base_titration",
-      "precipitation_solubility"
+      "acid_base_titration"
     ]);
     expect(engineRegistry.list().map(({ id }) => id)).toEqual([
       "engine.titration.v1"

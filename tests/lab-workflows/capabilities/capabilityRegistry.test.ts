@@ -37,7 +37,8 @@ describe("capability registry", () => {
       "chemistry.acid_base_equilibrium.v1",
       "chemistry.indicator_response.v1",
       "chemistry.instrument_observables.v1",
-      "chemistry.thermal_energy.v1"
+      "chemistry.thermal_energy.v1",
+      "chemistry.precipitation_solubility.v1"
     ]);
     expect(capabilityRegistry.snapshotId).toBe("capabilities.2.2.0");
     expect(capabilityRegistrySnapshot.entries).toBe(capabilityRegistry.list());

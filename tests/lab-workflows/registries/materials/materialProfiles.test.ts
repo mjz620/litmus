@@ -42,7 +42,7 @@ import { createSchemaValidWorkflowDraft } from "../../schema/fixtures";
 describe("LC2-102 material profiles", () => {
   it("evolves the exact reagent entries through one material facade", () => {
     expect(materialRegistry).toBe(reagentRegistry);
-    expect(reagentRegistry.snapshotId).toBe("reagents.5.1.0");
+    expect(reagentRegistry.snapshotId).toBe("reagents.5.2.0");
     expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual([
       "reagents.1.0.0",
       "reagents.2.0.0",
@@ -51,7 +51,8 @@ describe("LC2-102 material profiles", () => {
       "reagents.3.0.0",
       "reagents.3.1.0",
       "reagents.4.0.0",
-      "reagents.5.0.0"
+      "reagents.5.0.0",
+      "reagents.5.1.0"
     ]);
     expect(materialRegistry.list().map(({ id }) => id)).toEqual([
       "reagent.hydrochloric_acid_0_100m.v1",
@@ -65,6 +66,8 @@ describe("LC2-102 material profiles", () => {
       "reagent.distilled_water_cold_20c.v1",
       "reagent.distilled_water_hot_60c.v1",
       "reagent.sodium_chloride_aqueous.v1",
+      "reagent.silver_nitrate_0_100m.v1",
+      "reagent.sodium_chloride_0_100m.v1",
       "reagent.sodium_chloride_1_000m.v1"
     ]);
     expect(materialRegistry.has("reagent.stock_solution.v1")).toBe(false);
@@ -442,7 +445,7 @@ describe("LC2-102 material profiles", () => {
       ENDPOINT_CONTROL_PRELAB_EXPECTED_HASH
     );
     expect(outcome.validation.registrySnapshotIds.reagents).toBe(
-      "reagents.5.1.0"
+      "reagents.5.2.0"
     );
   });
 

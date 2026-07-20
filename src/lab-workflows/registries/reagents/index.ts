@@ -5,7 +5,7 @@ import type { ReagentRegistryEntry } from "./types";
 export const reagentRegistry: SupportingRegistry<ReagentRegistryEntry> =
   createSupportingRegistry(
     "reagent",
-    "reagents.5.1.0",
+    "reagents.5.2.0",
     REAGENT_REGISTRY_ENTRIES
   );
 
@@ -20,7 +20,8 @@ export const LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "reagents.3.0.0",
   "reagents.3.1.0",
   "reagents.4.0.0",
-  "reagents.5.0.0"
+  "reagents.5.0.0",
+  "reagents.5.1.0"
 ] as const);
 
 export { REAGENT_REGISTRY_ENTRIES } from "./entries";

@@ -21,7 +21,10 @@ export type ScenePlacementId =
   | "placement.calorimeter_center.v1"
   | "placement.calorimetry_thermometer.v1"
   | "placement.calorimetry_wash_left.v1"
-  | "placement.calorimetry_stock_right.v1";
+  | "placement.calorimetry_stock_right.v1"
+  | "placement.bench_vessel_center.v1"
+  | "placement.precipitation_stock_left.v1"
+  | "placement.precipitation_stock_right.v1";
 
 export type SceneAssemblyId = "assembly.dispense_station.v1";
 export type SceneAnchorId =
@@ -38,7 +41,10 @@ export type SceneAnchorId =
   | "anchor.calorimetry.center.v1"
   | "anchor.calorimetry.thermometer.v1"
   | "anchor.calorimetry.wash.v1"
-  | "anchor.calorimetry.stock.v1";
+  | "anchor.calorimetry.stock.v1"
+  | "anchor.bench.vessel.v1"
+  | "anchor.precipitation.stock_left.v1"
+  | "anchor.precipitation.stock_right.v1";
 
 export type SceneVector3 = readonly [number, number, number];
 export type SceneVector2 = readonly [number, number];

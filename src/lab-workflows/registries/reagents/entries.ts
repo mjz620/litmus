@@ -371,6 +371,66 @@ export const REAGENT_REGISTRY_ENTRIES = [
     availability: "verified"
   },
   {
+    id: "reagent.silver_nitrate_0_100m.v1",
+    version: "1.0.0",
+    displayName: "0.100 M silver nitrate solution",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: [
+      "chemistry.precipitation_solubility.v1"
+    ],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.silver_nitrate_0_100m_50ml.v1"],
+    safetyPolicyIds: SOLUTION_SAFETY,
+    profileKind: "aqueous_solution",
+    concentrationM: 0.1,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: [],
+    allowedRoleIds: ["stock_solution"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ],
+    safetyConstraintIds: SOLUTION_SAFETY,
+    availability: "verified"
+  },
+  {
+    id: "reagent.sodium_chloride_0_100m.v1",
+    version: "1.0.0",
+    displayName: "0.100 M sodium chloride solution",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: [
+      "chemistry.precipitation_solubility.v1"
+    ],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.sodium_chloride_0_100m_50ml.v1"],
+    safetyPolicyIds: SOLUTION_SAFETY,
+    profileKind: "aqueous_solution",
+    concentrationM: 0.1,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: [],
+    allowedRoleIds: ["stock_solution"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ],
+    safetyConstraintIds: SOLUTION_SAFETY,
+    availability: "verified"
+  },
+  {
     id: "reagent.sodium_chloride_1_000m.v1",
     version: "1.0.0",
     displayName: "1.000 M sodium chloride stock solution",

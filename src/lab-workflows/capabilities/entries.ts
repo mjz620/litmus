@@ -165,5 +165,11 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "Thermal energy",
     "Provides verified coffee-cup thermal-balance observables for registered water mixes.",
     "verified"
+  ),
+  chemistry(
+    "chemistry.precipitation_solubility.v1",
+    "Precipitation and solubility",
+    "Provides verified precipitate identity, colour, and net ionic equations for registered ionic solution pairs.",
+    "verified"
   )
 ] as const satisfies readonly CapabilityDefinition[];

@@ -252,5 +252,48 @@ export const VERIFIED_SCENE_PLACEMENT_ENTRIES = [
     footprintCenterXZ: [0.45, 0.12],
     footprintHalfExtentsXZ: [0.1, 0.1],
     rotationOrder: 0
+  },
+  {
+    /* Centre-bench working slot, clear of both reagent stations. */
+    id: "placement.bench_vessel_center.v1",
+    version: "1.0.0",
+    displayName: "Center bench vessel",
+    equipmentDefinitionId: "component.beaker.v1",
+    visualAdapterDefinitionId: "visual-adapter.beaker.v1",
+    anchorId: "anchor.bench.vessel.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0, 0.2],
+    footprintHalfExtentsXZ: [0.09, 0.09],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.precipitation_stock_left.v1",
+    version: "1.0.0",
+    displayName: "Precipitation left stock station",
+    equipmentDefinitionId: "component.reagent_bottle.v1",
+    visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
+    anchorId: "anchor.precipitation.stock_left.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [-0.45, 0.12],
+    footprintHalfExtentsXZ: [0.1, 0.1],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.precipitation_stock_right.v1",
+    version: "1.0.0",
+    displayName: "Precipitation right stock station",
+    equipmentDefinitionId: "component.reagent_bottle.v1",
+    visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
+    anchorId: "anchor.precipitation.stock_right.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0.45, 0.12],
+    footprintHalfExtentsXZ: [0.1, 0.1],
+    rotationOrder: 0
   }
 ] as const satisfies readonly VerifiedScenePlacement[];

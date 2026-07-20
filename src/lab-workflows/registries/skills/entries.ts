@@ -1,7 +1,6 @@
 import type { SkillRegistryDefinition } from "./types";
 
 const TITRATION = "family.acid_base_titration.v1";
-const PRECIPITATION = "family.precipitation_solubility.v1";
 const CALORIMETRY = "family.calorimetry.v1";
 
 export const SKILL_REGISTRY_DEFINITIONS = [
@@ -120,7 +119,9 @@ export const SKILL_REGISTRY_DEFINITIONS = [
     description:
       "Writes a balanced net ionic equation and excludes spectator ions using verified reaction truth.",
     aliases: ["net_ionic_equation"],
-    supportedFamilyIds: [PRECIPITATION],
+    // Stays family-bound, and therefore planned, until its assessment mode,
+    // evidence reason, and retry template are registered.
+    supportedFamilyIds: ["family.precipitation_solubility.v1"],
     requiredComponentIds: ["component.beaker.v1"],
     recommendedComponentIds: ["component.reagent_bottle.v1"],
     relevantEventFlagIds: [],
@@ -139,7 +140,7 @@ export const SKILL_REGISTRY_DEFINITIONS = [
     description:
       "Connects a visible precipitate observation to verified solubility truth without guessing product identity.",
     aliases: [],
-    supportedFamilyIds: [PRECIPITATION],
+    supportedFamilyIds: [],
     requiredComponentIds: [
       "component.beaker.v1",
       "component.reagent_bottle.v1"

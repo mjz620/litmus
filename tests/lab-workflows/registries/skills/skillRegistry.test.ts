@@ -25,6 +25,7 @@ describe("canonical Lab Composer skill registry", () => {
       "burette_conditioning",
       "stoichiometry",
       "significant_figures",
+      "precipitate_observation",
       "heat_transfer",
       "volumetric_transfer",
       "solution_dilution",
@@ -33,7 +34,6 @@ describe("canonical Lab Composer skill registry", () => {
     ]);
     expect(planned).toEqual([
       "net_ionic_equations",
-      "precipitate_observation",
       "calorimetry_sign_convention"
     ]);
   });

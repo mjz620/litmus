@@ -36,9 +36,14 @@ describe("verified skill compatibility", () => {
   });
 
   it("keeps planned precipitation and sign-convention skills non-authorable", () => {
+    // precipitate_observation is verified now that the beaker and a native
+    // precipitation lab exist; net_ionic_equations stays planned until its
+    // evidence reason and retry template are registered.
+    expect(skillRegistry.get("precipitate_observation").availability).toBe(
+      "verified"
+    );
     for (const id of [
       "net_ionic_equations",
-      "precipitate_observation",
       "calorimetry_sign_convention"
     ] as const) {
       const skill = skillRegistry.get(id);
