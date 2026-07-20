@@ -188,10 +188,13 @@ describe("LC2-802 production flow seams", () => {
     });
   });
 
-  it("defaults student titration to setup-driven and keeps coach offline fallback usable", async () => {
+  it("defaults student titration to native_v2 and keeps the setup-driven rollback with its coach fallback usable", async () => {
     expect(resolveLabSessionRuntimeMode("acid_base_titration", undefined)).toBe(
-      "setup_driven_v2"
+      "native_v2"
     );
+    expect(
+      resolveLabSessionRuntimeMode("acid_base_titration", "setup-v2")
+    ).toBe("setup_driven_v2");
     const store = createLabStore({
       coachClient: {
         async request() {

@@ -1,6 +1,23 @@
 // Acid-base titration truth layer. Chemistry is deterministic and local; the
 // tutoring layer consumes emitted SemanticEvents and never computes chemistry.
+//
+// The pure chemistry (computePH, equivalenceVolumeML, indicator responses,
+// and the technique thresholds) now lives in the native chemistry model at
+// src/lab-workflows/chemistry-models/acid-base and is re-exported here so
+// existing imports keep working during the strangler migration.
 
+import {
+  computePH,
+  equivalenceVolumeML,
+  observedColor,
+  FAST_RATE_ML_PER_S,
+  INDICATOR_SPECIFICATIONS,
+  NEAR_ENDPOINT_ML,
+  OVERSHOOT_TOLERANCE_ML,
+  WATER_RINSE_DILUTION,
+  type AnalyteType,
+  type IndicatorId
+} from "../../lab-workflows/chemistry-models/acid-base";
 import type {
   ExperimentDefinition,
   GroundTruth,
@@ -11,11 +28,15 @@ import type {
   StepResult
 } from "../shared";
 
-export type IndicatorId =
-  | "phenolphthalein"
-  | "bromothymol_blue"
-  | "methyl_orange";
-export type AnalyteType = "strong_acid" | "weak_acid";
+export {
+  computePH,
+  equivalenceVolumeML,
+  observedColor,
+  INDICATOR_SPECIFICATIONS,
+  type AnalyteType,
+  type IndicatorId
+};
+export type { IndicatorSpecification } from "../../lab-workflows/chemistry-models/acid-base";
 
 export interface TitrationConfig {
   analyte: {
@@ -68,127 +89,6 @@ export type TitrationAction =
       reportedMolarityM: number;
       explanation: string;
     };
-
-const KW = 1e-14;
-
-/**
- * Calculate pH as a deterministic function of total titrant added.
- *
- * This uses the source contract's AP/general-chemistry approximations:
- * monoprotic analyte, strong-base titrant, 25 °C, and activity approximately
- * equal to concentration.
- */
-export function computePH(
-  config: TitrationConfig,
-  totalTitrantML: number,
-  dilutionFactor: number
-): number {
-  const { analyte, titrant } = config;
-  const analyteConcentration = analyte.concentrationM;
-  const analyteVolumeL = analyte.volumeML / 1000;
-  const titrantConcentration = titrant.concentrationM * dilutionFactor;
-  const titrantVolumeL = totalTitrantML / 1000;
-
-  const acidMoles = analyteConcentration * analyteVolumeL;
-  const baseMoles = titrantConcentration * titrantVolumeL;
-  const totalVolumeL = analyteVolumeL + titrantVolumeL;
-
-  if (analyte.type === "strong_acid") {
-    if (baseMoles < acidMoles) {
-      return -Math.log10((acidMoles - baseMoles) / totalVolumeL);
-    }
-    if (baseMoles > acidMoles) {
-      return 14 + Math.log10((baseMoles - acidMoles) / totalVolumeL);
-    }
-    return 7;
-  }
-
-  const acidDissociationConstant = Math.pow(10, -(analyte.pKa ?? 4.76));
-  const pKa = -Math.log10(acidDissociationConstant);
-
-  if (baseMoles <= 0) {
-    const hydrogenConcentration =
-      (-acidDissociationConstant +
-        Math.sqrt(
-          acidDissociationConstant * acidDissociationConstant +
-            4 * acidDissociationConstant * analyteConcentration
-        )) /
-      2;
-    return -Math.log10(hydrogenConcentration);
-  }
-
-  if (baseMoles < acidMoles) {
-    return pKa + Math.log10(baseMoles / (acidMoles - baseMoles));
-  }
-
-  if (baseMoles === acidMoles) {
-    const conjugateBaseConcentration = acidMoles / totalVolumeL;
-    const hydroxideConcentration = Math.sqrt(
-      (KW / acidDissociationConstant) * conjugateBaseConcentration
-    );
-    return 14 + Math.log10(hydroxideConcentration);
-  }
-
-  return 14 + Math.log10((baseMoles - acidMoles) / totalVolumeL);
-}
-
-/** Volume of titrant in mL required to reach the equivalence point. */
-export function equivalenceVolumeML(
-  config: TitrationConfig,
-  dilutionFactor = 1
-): number {
-  const acidMoles =
-    config.analyte.concentrationM * (config.analyte.volumeML / 1000);
-  const effectiveTitrantConcentration =
-    config.titrant.concentrationM * dilutionFactor;
-  return (acidMoles / effectiveTitrantConcentration) * 1000;
-}
-
-export interface IndicatorSpecification {
-  low: string;
-  mid: string;
-  high: string;
-  lowMax: number;
-  highMin: number;
-}
-
-export const INDICATOR_SPECIFICATIONS: Readonly<
-  Record<IndicatorId, IndicatorSpecification>
-> = {
-  phenolphthalein: {
-    low: "colorless",
-    mid: "faint pink",
-    high: "pink",
-    lowMax: 8.2,
-    highMin: 10
-  },
-  bromothymol_blue: {
-    low: "yellow",
-    mid: "green",
-    high: "blue",
-    lowMax: 6,
-    highMin: 7.6
-  },
-  methyl_orange: {
-    low: "red",
-    mid: "orange",
-    high: "yellow",
-    lowMax: 3.1,
-    highMin: 4.4
-  }
-};
-
-export function observedColor(indicator: IndicatorId, pH: number): string {
-  const specification = INDICATOR_SPECIFICATIONS[indicator];
-  if (pH < specification.lowMax) return specification.low;
-  if (pH > specification.highMin) return specification.high;
-  return specification.mid;
-}
-
-const NEAR_ENDPOINT_ML = 2;
-const FAST_RATE_ML_PER_S = 0.5;
-const OVERSHOOT_TOLERANCE_ML = 0.3;
-const WATER_RINSE_DILUTION = 0.98;
 
 const SKILLS: SkillDefinition[] = [
   {

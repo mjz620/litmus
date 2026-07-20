@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { NormalizedLabAction } from "../../../src/lab-workflows/runtime/generic/types";
+
 import {
   CONCENTRATION_DILUTION_ERROR_CODES,
   CONCENTRATION_DILUTION_MODULE,
@@ -262,6 +264,16 @@ function applySequence(
   return { fixture, ledger, state };
 }
 
+/** The normalized action a transfer arrives as, for transition contexts. */
+const TRANSFER_ACTION: NormalizedLabAction = {
+  schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
+  permissionId: "permission.transfer_liquid.v1",
+  actionId: "action.transfer_liquid.v1",
+  sourceEquipmentInstanceId: STOCK,
+  targetEquipmentInstanceIds: [FLASK],
+  parameters: []
+};
+
 describe("LC2-501 bounded concentration/dilution chemistry", () => {
   it("resolves the verified provider and its three explicit dependencies", () => {
     const resolution = resolveChemistryModelProviders([
@@ -491,6 +503,7 @@ describe("LC2-501 bounded concentration/dilution chemistry", () => {
     const next = coordinator.transition({
       program,
       previous: initial,
+      action: TRANSFER_ACTION,
       equipment: fixture.equipment,
       materialLedger: nextLedger,
       materialAction: transfer

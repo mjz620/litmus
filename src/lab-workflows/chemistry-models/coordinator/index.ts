@@ -6,6 +6,7 @@ export {
 } from "./errors";
 export type {
   CreateChemistryModelCoordinatorOptions,
+  GenericChemistryActionContext,
   GenericChemistryModule,
   GenericChemistryModuleInitializationContext,
   GenericChemistryModuleRegistration

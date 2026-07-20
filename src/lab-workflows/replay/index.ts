@@ -7,6 +7,13 @@ export {
 } from "./genericReplay";
 export { replayLegacyTitrationActions } from "./legacyTitration";
 export {
+  PARITY_TRACE_SCHEMA_VERSION,
+  projectParityTrace,
+  type ParityEquipmentRecord,
+  type ParityStepRecord,
+  type ParityTraceRecord
+} from "./parity";
+export {
   LAB_TRACE_ERROR_CODES,
   LabTraceError,
   type LabTraceErrorCode

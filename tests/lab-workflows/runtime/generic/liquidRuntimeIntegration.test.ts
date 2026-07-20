@@ -101,7 +101,20 @@ describe("generic liquid runtime integration", () => {
     );
     expect(burette && stateField(burette, "availableML")).toBe(10);
     expect(burette && stateField(burette, "meniscusReadingML")).toBe(40);
-    expect(transition.events).toEqual([]);
+    expect(transition.events).toEqual([
+      {
+        type: "fill_burette",
+        tSim: 0,
+        observation: {
+          requestedML: 10,
+          resultingAvailableML: 10,
+          currentReadingML: 40,
+          fillKind: "initial"
+        },
+        flags: [],
+        evidence: []
+      }
+    ]);
     const modelTransition = vi.mocked(runtimePorts.models.transition).mock
       .calls[0]![0];
     expect(modelTransition.materialAction).toMatchObject({

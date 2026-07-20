@@ -495,6 +495,24 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     { adapterKey: "endpointObserved" }
   ),
   entry(
+    "observable.solution_ph.v1",
+    "observable",
+    "Deterministic flask-solution pH from the acid-base equilibrium model, reported to 0.01 pH.",
+    {
+      adapterKey: "solutionPH",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
+    "observable.observed_color.v1",
+    "observable",
+    "Deterministic indicator colour of the flask solution, or 'not yet observed' before delivery.",
+    {
+      adapterKey: "observedColor",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
     "observable.solution_concentration_m.v1",
     "observable",
     "Deterministic concentration of the bounded volumetric-flask solution, reported to 0.000001 mol/L.",

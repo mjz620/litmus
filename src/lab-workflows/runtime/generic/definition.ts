@@ -1,5 +1,6 @@
 import type {
   ExperimentDefinition,
+  SemanticEvent,
   StepResult
 } from "../../../experiments/shared";
 import type { ActionParameterDefinition } from "../../registries/actions";
@@ -18,9 +19,18 @@ import {
 } from "../../chemistry-models/material-ledger";
 import type { MaterialLedger } from "../../chemistry-models/material-ledger";
 import {
+  NativeInitializationPresetError,
+  resolveNativeInitializationPreset,
+  type NativeEquipmentFieldOverride
+} from "../../seeds/nativeInitializationPresets";
+import {
   GENERIC_LAB_RUNTIME_ERROR_CODES as ERROR,
   GenericLabRuntimeError
 } from "./errors";
+import {
+  mergeEquipmentObservables,
+  projectEquipmentObservables
+} from "./equipmentObservables";
 import {
   genericChemistryProjectionSchema,
   genericEquipmentStateSchema,
@@ -830,6 +840,67 @@ function parseTransition(
   return { equipment, materialAction, events: events.data };
 }
 
+function applyEquipmentFieldOverrides(
+  equipment: readonly GenericEquipmentState[],
+  overrides: readonly NativeEquipmentFieldOverride[]
+): readonly GenericEquipmentState[] {
+  let next = equipment;
+  for (const override of overrides) {
+    const state = next.find(
+      ({ instanceId }) => instanceId === override.equipmentInstanceId
+    );
+    if (!state) {
+      fail(
+        ERROR.transitionRejected,
+        `Initialization preset targets unknown equipment ${override.equipmentInstanceId}.`,
+        { equipmentInstanceId: override.equipmentInstanceId }
+      );
+    }
+    const known = new Set(state.fields.map(({ key }) => key));
+    for (const key of Object.keys(override.fields)) {
+      if (!known.has(key)) {
+        fail(
+          ERROR.transitionRejected,
+          `Initialization preset writes unknown field ${override.equipmentInstanceId}.${key}.`,
+          { equipmentInstanceId: override.equipmentInstanceId, stateField: key }
+        );
+      }
+    }
+    const seeded: GenericEquipmentState = {
+      ...state,
+      fields: state.fields.map((field) =>
+        Object.hasOwn(override.fields, field.key)
+          ? { key: field.key, value: override.fields[field.key]! }
+          : { ...field }
+      )
+    };
+    next = next.map((candidate) =>
+      candidate.instanceId === seeded.instanceId ? seeded : candidate
+    );
+  }
+  return next;
+}
+
+/**
+ * Merge registered equipment-owned observables into the chemistry projection.
+ * The chemistry models own solution truth; measurement observables owned by an
+ * apparatus (for example the burette meniscus reading) project from equipment
+ * state so rules and evidence can reference them without any model faking
+ * equipment knowledge.
+ */
+function withEquipmentObservables(
+  program: CompiledGenericRuntime["program"],
+  chemistry: GenericChemistryProjection,
+  equipment: readonly GenericEquipmentState[]
+): GenericChemistryProjection {
+  const projected = projectEquipmentObservables(program, equipment);
+  if (projected.length === 0) return chemistry;
+  return {
+    ...chemistry,
+    observables: mergeEquipmentObservables(chemistry.observables, projected)
+  };
+}
+
 function incrementAttempts(
   state: GenericLabState,
   permissionId: string
@@ -946,7 +1017,48 @@ export function createGenericLabDefinition(
         );
       }
     } else {
+      /*
+       * Native initialization presets are registered deterministic seeds: the
+       * preset first re-locates authored materials (so mechanical
+       * initializers derive contained volumes from material truth), then
+       * overrides the mechanical-history fields the ledger cannot express.
+       * The chemistry models re-derive their state from the same seeded
+       * equipment and ledger, so no serialized engine state is involved.
+       */
+      const initialization = program.workflow.initialization ?? null;
+      let equipmentFieldOverrides: readonly NativeEquipmentFieldOverride[] =
+        [];
+      let simulatedElapsedSeconds = 0;
       materialLedger = authoredMaterialLedger;
+      if (initialization) {
+        const preset = resolveNativeInitializationPreset(
+          initialization.presetId
+        );
+        if (!preset) {
+          fail(
+            ERROR.portUnavailable,
+            `No native initialization preset is registered for ${initialization.presetId}.`,
+            { presetId: initialization.presetId }
+          );
+        }
+        try {
+          const seeded = preset.createSeed(
+            deepFreeze({ program, authoredMaterialLedger })
+          );
+          materialLedger = validateMaterialLedger(seeded.materialLedger);
+          equipmentFieldOverrides = seeded.equipmentFieldOverrides;
+          simulatedElapsedSeconds = seeded.simulatedElapsedSeconds;
+        } catch (error) {
+          if (error instanceof GenericLabRuntimeError) throw error;
+          fail(
+            ERROR.transitionRejected,
+            error instanceof NativeInitializationPresetError
+              ? error.message
+              : `Initialization preset ${initialization.presetId} rejected this bench.`,
+            { presetId: initialization.presetId }
+          );
+        }
+      }
       const initialized = program.equipment.map((binding) => {
         const adapter = compiled.ports.mechanicalAdapters.find(
           ({ adapterId }) => adapterId === binding.mechanicalAdapterId
@@ -969,17 +1081,24 @@ export function createGenericLabDefinition(
           );
         }
       });
-      equipment = validateEquipment(initialized, program);
+      equipment = validateEquipment(
+        applyEquipmentFieldOverrides(initialized, equipmentFieldOverrides),
+        program
+      );
       try {
         chemistry = genericChemistryProjectionSchema.parse(
           compiled.ports.models.initialize(
             deepFreeze({
               program,
               equipment: deepFreeze(equipment),
-              materialLedger
+              materialLedger,
+              ...(simulatedElapsedSeconds > 0
+                ? { simulatedElapsedSeconds }
+                : {})
             })
           )
         );
+        chemistry = withEquipmentObservables(program, chemistry, equipment);
       } catch (error) {
         if (error instanceof GenericLabRuntimeError) throw error;
         if (error instanceof ChemistryModelCoordinatorError) {
@@ -1112,7 +1231,9 @@ export function createGenericLabDefinition(
     let equipment;
     let materialLedger = state.materialLedger;
     let chemistry;
-    let events;
+    // Annotated in place by the model coordinator below, so it needs a
+    // declared type rather than relying on inference from a later branch.
+    let events: readonly Readonly<SemanticEvent>[] | undefined;
     let materialAction = null;
     let materialInstanceIds: readonly string[] = [];
     let compatibilityState = state.compatibilityState;
@@ -1219,12 +1340,14 @@ export function createGenericLabDefinition(
             deepFreeze({
               program,
               previous: state.chemistry,
+              action,
               equipment,
               materialLedger,
               materialAction
             })
           )
         );
+        chemistry = withEquipmentObservables(program, chemistry, equipment);
       } catch (error) {
         if (error instanceof GenericLabRuntimeError) throw error;
         if (error instanceof ChemistryModelCoordinatorError) {
@@ -1240,6 +1363,64 @@ export function createGenericLabDefinition(
         );
       }
       events = deepFreeze([...mechanical.events]);
+      if (compiled.ports.models.annotateEvents) {
+        // Captured so the comparison closures below read a narrowed value.
+        const mechanicalEvents = events;
+        let annotated: unknown;
+        try {
+          annotated = compiled.ports.models.annotateEvents(
+            deepFreeze({
+              program,
+              modelStates: chemistry.modelStates,
+              action,
+              materialAction,
+              equipment,
+              materialLedger,
+              events
+            })
+          );
+        } catch (error) {
+          if (error instanceof GenericLabRuntimeError) throw error;
+          if (error instanceof ChemistryModelCoordinatorError) {
+            fail(
+              ERROR.transitionRejected,
+              "Model coordinator rejected event annotation.",
+              { reasonCode: error.code, ...error.details }
+            );
+          }
+          fail(
+            ERROR.transitionRejected,
+            "Model coordinator rejected event annotation."
+          );
+        }
+        const parsedAnnotated = semanticEventSchema
+          .array()
+          .safeParse(annotated);
+        if (
+          !parsedAnnotated.success ||
+          parsedAnnotated.data.length !== mechanicalEvents.length ||
+          parsedAnnotated.data.some(
+            (event, index) => event.type !== mechanicalEvents[index]!.type
+          )
+        ) {
+          fail(
+            ERROR.portContractMismatch,
+            "Model coordinator returned an invalid annotated event sequence."
+          );
+        }
+        if (
+          parsedAnnotated.data.some(
+            ({ type }) =>
+              !resolved.binding.emittedSemanticEventTypes.includes(type)
+          )
+        ) {
+          fail(
+            ERROR.portContractMismatch,
+            "Annotated events fall outside the registered event contract."
+          );
+        }
+        events = deepFreeze([...parsedAnnotated.data]);
+      }
     }
     const newEnvelopes = envelopeSemanticEvents({
       sessionId: state.sessionId,

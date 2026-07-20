@@ -54,6 +54,22 @@ export const CHEMISTRY_MODEL_REGISTRY_ENTRIES = Object.freeze([
     availability: "verified"
   },
   {
+    id: "chemistry-model.acid_base_titration.v1",
+    version: "1.0.0",
+    displayName: "Deterministic acid-base titration truth",
+    providedCapabilityIds: [
+      "chemistry.acid_base_equilibrium.v1",
+      "chemistry.indicator_response.v1",
+      "chemistry.instrument_observables.v1"
+    ],
+    requiredCapabilityIds: [
+      "chemistry.material_ledger.v1",
+      "chemistry.volume_conservation.v1",
+      "chemistry.solution_mixing.v1"
+    ],
+    availability: "verified"
+  },
+  {
     id: LEGACY_TITRATION_CHEMISTRY_MODEL.id,
     version: LEGACY_TITRATION_CHEMISTRY_MODEL.version,
     displayName: "Legacy deterministic titration truth adapter",

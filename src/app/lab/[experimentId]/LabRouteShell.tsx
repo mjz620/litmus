@@ -9,6 +9,7 @@ import { useLabSession } from "../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../experiments/registry";
 import type { TitrationRetrySkillId } from "../../../experiments/titration/retry";
 import { RetryBanner } from "../../../components/lab/retry/RetryBanner";
+import { NativeLabRouteShell } from "./NativeLabRouteShell";
 import { isTitrationState } from "../../../stores/labStore";
 import type {
   LabSessionRuntimeMode,
@@ -37,8 +38,29 @@ interface LabRouteShellProps {
  * Student-facing lab session. Internal diagnostics (seed, raw state, skills,
  * event counts, ground truth) belong exclusively to the developer testing
  * route and must never render here.
+ *
+ * The default (native_v2) routes to the capability-native workspace, which
+ * runs the validated native workflow on the generic runtime with no legacy
+ * engine; `?runtime=setup-v2` keeps the setup-driven v2 strangler rollback
+ * rendered through TitrationWorkspace, and `?runtime=legacy` the pure legacy
+ * engine.
  */
-export function LabRouteShell({
+export function LabRouteShell(props: LabRouteShellProps) {
+  if (props.runtimeMode === "native_v2") {
+    return (
+      <NativeLabRouteShell
+        experimentId={props.experimentId}
+        title={props.assignmentLabel ?? props.title}
+        replaySeed={props.replaySeed}
+        mode={props.mode}
+        setupDrivenSelection={props.setupDrivenSelection}
+      />
+    );
+  }
+  return <SetupDrivenLabRouteShell {...props} />;
+}
+
+function SetupDrivenLabRouteShell({
   experimentId,
   title,
   replaySeed,

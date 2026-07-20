@@ -6,6 +6,8 @@ import { isTitrationRetrySkillId } from "../../../experiments/titration/retry";
 import {
   ENDPOINT_DRILL_TITRATION_RUNTIME_FLAG,
   FULL_TITRATION_SETUP_SELECTION,
+  NATIVE_ENDPOINT_DRILL_SETUP_SELECTION,
+  NATIVE_FULL_TITRATION_SETUP_SELECTION,
   STRICT_TITRATION_SETUP_SELECTION,
   resolveLabSessionRuntimeMode
 } from "../../../stores/setupDrivenLabSession";
@@ -18,12 +20,13 @@ interface LabPageProps {
     retry?: string | string[];
     parent?: string | string[];
     runtime?: string | string[];
+    drill?: string | string[];
   }>;
 }
 
 export default async function LabPage({ params, searchParams }: LabPageProps) {
   const { experimentId: routeSegment } = await params;
-  const { seed, retry, parent, runtime } = await searchParams;
+  const { seed, retry, parent, runtime, drill } = await searchParams;
   const experimentId = resolveExperimentId(routeSegment);
 
   if (!experimentId) {
@@ -53,17 +56,23 @@ export default async function LabPage({ params, searchParams }: LabPageProps) {
       parentSessionId={parentSessionId}
       runtimeMode={runtimeMode}
       /*
-       * Default to the complete procedure from a clean bench. The
-       * endpoint-control drill starts mid-titration by design, so it is opt-in
-       * via ?runtime=endpoint-drill and through the retry flow, not what a
-       * student demo lands on.
+       * Default to the complete native procedure from a clean bench. The
+       * endpoint-control drill starts mid-titration by design, so it is
+       * opt-in via ?runtime=endpoint-drill (or &drill) and the retry flow,
+       * not what a student demo lands on. The strangler rollback
+       * (?runtime=setup-v2) keeps its own drill behind the same &drill flag.
        */
       setupDrivenSelection={
         runtimeMode === "setup_driven_v2"
-          ? requestedRuntime === ENDPOINT_DRILL_TITRATION_RUNTIME_FLAG
+          ? drill !== undefined
             ? STRICT_TITRATION_SETUP_SELECTION
             : FULL_TITRATION_SETUP_SELECTION
-          : undefined
+          : runtimeMode === "native_v2"
+            ? drill !== undefined ||
+              requestedRuntime === ENDPOINT_DRILL_TITRATION_RUNTIME_FLAG
+              ? NATIVE_ENDPOINT_DRILL_SETUP_SELECTION
+              : NATIVE_FULL_TITRATION_SETUP_SELECTION
+            : undefined
       }
     />
   );

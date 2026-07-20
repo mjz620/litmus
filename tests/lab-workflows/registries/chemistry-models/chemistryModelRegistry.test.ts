@@ -68,13 +68,27 @@ describe("chemistry model metadata registry", () => {
         ]
       }),
       expect.objectContaining({
+        id: "chemistry-model.acid_base_titration.v1",
+        availability: "verified",
+        providedCapabilityIds: [
+          "chemistry.acid_base_equilibrium.v1",
+          "chemistry.indicator_response.v1",
+          "chemistry.instrument_observables.v1"
+        ],
+        requiredCapabilityIds: [
+          "chemistry.material_ledger.v1",
+          "chemistry.volume_conservation.v1",
+          "chemistry.solution_mixing.v1"
+        ]
+      }),
+      expect.objectContaining({
         id: "chemistry-model.legacy_titration.v1",
         availability: "verified",
         compatibilityRuntimeAdapterId: "runtime-adapter.titration.v1"
       })
     ]);
     expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.2.1.0");
-    expect(chemistryModelRegistry.list()).toHaveLength(5);
+    expect(chemistryModelRegistry.list()).toHaveLength(6);
     expect(chemistryModelRegistrySnapshot.entries).toBe(
       chemistryModelRegistry.list()
     );

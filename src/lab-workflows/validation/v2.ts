@@ -55,6 +55,7 @@ import {
   type ReagentRegistryEntry
 } from "../registries/reagents";
 import { safetyRegistry, type SafetyRegistryEntry } from "../registries/safety";
+import { NATIVE_INITIALIZATION_PRESET_IDS } from "../seeds/nativeInitializationPresets";
 import {
   scenePlacementRegistry,
   scenePlacementsOverlap,
@@ -1693,6 +1694,114 @@ function validateChemistry(context: ValidationContext): void {
       validateTitrationNearEndpointSeed(context);
     }
   }
+  validateNativeInitialization(context);
+}
+
+/**
+ * Native initialization presets: the authored preset must resolve to a
+ * verified registered seed template with an exact native implementation, and
+ * cannot be combined with a compatibility-owned preset — the two would fight
+ * over the same bench.
+ */
+function validateNativeInitialization(context: ValidationContext): void {
+  const initialization = context.spec.initialization;
+  if (!initialization) return;
+  if (context.spec.compatibility) {
+    addIssue(
+      context,
+      6,
+      CHECK.chemistryModels,
+      ISSUE.configurationMismatch,
+      "initialization.presetId",
+      "Native initialization cannot be combined with a legacy compatibility preset.",
+      { registryId: initialization.presetId }
+    );
+    return;
+  }
+  const resolved = resolveConfiguration(
+    context,
+    initialization.presetId,
+    "initialization.presetId",
+    "seed_template",
+    6,
+    CHECK.chemistryModels
+  );
+  if (resolved === null) return;
+  if (!NATIVE_INITIALIZATION_PRESET_IDS.includes(initialization.presetId)) {
+    addIssue(
+      context,
+      6,
+      CHECK.chemistryModels,
+      ISSUE.registryIdUnavailable,
+      "initialization.presetId",
+      `No native initialization implementation is registered for ${initialization.presetId}.`,
+      { registryId: initialization.presetId }
+    );
+    return;
+  }
+  if (initialization.presetId === "seed.titration.near_endpoint_22ml.v1") {
+    validateNativeNearEndpointSeed(context);
+  }
+}
+
+/**
+ * Native feasibility for the near-endpoint seed, mirroring the compatibility
+ * path: material roles come from registered chemistry capabilities instead of
+ * legacy role bindings.
+ */
+function validateNativeNearEndpointSeed(context: ValidationContext): void {
+  const flaskIds = new Set(
+    context.spec.equipment
+      .filter(
+        ({ equipmentDefinitionId }) =>
+          equipmentDefinitionId === "component.erlenmeyer_flask.v1"
+      )
+      .map(({ instanceId }) => instanceId)
+  );
+  const acidBaseBindings = context.spec.materials.filter((binding) =>
+    context.materialById
+      .get(binding.instanceId)
+      ?.providedChemistryCapabilityIds.includes(
+        "chemistry.acid_base_equilibrium.v1"
+      )
+  );
+  const analyte = acidBaseBindings.find(({ containerInstanceId }) =>
+    flaskIds.has(containerInstanceId)
+  );
+  const titrant = acidBaseBindings.find(
+    ({ containerInstanceId }) => !flaskIds.has(containerInstanceId)
+  );
+  if (!analyte || !titrant) return;
+  const analyteConcentrationM = resolveTitrationMaterialConcentrationM(
+    context,
+    analyte.instanceId
+  );
+  const titrantConcentrationM = resolveTitrationMaterialConcentrationM(
+    context,
+    titrant.instanceId
+  );
+  if (analyteConcentrationM === null || titrantConcentrationM === null) return;
+  const config = {
+    ...EXAMPLE_STRONG,
+    analyte: {
+      ...EXAMPLE_STRONG.analyte,
+      concentrationM: analyteConcentrationM
+    },
+    titrant: {
+      ...EXAMPLE_STRONG.titrant,
+      concentrationM: titrantConcentrationM
+    }
+  };
+  if (isNearEndpointSeedSupported(config)) return;
+  addIssue(
+    context,
+    6,
+    CHECK.chemistryModels,
+    ISSUE.titrationNearEndpointSeedUnsupported,
+    "initialization.presetId",
+    "These acid and base concentrations cannot support the near-endpoint seed: equivalence must fall within the burette capacity and leave a controlled addition window of at most 5.00 mL.",
+    { safetyRelated: false }
+  );
 }
 
 function resolveTitrationMaterialConcentrationM(
@@ -2073,10 +2182,19 @@ function conditionReachable(
         );
         return false;
       }
+      /*
+       * Endpoint completion needs a deterministic owner for
+       * observable.endpoint_observed.v1: either the legacy engine through an
+       * explicit compatibility descriptor, or a native indicator-response
+       * chemistry model requested through the workflow's capabilities.
+       */
       if (
         condition.completionPolicyId ===
           "completion.engine_endpoint_observed.v1" &&
-        !context.spec.compatibility
+        !context.spec.compatibility &&
+        !context.spec.requiredChemistryCapabilityIds.includes(
+          "chemistry.indicator_response.v1"
+        )
       ) {
         addIssue(
           context,
@@ -2084,7 +2202,7 @@ function conditionReachable(
           CHECK.rules,
           ISSUE.ruleConditionInvalid,
           `${path}.completionPolicyId`,
-          "Engine endpoint completion requires explicit legacy compatibility.",
+          "Engine endpoint completion requires explicit legacy compatibility or the native indicator-response chemistry capability.",
           { registryId: condition.completionPolicyId }
         );
         return false;

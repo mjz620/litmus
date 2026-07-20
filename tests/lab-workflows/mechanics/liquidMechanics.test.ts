@@ -236,7 +236,20 @@ describe("reusable liquid equipment mechanics", () => {
     )!;
     expect(stateField(filledBurette, "availableML")).toBe(10);
     expect(stateField(filledBurette, "meniscusReadingML")).toBe(40);
-    expect(filled.events).toEqual([]);
+    expect(filled.events).toEqual([
+      {
+        type: "fill_burette",
+        tSim: 0,
+        observation: {
+          requestedML: 10,
+          resultingAvailableML: 10,
+          currentReadingML: 40,
+          fillKind: "initial"
+        },
+        flags: [],
+        evidence: []
+      }
+    ]);
     expect(materialAmountAt(afterFillLedger, "material.water", SOURCE)).toBe(
       40
     );
@@ -350,7 +363,15 @@ describe("reusable liquid equipment mechanics", () => {
 
     expect(stateField(burette, "conditionedWith")).toBe("titrant");
     expect(transition.materialAction).toBeNull();
-    expect(transition.events).toEqual([]);
+    expect(transition.events).toEqual([
+      {
+        type: "rinse_burette",
+        tSim: 0,
+        observation: { solvent: "titrant" },
+        flags: [],
+        evidence: []
+      }
+    ]);
     expect(applyLedger(ledger, transition)).toBe(ledger);
 
     const waterLedger = initialLedger();
@@ -374,7 +395,9 @@ describe("reusable liquid equipment mechanics", () => {
       )
     ).toBe("water");
 
-    const wrongWater = context(
+    // Legacy-parity tap semantics: a water rinse transfers nothing and needs
+    // no bound distilled-water material, even from a titrant-bottle source.
+    const tapWater = context(
       action(
         "action.rinse.v1",
         SOURCE,
@@ -393,10 +416,16 @@ describe("reusable liquid equipment mechanics", () => {
         }
       ])
     );
-    expectMechanicsError(
-      () => BURETTE_MECHANICAL_ADAPTER.apply(wrongWater),
-      ERROR.materialUnavailable
-    );
+    const tapTransition = BURETTE_MECHANICAL_ADAPTER.apply(tapWater);
+    expect(tapTransition.materialAction).toBeNull();
+    expect(
+      stateField(
+        tapTransition.equipment.find(
+          ({ instanceId }) => instanceId === BURETTE
+        )!,
+        "conditionedWith"
+      )
+    ).toBe("water");
     expectMechanicsError(
       () =>
         BURETTE_MECHANICAL_ADAPTER.apply(
@@ -423,7 +452,15 @@ describe("reusable liquid equipment mechanics", () => {
 
     expect(transition.equipment).toBe(equipment);
     expect(transition.materialAction).toBeNull();
-    expect(transition.events).toEqual([]);
+    expect(transition.events).toEqual([
+      {
+        type: "read_meniscus",
+        tSim: 0,
+        observation: { reportedML: 49.95, trueML: 50, errorML: -0.05 },
+        flags: [],
+        evidence: []
+      }
+    ]);
   });
 
   it("rejects empty, ambiguous, over-capacity, reused-rinse, and incompatible paths", () => {

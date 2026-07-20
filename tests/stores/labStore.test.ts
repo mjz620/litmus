@@ -864,9 +864,9 @@ describe("lab store", () => {
     expect(store.getState().status).toBe("error");
   });
 
-  it("defaults titration to setup-driven v2 and keeps an explicit legacy escape hatch", () => {
+  it("defaults titration to native_v2 and keeps explicit rollback escape hatches", () => {
     expect(resolveLabSessionRuntimeMode("acid_base_titration", undefined)).toBe(
-      "setup_driven_v2"
+      "native_v2"
     );
     expect(
       resolveLabSessionRuntimeMode("acid_base_titration", "setup-v2")

@@ -213,6 +213,16 @@ export const presentationSpecV2Schema = z.strictObject({
     .max(LIMITS.presentationEntryCount)
 });
 
+/**
+ * Native initialization descriptor: the registered seed template the generic
+ * runtime applies deterministically at session start. Compatibility-owned
+ * workflows carry their preset inside `compatibility.initializationPresetId`
+ * instead; authoring both is a validation error.
+ */
+export const nativeInitializationSpecV2Schema = z.strictObject({
+  presetId: registryIdSchema
+});
+
 export const legacyEquipmentRoleBindingSchema = z.strictObject({
   equipmentInstanceId: workflowLocalIdSchema,
   legacyRoleId: registryIdSchema
@@ -319,6 +329,7 @@ const labWorkflowSharedShapeV2 = {
   safetyPolicyIds: referenceListSchema,
   safetyBindings: z.array(safetyBindingV2Schema).max(LIMITS.safetyBindingCount),
   presentation: presentationSpecV2Schema,
+  initialization: nativeInitializationSpecV2Schema.optional(),
   compatibility: legacyCompatibilityDescriptorV2Schema.optional(),
   provenance: migrationProvenanceV2Schema.optional()
 };
@@ -444,6 +455,9 @@ export type PermittedActionSpecV2 = z.infer<typeof permittedActionSpecV2Schema>;
 export type CoachPolicySpecV2 = z.infer<typeof coachPolicySpecV2Schema>;
 export type SafetyBindingV2 = z.infer<typeof safetyBindingV2Schema>;
 export type PresentationSpecV2 = z.infer<typeof presentationSpecV2Schema>;
+export type NativeInitializationSpecV2 = z.infer<
+  typeof nativeInitializationSpecV2Schema
+>;
 export type LegacyCompatibilityDescriptorV2 = z.infer<
   typeof legacyCompatibilityDescriptorV2Schema
 >;

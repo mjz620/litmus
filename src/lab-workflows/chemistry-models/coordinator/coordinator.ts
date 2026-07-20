@@ -1,11 +1,14 @@
+import type { SemanticEvent } from "../../../experiments/shared";
 import {
   genericObservableSchema,
-  genericStateFieldSchema
+  genericStateFieldSchema,
+  semanticEventSchema
 } from "../../runtime/generic/schemas";
 import type {
   CompiledChemistryModelBinding,
   CompiledGenericLabProgram,
   GenericChemistryProjection,
+  GenericModelAnnotationContext,
   GenericModelCoordinatorPort,
   GenericModelInitializationContext,
   GenericModelState,
@@ -20,6 +23,7 @@ import {
 } from "./errors";
 import type {
   CreateChemistryModelCoordinatorOptions,
+  GenericChemistryActionContext,
   GenericChemistryModule,
   GenericChemistryModuleRegistration
 } from "./types";
@@ -204,13 +208,92 @@ function deriveProjection(
       values[observable.observableId] = observable.value;
     }
   }
+  for (const binding of program.chemistryModels) {
+    const implementation = modules.get(binding.modelId)!;
+    if (!implementation.deriveGroundTruthValues) continue;
+    const state = modelStateFor(modelStates, binding);
+    let derived: Readonly<Record<string, number>>;
+    try {
+      derived = implementation.deriveGroundTruthValues(
+        deepFreeze(state.fields.map((field) => ({ ...field })))
+      );
+    } catch {
+      fail(
+        ERROR.groundTruthInvalid,
+        `Chemistry model ${binding.modelId} rejected ground-truth derivation.`,
+        { modelId: binding.modelId }
+      );
+    }
+    if (typeof derived !== "object" || derived === null) {
+      fail(
+        ERROR.groundTruthInvalid,
+        `Chemistry model ${binding.modelId} returned invalid ground truth.`,
+        { modelId: binding.modelId }
+      );
+    }
+    for (const [key, value] of Object.entries(derived)) {
+      if (
+        key.length === 0 ||
+        key.length > 240 ||
+        typeof value !== "number" ||
+        !Number.isFinite(value)
+      ) {
+        fail(
+          ERROR.groundTruthInvalid,
+          `Chemistry model ${binding.modelId} returned an invalid ground-truth value for ${key}.`,
+          { modelId: binding.modelId, groundTruthKey: key }
+        );
+      }
+      if (Object.hasOwn(values, key)) {
+        fail(
+          ERROR.groundTruthCollision,
+          `Ground-truth value ${key} has multiple owners.`,
+          { modelId: binding.modelId, groundTruthKey: key }
+        );
+      }
+      values[key] = value;
+    }
+  }
+  const notes: string[] = [];
+  for (const binding of program.chemistryModels) {
+    const implementation = modules.get(binding.modelId)!;
+    if (!implementation.deriveGroundTruthNotes) continue;
+    const state = modelStateFor(modelStates, binding);
+    let derived: readonly string[];
+    try {
+      derived = implementation.deriveGroundTruthNotes(
+        deepFreeze(state.fields.map((field) => ({ ...field })))
+      );
+    } catch {
+      fail(
+        ERROR.groundTruthInvalid,
+        `Chemistry model ${binding.modelId} rejected ground-truth note derivation.`,
+        { modelId: binding.modelId }
+      );
+    }
+    if (
+      !Array.isArray(derived) ||
+      derived.length > 256 ||
+      derived.some(
+        (note) =>
+          typeof note !== "string" || note.length === 0 || note.length > 4_000
+      )
+    ) {
+      fail(
+        ERROR.groundTruthInvalid,
+        `Chemistry model ${binding.modelId} returned invalid ground-truth notes.`,
+        { modelId: binding.modelId }
+      );
+    }
+    notes.push(...derived);
+  }
   return deepFreeze({
     modelStates: modelStates.map((state) => ({
       ...state,
       fields: state.fields.map((field) => ({ ...field }))
     })),
     observables,
-    groundTruth: { values, notes: [] }
+    groundTruth: { values, notes }
   });
 }
 
@@ -257,7 +340,10 @@ export function createChemistryModelCoordinator(
       equipmentBindings: context.program.equipment,
       materialBindings: context.program.materials,
       equipment: context.equipment,
-      materialLedger: context.materialLedger
+      materialLedger: context.materialLedger,
+      ...(context.simulatedElapsedSeconds !== undefined
+        ? { simulatedElapsedSeconds: context.simulatedElapsedSeconds }
+        : {})
     });
     for (const binding of context.program.chemistryModels) {
       const implementation = modules.get(binding.modelId)!;
@@ -280,6 +366,22 @@ export function createChemistryModelCoordinator(
     return deriveProjection(context.program, modules, modelStates);
   }
 
+  function actionContextFor(context: {
+    readonly action: GenericModelTransitionContext["action"];
+    readonly materialAction: GenericModelTransitionContext["materialAction"];
+    readonly equipment: GenericModelTransitionContext["equipment"];
+    readonly materialLedger: GenericModelTransitionContext["materialLedger"];
+  }): Readonly<GenericChemistryActionContext> {
+    return deepFreeze({
+      action: context.action,
+      materialAction: context.materialAction
+        ? { ...context.materialAction }
+        : null,
+      equipment: context.equipment,
+      materialLedger: context.materialLedger
+    });
+  }
+
   function transition(
     context: Readonly<GenericModelTransitionContext>
   ): GenericChemistryProjection {
@@ -287,9 +389,7 @@ export function createChemistryModelCoordinator(
     const previousStates = context.program.chemistryModels.map((binding) =>
       modelStateFor(context.previous.modelStates, binding)
     );
-    if (context.materialAction === null) {
-      return deriveProjection(context.program, modules, previousStates);
-    }
+    const actionContext = actionContextFor(context);
     const nextStates: GenericModelState[] = [];
     for (
       let index = 0;
@@ -299,12 +399,26 @@ export function createChemistryModelCoordinator(
       const binding = context.program.chemistryModels[index]!;
       const implementation = modules.get(binding.modelId)!;
       const previous = previousStates[index]!;
+      if (
+        !implementation.applyActionTransition &&
+        context.materialAction === null
+      ) {
+        // Exact previous behavior: a mechanical-only action leaves a
+        // material-action-driven module's state untouched.
+        nextStates.push(previous);
+        continue;
+      }
       let transition: unknown;
       try {
-        transition = implementation.applyMaterialAction(
-          deepFreeze({ ...context.materialAction }),
-          deepFreeze(previous.fields.map((field) => ({ ...field })))
-        );
+        transition = implementation.applyActionTransition
+          ? implementation.applyActionTransition(
+              actionContext,
+              deepFreeze(previous.fields.map((field) => ({ ...field })))
+            )
+          : implementation.applyMaterialAction(
+              deepFreeze({ ...context.materialAction! }),
+              deepFreeze(previous.fields.map((field) => ({ ...field })))
+            );
       } catch {
         fail(
           ERROR.transitionRejected,
@@ -335,6 +449,55 @@ export function createChemistryModelCoordinator(
     return deriveProjection(context.program, modules, nextStates);
   }
 
+  function annotateEvents(
+    context: Readonly<GenericModelAnnotationContext>
+  ): readonly SemanticEvent[] {
+    const modules = compatibleModules(context.program);
+    const actionContext = actionContextFor(context);
+    let events: readonly SemanticEvent[] = deepFreeze(
+      semanticEventSchema.array().max(256).parse(context.events)
+    );
+    for (const binding of context.program.chemistryModels) {
+      const implementation = modules.get(binding.modelId)!;
+      if (!implementation.annotateEvents) continue;
+      const state = modelStateFor(context.modelStates, binding);
+      let annotated: unknown;
+      try {
+        annotated = implementation.annotateEvents(
+          actionContext,
+          deepFreeze(state.fields.map((field) => ({ ...field }))),
+          events
+        );
+      } catch {
+        fail(
+          ERROR.eventAnnotationInvalid,
+          `Chemistry model ${binding.modelId} rejected event annotation.`,
+          { modelId: binding.modelId }
+        );
+      }
+      const parsed = semanticEventSchema.array().max(256).safeParse(annotated);
+      if (!parsed.success) {
+        fail(
+          ERROR.eventAnnotationInvalid,
+          `Chemistry model ${binding.modelId} returned invalid annotated events.`,
+          { modelId: binding.modelId }
+        );
+      }
+      if (
+        parsed.data.length !== events.length ||
+        parsed.data.some((event, index) => event.type !== events[index]!.type)
+      ) {
+        fail(
+          ERROR.eventAnnotationInvalid,
+          `Chemistry model ${binding.modelId} changed the annotated event sequence.`,
+          { modelId: binding.modelId }
+        );
+      }
+      events = deepFreeze(parsed.data);
+    }
+    return events;
+  }
+
   return Object.freeze({
     supportedModels: Object.freeze(
       [...registrations.values()]
@@ -350,6 +513,7 @@ export function createChemistryModelCoordinator(
       void compatibleModules(program);
     },
     initialize,
-    transition
+    transition,
+    annotateEvents
   });
 }

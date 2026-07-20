@@ -17,7 +17,12 @@ export const CHEMISTRY_MODEL_COORDINATOR_ERROR_CODES = Object.freeze({
     "chemistry_model_coordinator.initialization_rejected.v1",
   transitionRejected: "chemistry_model_coordinator.transition_rejected.v1",
   observableDerivationRejected:
-    "chemistry_model_coordinator.observable_derivation_rejected.v1"
+    "chemistry_model_coordinator.observable_derivation_rejected.v1",
+  groundTruthInvalid: "chemistry_model_coordinator.ground_truth_invalid.v1",
+  groundTruthCollision:
+    "chemistry_model_coordinator.ground_truth_collision.v1",
+  eventAnnotationInvalid:
+    "chemistry_model_coordinator.event_annotation_invalid.v1"
 } as const);
 
 export type ChemistryModelCoordinatorErrorCode =

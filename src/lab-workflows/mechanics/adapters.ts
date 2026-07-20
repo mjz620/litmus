@@ -27,6 +27,26 @@ import {
 
 const OK = Object.freeze({ ok: true as const });
 
+/**
+ * Legacy-parity rounding for mechanical observation payloads. The titration
+ * parity oracle pins two-decimal observation values, so mechanical events must
+ * round exactly the way src/experiments/titration/titration.ts does.
+ */
+function round(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+/**
+ * Legacy-parity state rounding: the legacy engine stores burette availability
+ * and the meniscus reading rounded to six decimals after every fill and
+ * dispense (matching the ledger's micro-unit precision), while cumulative
+ * delivery accumulates raw. The parity oracle pins those exact floats.
+ */
+function round6(value: number): number {
+  return round(value, 6);
+}
+
 function reject(reasonCode: string, message: string): GenericPortCheck {
   return { ok: false, reasonCode, message };
 }
@@ -53,6 +73,26 @@ function numberParameter(
     fail(ERROR.invalidParameter, `${key} must be a finite positive number.`, {
       parameterKey: key
     });
+  }
+  return parameter.value;
+}
+
+function nonNegativeNumberParameter(
+  parameters: readonly NormalizedActionParameter[],
+  key: string
+): number {
+  const parameter = parameters.find((candidate) => candidate.key === key);
+  if (
+    !parameter ||
+    parameter.valueType !== "number" ||
+    !Number.isFinite(parameter.value) ||
+    parameter.value < 0
+  ) {
+    fail(
+      ERROR.invalidParameter,
+      `${key} must be a finite non-negative number.`,
+      { parameterKey: key }
+    );
   }
   return parameter.value;
 }
@@ -186,10 +226,16 @@ function fill(
       availableCapacityML: capacityML - availableML
     });
   }
-  const nextAvailableML = availableML + amount;
+  const nextAvailableML = round6(availableML + amount);
+  /*
+   * The burette's own mechanical history distinguishes the first fill from a
+   * refill: `filled` flips to true on the first fill (or at initialization
+   * when the bench seeds the burette pre-filled) and never resets.
+   */
+  const fillKind = booleanStateField(target, "filled") ? "refill" : "initial";
   const nextTarget = withStateFields(target, {
     availableML: nextAvailableML,
-    meniscusReadingML: capacityML - nextAvailableML,
+    meniscusReadingML: round6(capacityML - nextAvailableML),
     filled: true
   });
   return {
@@ -201,7 +247,21 @@ function fill(
       source.instanceId,
       target.instanceId
     ),
-    events: []
+    events: [
+      {
+        type: fillKind === "initial" ? "fill_burette" : "refill_burette",
+        // Chemistry annotation owns simulated time and overwrites tSim.
+        tSim: 0,
+        observation: {
+          requestedML: round(amount, 2),
+          resultingAvailableML: round(nextAvailableML, 2),
+          currentReadingML: round(capacityML - nextAvailableML, 2),
+          fillKind
+        },
+        flags: [],
+        evidence: []
+      }
+    ]
   };
 }
 
@@ -237,13 +297,18 @@ function dispense(
       availableCapacityML: targetCapacityML - targetVolumeML
     });
   }
-  const nextSource = withStateFields(source, {
-    availableML: sourceAvailableML - amount,
-    deliveredML: numericStateField(source, "deliveredML") + amount,
-    meniscusReadingML: Math.min(
+  const nextAvailableML = round6(sourceAvailableML - amount);
+  const nextDeliveredML = numericStateField(source, "deliveredML") + amount;
+  const nextReadingML = round6(
+    Math.min(
       numericStateField(source, "capacityML"),
       numericStateField(source, "meniscusReadingML") + amount
     )
+  );
+  const nextSource = withStateFields(source, {
+    availableML: nextAvailableML,
+    deliveredML: nextDeliveredML,
+    meniscusReadingML: nextReadingML
   });
   const nextTarget = withStateFields(target, {
     totalVolumeML: targetVolumeML + amount
@@ -257,7 +322,30 @@ function dispense(
       source.instanceId,
       target.instanceId
     ),
-    events: []
+    events: [
+      {
+        type: "add_titrant",
+        // Chemistry annotation owns simulated time and overwrites tSim.
+        tSim: 0,
+        /*
+         * Mechanical portion of the legacy add_titrant observation. The
+         * acid-base model's annotateEvents overlays rateMlPerS, pH,
+         * observedColor, and equivalenceML, and re-derives the cumulative
+         * totals from ledger-backed chemistry state, which also covers
+         * benches seeded with titrant already delivered before this burette
+         * moved.
+         */
+        observation: {
+          addedML: round(amount, 2),
+          totalML: round(nextDeliveredML, 2),
+          cumulativeDeliveredML: round(nextDeliveredML, 2),
+          currentReadingML: round(nextReadingML, 2),
+          availableML: round(nextAvailableML, 2)
+        },
+        flags: [],
+        evidence: []
+      }
+    ]
   };
 }
 
@@ -271,43 +359,136 @@ function rinse(
   );
   if (!target) fail(ERROR.invalidConnection, "Rinse target is missing.");
   const solvent = stringParameter(context.action.parameters, "solvent");
-  const material = sourceLiquid(context, source.instanceId);
-  if (
-    solvent === "water" &&
-    material.materialProfileId !== "reagent.distilled_water.v1"
-  ) {
-    fail(
-      ERROR.materialUnavailable,
-      "Water rinse requires exact distilled-water binding."
-    );
-  }
-  if (
-    solvent === "titrant" &&
-    material.materialProfileId === "reagent.distilled_water.v1"
-  ) {
-    fail(
-      ERROR.materialUnavailable,
-      "Titrant rinse requires the exact bound non-water liquid source."
-    );
-  }
   if (solvent !== "water" && solvent !== "titrant") {
     fail(ERROR.invalidParameter, "Unsupported rinse solvent.", { solvent });
+  }
+  /*
+   * A titrant rinse must draw from the exact bound liquid source. A water
+   * rinse mirrors the legacy bench: rinse water comes from an unmodeled sink,
+   * so it needs no bound distilled-water material and transfers nothing. The
+   * parity oracle pins a water rinse dispatched from the titrant bottle.
+   */
+  if (solvent === "titrant") {
+    const material = sourceLiquid(context, source.instanceId);
+    if (material.materialProfileId === "reagent.distilled_water.v1") {
+      fail(
+        ERROR.materialUnavailable,
+        "Titrant rinse requires the exact bound non-water liquid source."
+      );
+    }
   }
   return {
     equipment: replaceEquipment(context.equipment, [
       withStateFields(target, { conditionedWith: solvent })
     ]),
     materialAction: null,
-    events: []
+    events: [
+      {
+        type: "rinse_burette",
+        // Chemistry annotation owns simulated time and overwrites tSim.
+        tSim: 0,
+        observation: { solvent },
+        flags: [],
+        evidence: []
+      }
+    ]
   };
 }
 
 function read(
   context: Readonly<GenericMechanicalContext>
 ): GenericMechanicalTransition {
-  assertConnection(context, "component.burette.v1");
-  numberParameter(context.action.parameters, "reportedML");
-  return { equipment: context.equipment, materialAction: null, events: [] };
+  const { source } = assertConnection(context, "component.burette.v1");
+  const reportedML = nonNegativeNumberParameter(
+    context.action.parameters,
+    "reportedML"
+  );
+  const trueML = numericStateField(source, "meniscusReadingML");
+  return {
+    equipment: context.equipment,
+    materialAction: null,
+    events: [
+      {
+        type: "read_meniscus",
+        // Chemistry annotation owns simulated time and overwrites tSim.
+        tSim: 0,
+        /*
+         * Mechanical truth: the equipment-owned meniscus reading and the
+         * student's error against it. The misread flag and volumetric-reading
+         * evidence stay chemistry-side in annotateEvents.
+         */
+        observation: {
+          reportedML,
+          trueML: round(trueML, 2),
+          errorML: round(reportedML - trueML, 2)
+        },
+        flags: [],
+        evidence: []
+      }
+    ]
+  };
+}
+
+/**
+ * Commit the one permitted indicator addition to the receiving flask. Which
+ * indicator chemistry this represents stays chemistry-side: the mechanical
+ * observation records the submitted parameter, and the acid-base model
+ * validates it against registered indicator responses.
+ */
+function indicatorEvent(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition["events"] {
+  return [
+    {
+      type: "select_indicator",
+      // Chemistry annotation owns simulated time and overwrites tSim.
+      tSim: 0,
+      observation: {
+        indicator: stringParameter(context.action.parameters, "indicator")
+      },
+      flags: [],
+      evidence: []
+    }
+  ];
+}
+
+function addIndicator(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition {
+  const { target } = assertConnection(
+    context,
+    "component.erlenmeyer_flask.v1",
+    "component.erlenmeyer_flask.v1"
+  );
+  if (!target) fail(ERROR.invalidConnection, "Indicator target is missing.");
+  const events = indicatorEvent(context);
+  return {
+    equipment: replaceEquipment(context.equipment, [
+      withStateFields(target, { indicatorAdded: true })
+    ]),
+    materialAction: null,
+    events
+  };
+}
+
+function selectIndicator(
+  context: Readonly<GenericMechanicalContext>
+): GenericMechanicalTransition {
+  const { source, target } = assertConnection(
+    context,
+    "component.indicator_bottle.v1",
+    "component.erlenmeyer_flask.v1"
+  );
+  if (!target) fail(ERROR.invalidConnection, "Indicator target is missing.");
+  const events = indicatorEvent(context);
+  return {
+    equipment: replaceEquipment(context.equipment, [
+      withStateFields(source, { selected: true, added: true }),
+      withStateFields(target, { indicatorAdded: true })
+    ]),
+    materialAction: null,
+    events
+  };
 }
 
 function transferLiquid(
@@ -635,6 +816,16 @@ function checkPreconditions(
         }
         break;
       }
+      case "precondition.equipment.indicator_not_added.v1": {
+        const target = context.targets[0];
+        if (!target || booleanStateField(target, "indicatorAdded")) {
+          return reject(
+            precondition.id,
+            "The flask has already received its one indicator addition."
+          );
+        }
+        break;
+      }
       case "precondition.equipment.pipette_empty_before_rinse.v1": {
         const target = context.targets[0];
         if (!target || numericStateField(target, "availableML") !== 0) {
@@ -750,18 +941,68 @@ function initializerAdapter(
   });
 }
 
-export const ERLENMEYER_FLASK_MECHANICAL_ADAPTER = initializerAdapter(
-  "mechanical-adapter.erlenmeyer_flask.v1",
-  "component.erlenmeyer_flask.v1"
-);
+export const ERLENMEYER_FLASK_MECHANICAL_ADAPTER: GenericMechanicalAdapterPort =
+  Object.freeze({
+    adapterId: "mechanical-adapter.erlenmeyer_flask.v1",
+    adapterVersion: "1.0.0",
+    supportedEquipmentDefinitionIds: Object.freeze([
+      "component.erlenmeyer_flask.v1"
+    ]),
+    supportedActionIds: Object.freeze(["action.add_indicator.v1"]),
+    supportedPreconditionIds: Object.freeze([
+      "precondition.equipment.indicator_not_added.v1"
+    ]),
+    initializeEquipment: initializeLiquidEquipmentState,
+    checkPreconditions,
+    apply(context: Readonly<GenericMechanicalContext>) {
+      switch (context.action.actionId) {
+        case "action.add_indicator.v1":
+          return addIndicator(context);
+        default:
+          fail(
+            ERROR.unsupportedAction,
+            `Unsupported action ${context.action.actionId}.`,
+            {
+              actionId: context.action.actionId
+            }
+          );
+      }
+    }
+  });
+
 export const REAGENT_BOTTLE_MECHANICAL_ADAPTER = initializerAdapter(
   "mechanical-adapter.reagent_bottle.v1",
   "component.reagent_bottle.v1"
 );
-export const INDICATOR_BOTTLE_MECHANICAL_ADAPTER = initializerAdapter(
-  "mechanical-adapter.indicator_bottle.v1",
-  "component.indicator_bottle.v1"
-);
+
+export const INDICATOR_BOTTLE_MECHANICAL_ADAPTER: GenericMechanicalAdapterPort =
+  Object.freeze({
+    adapterId: "mechanical-adapter.indicator_bottle.v1",
+    adapterVersion: "1.0.0",
+    supportedEquipmentDefinitionIds: Object.freeze([
+      "component.indicator_bottle.v1"
+    ]),
+    supportedActionIds: Object.freeze(["action.select_indicator.v1"]),
+    supportedPreconditionIds: Object.freeze([
+      "precondition.equipment.indicator_not_added.v1"
+    ]),
+    initializeEquipment: initializeLiquidEquipmentState,
+    checkPreconditions,
+    apply(context: Readonly<GenericMechanicalContext>) {
+      switch (context.action.actionId) {
+        case "action.select_indicator.v1":
+          return selectIndicator(context);
+        default:
+          fail(
+            ERROR.unsupportedAction,
+            `Unsupported action ${context.action.actionId}.`,
+            {
+              actionId: context.action.actionId
+            }
+          );
+      }
+    }
+  });
 
 export const VOLUMETRIC_PIPETTE_MECHANICAL_ADAPTER: GenericMechanicalAdapterPort =
   Object.freeze({

@@ -287,14 +287,35 @@ export interface GenericModelInitializationContext {
   readonly program: Readonly<CompiledGenericLabProgram>;
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
   readonly materialLedger: Readonly<MaterialLedger>;
+  /**
+   * Simulated bench time already elapsed when a registered initialization
+   * preset seeded a mid-procedure bench; absent on a fresh bench.
+   */
+  readonly simulatedElapsedSeconds?: number;
 }
 
 export interface GenericModelTransitionContext {
   readonly program: Readonly<CompiledGenericLabProgram>;
   readonly previous: Readonly<GenericChemistryProjection>;
+  readonly action: Readonly<NormalizedLabAction>;
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
   readonly materialLedger: Readonly<MaterialLedger>;
   readonly materialAction: Readonly<ExecutedMaterialAction> | null;
+}
+
+/**
+ * Post-transition context for deterministic chemistry event annotation. The
+ * coordinator forwards each module its own model state; annotation may add
+ * flags, evidence, and observations but never events themselves.
+ */
+export interface GenericModelAnnotationContext {
+  readonly program: Readonly<CompiledGenericLabProgram>;
+  readonly modelStates: readonly Readonly<GenericModelState>[];
+  readonly action: Readonly<NormalizedLabAction>;
+  readonly materialAction: Readonly<ExecutedMaterialAction> | null;
+  readonly equipment: readonly Readonly<GenericEquipmentState>[];
+  readonly materialLedger: Readonly<MaterialLedger>;
+  readonly events: readonly SemanticEvent[];
 }
 
 export interface GenericModelCoordinatorPort {
@@ -310,6 +331,14 @@ export interface GenericModelCoordinatorPort {
   transition(
     context: Readonly<GenericModelTransitionContext>
   ): GenericChemistryProjection;
+  /**
+   * Optional chemistry annotation over mechanical semantic events. Ports that
+   * do not implement it (for example legacy compatibility ports) leave the
+   * mechanical events untouched.
+   */
+  annotateEvents?(
+    context: Readonly<GenericModelAnnotationContext>
+  ): readonly SemanticEvent[];
 }
 
 export interface GenericLegacyInitializationContext {

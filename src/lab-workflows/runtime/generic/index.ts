@@ -39,6 +39,7 @@ export {
   type GenericMechanicalAdapterPort,
   type GenericMechanicalContext,
   type GenericMechanicalTransition,
+  type GenericModelAnnotationContext,
   type GenericModelInitializationContext,
   type GenericModelCoordinatorPort,
   type GenericModelTransitionContext,

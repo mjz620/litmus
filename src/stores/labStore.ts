@@ -43,10 +43,13 @@ import type { LabWorkflowConsumerContext } from "../lab-workflows/consumers";
 import type { GenericLabActionTrace } from "../lab-workflows/replay";
 import {
   GenericLabRuntimeError,
-  type GenericLabRuntimeErrorDetail
+  type GenericLabRuntimeErrorDetail,
+  type GenericLabState,
+  type NormalizedLabAction
 } from "../lab-workflows/runtime";
 import type { ValidatedLabWorkflowSpecV2 } from "../lab-workflows/schema/v2";
 import {
+  createSetupDrivenNativeTitrationSession,
   createSetupDrivenTitrationSession,
   normalizeSetupDrivenTitrationAction,
   type LabSessionRuntimeMode,
@@ -111,6 +114,8 @@ export interface LabStore {
   runtimeProjection: SetupDrivenLabProjection | null;
   runtimeConsumerContext: LabWorkflowConsumerContext | null;
   runtimeActionTrace: GenericLabActionTrace | null;
+  /** Generic runtime truth for setup-driven/native sessions; null on legacy. */
+  runtimeGenericState: Readonly<GenericLabState> | null;
   definition: RegisteredExperimentDefinition | null;
   state: LabExperimentState | null;
   studentModel: StudentModel | null;
@@ -126,6 +131,19 @@ export interface LabStore {
   error: string | null;
   loadExperiment: (request: LoadExperimentRequest) => Promise<void>;
   dispatch: (action: LabExperimentAction) => boolean;
+  /**
+   * Dispatch one already-normalized generic action through the loaded
+   * setup-driven/native session, with the same event, StudentModel, and
+   * checkpoint handling as `dispatch`. Used by the native workspace, which
+   * builds NormalizedLabAction values directly from the projection. Runtime
+   * rejections propagate to the caller (the native panels own their error
+   * display); the session state is unchanged when it throws. Automatic coach
+   * triggering is intentionally omitted — the native workspace owns its own
+   * diagnosis-driven coach wiring.
+   */
+  dispatchNormalized: (
+    action: NormalizedLabAction
+  ) => readonly SemanticEvent[];
   clearActionError: () => void;
   checkpoint: (completed?: boolean) => void;
   retryCheckpoint: () => void;
@@ -177,6 +195,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
     runtimeProjection: null,
     runtimeConsumerContext: null,
     runtimeActionTrace: null,
+    runtimeGenericState: null,
     definition: null,
     state: null,
     studentModel: null,
@@ -215,6 +234,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         runtimeProjection: null,
         runtimeConsumerContext: null,
         runtimeActionTrace: null,
+        runtimeGenericState: null,
         definition: null,
         state: null,
         studentModel: null,
@@ -243,12 +263,17 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           definition,
           state,
           studentModel,
-          runtimeMode: setupDrivenSession?.mode ?? "legacy",
+          runtimeMode: setupDrivenSession
+            ? request.runtimeMode === "native_v2"
+              ? "native_v2"
+              : setupDrivenSession.mode
+            : "legacy",
           runtimeInspection: setupDrivenSession?.getInspection() ?? null,
           runtimeProjection: setupDrivenSession?.getProjection() ?? null,
           runtimeConsumerContext:
             setupDrivenSession?.getConsumerContext() ?? null,
-          runtimeActionTrace: setupDrivenSession?.getActionTrace() ?? null
+          runtimeActionTrace: setupDrivenSession?.getActionTrace() ?? null,
+          runtimeGenericState: setupDrivenSession?.getGenericState() ?? null
         });
         queueCheckpoint([], state, studentModel);
       } catch (error) {
@@ -261,6 +286,7 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
           runtimeProjection: null,
           runtimeConsumerContext: null,
           runtimeActionTrace: null,
+          runtimeGenericState: null,
           error: getErrorMessage(error)
         });
         throw error;
@@ -325,6 +351,9 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         runtimeActionTrace:
           setupDrivenTitrationSession?.getActionTrace() ??
           current.runtimeActionTrace,
+        runtimeGenericState:
+          setupDrivenTitrationSession?.getGenericState() ??
+          current.runtimeGenericState,
         actionError: null
       });
 
@@ -356,6 +385,42 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
         );
       }
       return true;
+    },
+
+    dispatchNormalized(action) {
+      const current = get();
+      if (
+        current.status !== "ready" ||
+        !current.experimentId ||
+        !current.state ||
+        !current.studentModel ||
+        !setupDrivenTitrationSession
+      ) {
+        throw new LabStoreNotReadyError();
+      }
+      // Runtime rejections (GenericLabRuntimeError and friends) propagate:
+      // the session guarantees its state is unchanged when dispatch throws,
+      // and the native workspace renders the rejection locally.
+      const transition = setupDrivenTitrationSession.dispatch(action);
+      const resultEvents: readonly SemanticEvent[] = transition.events;
+      const studentModel = resultEvents.reduce(
+        (model, event) => applyEvidence(model, event),
+        current.studentModel
+      );
+      set({
+        state: transition.state,
+        studentModel,
+        eventQueue: [...current.eventQueue, ...resultEvents],
+        runtimeInspection: transition.inspection,
+        runtimeProjection: transition.projection,
+        runtimeConsumerContext:
+          setupDrivenTitrationSession.getConsumerContext(),
+        runtimeActionTrace: setupDrivenTitrationSession.getActionTrace(),
+        runtimeGenericState: setupDrivenTitrationSession.getGenericState(),
+        actionError: null
+      });
+      queueCheckpoint(resultEvents, transition.state, studentModel);
+      return resultEvents;
     },
 
     clearActionError() {
@@ -559,6 +624,26 @@ async function initializeRegisteredExperiment(
 }> {
   if (request.experimentId === "acid_base_titration") {
     const definition = await loadExperimentDefinition(request.experimentId);
+    if (request.runtimeMode === "native_v2") {
+      // Capability-native runtime: no legacy engine and no compatibility
+      // adapter. The session projects the TitrationState view the current
+      // UI renders until Phase 4 unifies it onto the generic projection.
+      const setupDrivenSession = createSetupDrivenNativeTitrationSession({
+        sessionId: request.sessionId,
+        sessionSeed: request.seed?.sessionSeed ?? request.sessionId,
+        ...(request.setupDrivenSelection
+          ? { selection: request.setupDrivenSelection }
+          : {}),
+        ...(request.setupDrivenWorkflow
+          ? { workflow: request.setupDrivenWorkflow }
+          : {})
+      });
+      return {
+        definition,
+        state: setupDrivenSession.getState(),
+        setupDrivenSession
+      };
+    }
     if (request.runtimeMode === "setup_driven_v2") {
       if (!request.setupDrivenSelection) {
         throw new TypeError(
@@ -585,7 +670,10 @@ async function initializeRegisteredExperiment(
     };
   }
 
-  if (request.runtimeMode === "setup_driven_v2") {
+  if (
+    request.runtimeMode === "setup_driven_v2" ||
+    request.runtimeMode === "native_v2"
+  ) {
     throw new TypeError(
       "The setup-driven titration definition cannot load this experiment."
     );

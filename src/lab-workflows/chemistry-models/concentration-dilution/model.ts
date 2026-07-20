@@ -1,5 +1,9 @@
 import { THERMAL_ENERGY_MODEL_ID, THERMAL_ENERGY_MODULE } from "../thermal-energy";
 import { PRECIPITATION_MODEL_ID, PRECIPITATION_MODULE } from "../precipitation";
+import {
+  ACID_BASE_TITRATION_MODEL_ID,
+  ACID_BASE_TITRATION_MODULE
+} from "../acid-base";
 import type { ExecutedMaterialAction } from "../material-ledger";
 import {
   integerUnitsToQuantity,
@@ -429,5 +433,9 @@ export const PRODUCTION_GENERIC_CHEMISTRY_MODEL_REGISTRATIONS = Object.freeze([
   {
     metadataId: PRECIPITATION_MODEL_ID,
     module: PRECIPITATION_MODULE
+  },
+  {
+    metadataId: ACID_BASE_TITRATION_MODEL_ID,
+    module: ACID_BASE_TITRATION_MODULE
   }
 ] as const satisfies readonly GenericChemistryModuleRegistration[]);

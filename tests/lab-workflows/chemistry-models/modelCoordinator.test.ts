@@ -171,7 +171,7 @@ function modules(
             {
               observableId: options.unregisteredObservable
                 ? "observable.test.unregistered.v1"
-                : "observable.burette_reading_ml.v1",
+                : "observable.solution_volume_ml.v1",
               value: fieldValue(state, "accumulator"),
               unitId: "unit.ml.v1"
             }
@@ -278,13 +278,20 @@ describe("deterministic chemistry model coordinator", () => {
     expect(transition.state.chemistry).toMatchObject({
       observables: [
         {
+          // Equipment-owned projection merged by the runtime: the burette's
+          // meniscus reading after a 10 mL fill into the 50 mL burette.
           observableId: "observable.burette_reading_ml.v1",
+          value: 40,
+          unitId: "unit.ml.v1"
+        },
+        {
+          observableId: "observable.solution_volume_ml.v1",
           value: 40,
           unitId: "unit.ml.v1"
         }
       ],
       groundTruth: {
-        values: { "observable.burette_reading_ml.v1": 40 },
+        values: { "observable.solution_volume_ml.v1": 40 },
         notes: []
       }
     });

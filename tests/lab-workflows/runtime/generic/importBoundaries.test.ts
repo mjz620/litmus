@@ -11,6 +11,7 @@ const SOURCE_DIRECTORY = join(
 const SOURCE_FILES = [
   "compile.ts",
   "definition.ts",
+  "equipmentObservables.ts",
   "errors.ts",
   "index.ts",
   "runtime.ts",

@@ -41,10 +41,16 @@ export default async function DevLabPage({
   const requestedSeed = Array.isArray(seed) ? seed[0] : seed;
   const replaySeed = requestedSeed?.trim().slice(0, 128) || undefined;
   const requestedRuntime = Array.isArray(runtime) ? runtime[0] : runtime;
-  const runtimeMode = resolveLabSessionRuntimeMode(
-    experimentId,
-    requestedRuntime
-  );
+  /*
+   * The developer diagnostics shell renders the strangler TitrationWorkspace,
+   * so this route deliberately stays on setup-driven v2 when no runtime is
+   * requested even though the student default flipped to native_v2. Explicit
+   * ?runtime= values (legacy, setup-v2, native, …) resolve as everywhere else.
+   */
+  const runtimeMode =
+    requestedRuntime === undefined && experimentId === "acid_base_titration"
+      ? "setup_driven_v2"
+      : resolveLabSessionRuntimeMode(experimentId, requestedRuntime);
 
   return (
     <DevLabShell
