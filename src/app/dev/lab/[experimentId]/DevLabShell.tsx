@@ -5,7 +5,6 @@ import Link from "next/link";
 import { EventInspector } from "../../../../components/lab/EventInspector";
 import { PHCurve } from "../../../../components/lab/PHCurve";
 import { TitrationWorkspace } from "../../../../components/lab/titration/TitrationWorkspace";
-import { PrecipitationWorkspace } from "../../../../components/lab/precipitation/PrecipitationWorkspace";
 import { useLabSession } from "../../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../../experiments/registry";
 import { isTitrationState } from "../../../../stores/labStore";
@@ -118,19 +117,15 @@ export function DevLabShell({
           )}
 
           {isReady && state && (
-            <>
-              {titrationState ? (
-                <>
-                  <TitrationWorkspace />
-                  <PHCurve
-                    points={titrationState.curve}
-                    maxVolumeML={chartMaxVolumeML}
-                  />
-                </>
-              ) : (
-                <PrecipitationWorkspace />
-              )}
-            </>
+            titrationState && (
+              <>
+                <TitrationWorkspace />
+                <PHCurve
+                  points={titrationState.curve}
+                  maxVolumeML={chartMaxVolumeML}
+                />
+              </>
+            )
           )}
         </section>
 

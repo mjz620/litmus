@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 
 import type { ExperimentId } from "../../experiments/registry";
-import { DEFAULT_PRECIPITATION_CONFIG } from "../../experiments/precipitation/precipitation";
 import { generateTitrationSessionConfig } from "../../experiments/titration/sessionConfig";
 import {
   createTitrationRetryScenario,
@@ -80,41 +79,27 @@ export function useLabSession({
       ? globalThis.crypto.randomUUID()
       : createFallbackSessionId();
     const sessionSeed = replaySeed ?? newSessionId;
-    if (experimentId === "acid_base_titration") {
-      const retryScenario = retrySkillId
-        ? createTitrationRetryScenario(
-            retrySkillId,
-            `retry:${parentSessionId ?? "standalone"}:${sessionSeed}`
-          )
-        : null;
-      void loadExperiment({
-        experimentId,
-        sessionId: newSessionId,
-        config:
-          retryScenario?.config ?? generateTitrationSessionConfig(sessionSeed),
-        seed: retryScenario?.seed ?? { sessionSeed },
-        mode,
-        parentSessionId,
-        runtimeMode,
-        setupDrivenSelection,
-        setupDrivenWorkflow,
-        workflowVersionId: setupDrivenSelection?.workflowHash,
-        labDefinitionVersionId,
-        labDefinitionCanonicalHash
-      }).catch(() => undefined);
-    } else {
-      void loadExperiment({
-        experimentId,
-        sessionId: newSessionId,
-        config: DEFAULT_PRECIPITATION_CONFIG,
-        seed: { sessionSeed },
-        mode,
-        parentSessionId,
-        runtimeMode,
-        labDefinitionVersionId,
-        labDefinitionCanonicalHash
-      }).catch(() => undefined);
-    }
+    const retryScenario = retrySkillId
+      ? createTitrationRetryScenario(
+          retrySkillId,
+          `retry:${parentSessionId ?? "standalone"}:${sessionSeed}`
+        )
+      : null;
+    void loadExperiment({
+      experimentId,
+      sessionId: newSessionId,
+      config:
+        retryScenario?.config ?? generateTitrationSessionConfig(sessionSeed),
+      seed: retryScenario?.seed ?? { sessionSeed },
+      mode,
+      parentSessionId,
+      runtimeMode,
+      setupDrivenSelection,
+      setupDrivenWorkflow,
+      workflowVersionId: setupDrivenSelection?.workflowHash,
+      labDefinitionVersionId,
+      labDefinitionCanonicalHash
+    }).catch(() => undefined);
   }, [
     experimentId,
     labDefinitionCanonicalHash,

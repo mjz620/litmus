@@ -4,6 +4,8 @@ import { resolveExperimentId } from "../../../components/ui/experimentRoutes";
 import { getExperimentManifest } from "../../../experiments/registry";
 import { isTitrationRetrySkillId } from "../../../experiments/titration/retry";
 import {
+  ENDPOINT_DRILL_TITRATION_RUNTIME_FLAG,
+  FULL_TITRATION_SETUP_SELECTION,
   STRICT_TITRATION_SETUP_SELECTION,
   resolveLabSessionRuntimeMode
 } from "../../../stores/setupDrivenLabSession";
@@ -50,9 +52,17 @@ export default async function LabPage({ params, searchParams }: LabPageProps) {
       retrySkillId={retrySkillId}
       parentSessionId={parentSessionId}
       runtimeMode={runtimeMode}
+      /*
+       * Default to the complete procedure from a clean bench. The
+       * endpoint-control drill starts mid-titration by design, so it is opt-in
+       * via ?runtime=endpoint-drill and through the retry flow, not what a
+       * student demo lands on.
+       */
       setupDrivenSelection={
         runtimeMode === "setup_driven_v2"
-          ? STRICT_TITRATION_SETUP_SELECTION
+          ? requestedRuntime === ENDPOINT_DRILL_TITRATION_RUNTIME_FLAG
+            ? STRICT_TITRATION_SETUP_SELECTION
+            : FULL_TITRATION_SETUP_SELECTION
           : undefined
       }
     />

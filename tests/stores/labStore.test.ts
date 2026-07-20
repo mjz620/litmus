@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ExperimentId } from "../../src/experiments/registry";
+
 import {
   EXAMPLE_STRONG,
   titration
 } from "../../src/experiments/titration/titration";
-import { DEFAULT_PRECIPITATION_CONFIG } from "../../src/experiments/precipitation/precipitation";
 import {
   createLabStore,
   isTitrationState,
@@ -302,34 +303,6 @@ describe("lab store", () => {
     expect(() =>
       store.getState().dispatch({ type: "rinse_burette", solvent: "titrant" })
     ).toThrow(LabStoreNotReadyError);
-  });
-
-  it("uses the same store, event, model, and checkpoint path for precipitation", async () => {
-    const store = createLabStore();
-    await store.getState().loadExperiment({
-      experimentId: "precipitation_solubility",
-      sessionId: "11111111-1111-4111-8111-111111111112",
-      config: DEFAULT_PRECIPITATION_CONFIG
-    });
-    store.getState().dispatch({
-      type: "select_solution",
-      slot: "A",
-      solutionId: "silver_nitrate"
-    });
-    store.getState().dispatch({
-      type: "select_solution",
-      slot: "B",
-      solutionId: "sodium_chloride"
-    });
-    store.getState().dispatch({ type: "mix_solutions" });
-    expect(store.getState().eventQueue.map(({ type }) => type)).toEqual([
-      "select_solution",
-      "select_solution",
-      "mix_solutions"
-    ]);
-    expect(store.getState().studentModel?.experimentId).toBe(
-      "precipitation_solubility"
-    );
   });
 
   it("loads the exact serialized titration through the setup-driven store path", async () => {
@@ -901,8 +874,13 @@ describe("lab store", () => {
     expect(
       resolveLabSessionRuntimeMode("acid_base_titration", "legacy")
     ).toBe("legacy");
+    // Only titration has a setup-driven runtime. The guard stays for future
+    // experiments, so it is exercised past the single-member union.
     expect(
-      resolveLabSessionRuntimeMode("precipitation_solubility", "setup-v2")
+      resolveLabSessionRuntimeMode(
+        "some_other_experiment" as ExperimentId,
+        "setup-v2"
+      )
     ).toBe("legacy");
   });
 

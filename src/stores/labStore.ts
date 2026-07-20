@@ -13,12 +13,6 @@ import {
   type StudentModel
 } from "../experiments/shared";
 import type {
-  PrecipitationAction,
-  PrecipitationConfig,
-  PrecipitationState,
-  precipitation as precipitationDefinition
-} from "../experiments/precipitation/precipitation";
-import type {
   TitrationAction,
   TitrationConfig,
   TitrationState,
@@ -63,9 +57,9 @@ import {
   type SetupDrivenTitrationSession
 } from "./setupDrivenLabSession";
 
-export type LabExperimentConfig = TitrationConfig | PrecipitationConfig;
-export type LabExperimentState = TitrationState | PrecipitationState;
-export type LabExperimentAction = TitrationAction | PrecipitationAction;
+export type LabExperimentConfig = TitrationConfig;
+export type LabExperimentState = TitrationState;
+export type LabExperimentAction = TitrationAction;
 
 export type LabStoreStatus = "idle" | "loading" | "ready" | "error";
 export type CoachStatus = "idle" | "loading" | "error";
@@ -95,19 +89,13 @@ interface LoadExperimentRequestBase {
   runtimeMode?: LabSessionRuntimeMode;
 }
 
-export type LoadExperimentRequest =
-  | (LoadExperimentRequestBase & {
-      experimentId: "acid_base_titration";
-      config: TitrationConfig;
-      seed?: Partial<TitrationState>;
-      setupDrivenSelection?: SetupDrivenLabSelection;
-      setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
-    })
-  | (LoadExperimentRequestBase & {
-      experimentId: "precipitation_solubility";
-      config: PrecipitationConfig;
-      seed?: Partial<PrecipitationState>;
-    });
+export type LoadExperimentRequest = LoadExperimentRequestBase & {
+  experimentId: "acid_base_titration";
+  config: TitrationConfig;
+  seed?: Partial<TitrationState>;
+  setupDrivenSelection?: SetupDrivenLabSelection;
+  setupDrivenWorkflow?: Readonly<ValidatedLabWorkflowSpecV2>;
+};
 
 export interface LabStore {
   status: LabStoreStatus;
@@ -605,7 +593,9 @@ async function initializeRegisteredExperiment(
   const definition = await loadExperimentDefinition(request.experimentId);
   return {
     definition,
-    state: definition.createInitialState(request.config, request.seed),
+    state: (
+      definition as typeof titrationDefinition
+    ).createInitialState(request.config, request.seed),
     setupDrivenSession: null
   };
 }
@@ -624,7 +614,9 @@ function dispatchSetupDrivenTitration(
   // mechanic. Preserve its direct ExperimentDefinition.step() path until a
   // reviewed report action contract exists; never invent a normalized action.
   if (action.type === "submit_report") return null;
-  return session.dispatch(normalizeSetupDrivenTitrationAction(action));
+  return session.dispatch(
+    normalizeSetupDrivenTitrationAction(action, session.getWorkflow())
+  );
 }
 
 function stepRegisteredExperiment(
@@ -640,13 +632,6 @@ function stepRegisteredExperiment(
   ) {
     return (definition as typeof titrationDefinition).step(state, action);
   }
-  if (
-    experimentId === "precipitation_solubility" &&
-    isPrecipitationState(state) &&
-    isPrecipitationAction(action)
-  ) {
-    return (definition as typeof precipitationDefinition).step(state, action);
-  }
   throw new TypeError(
     `Action does not match loaded experiment ${experimentId}.`
   );
@@ -656,12 +641,6 @@ export function isTitrationState(
   state: LabExperimentState | null
 ): state is TitrationState {
   return state !== null && "titrantAddedML" in state;
-}
-
-export function isPrecipitationState(
-  state: LabExperimentState | null
-): state is PrecipitationState {
-  return state !== null && "solutionA" in state && "solutionB" in state;
 }
 
 function isTitrationAction(
@@ -674,17 +653,6 @@ function isTitrationAction(
     "add_titrant",
     "read_meniscus",
     "submit_report"
-  ].includes(action.type);
-}
-
-function isPrecipitationAction(
-  action: LabExperimentAction
-): action is PrecipitationAction {
-  return [
-    "select_solution",
-    "mix_solutions",
-    "submit_precipitate_prediction",
-    "submit_net_ionic_equation"
   ].includes(action.type);
 }
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { PrimaryNav } from "./PrimaryNav";
+
 import styles from "./ProductShell.module.css";
 
 type ContentWidth = "narrow" | "standard" | "wide" | "composer";
@@ -46,15 +48,7 @@ export function ProductHeader() {
             <small>AI chemistry practice</small>
           </span>
         </Link>
-        <nav className={styles.primaryNav} aria-label="Primary navigation">
-          <Link href="/experiments">Experiments</Link>
-          <Link href="/assignments">Assignments</Link>
-          <Link href="/join">Join</Link>
-          <Link href="/lab-composer">Composer</Link>
-          <Link href="/demo">Demo</Link>
-          <Link href="/teacher/classes">Teacher</Link>
-          <Link href="/auth/sign-in">Sign in</Link>
-        </nav>
+        <PrimaryNav />
       </div>
     </header>
   );

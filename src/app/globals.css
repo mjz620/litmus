@@ -19,6 +19,14 @@
   --color-warning-soft: #fff2d5;
   --color-danger: #a72f3b;
   --color-danger-soft: #fbe9ec;
+  /*
+   * Terracotta is the warmth in a teal-led system. It was already the identity
+   * mark on every shell, hardcoded in seven files; tokenised here.
+   * --color-accent is decorative only (2.39:1 on canvas). Use --color-accent-ink
+   * when the warmth has to carry a word (4.9:1 on canvas, AA body).
+   */
+  --color-accent: #d98963;
+  --color-accent-ink: #a35128;
   --color-coach: #684f70;
   --color-coach-soft: #f1e8f3;
   --color-instrument: #202b2d;

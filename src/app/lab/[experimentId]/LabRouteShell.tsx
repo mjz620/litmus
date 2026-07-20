@@ -1,11 +1,10 @@
 "use client";
 
 import { LabNotebook } from "../../../components/lab/LabNotebook";
-import { CoachPanel } from "../../../components/coach/CoachPanel";
 import { LabSessionBar } from "../../../components/lab/LabSessionBar";
 import { PHCurve } from "../../../components/lab/PHCurve";
+import { TitrationProcedureGuide } from "../../../components/lab/titration/TitrationProcedureGuide";
 import { TitrationWorkspace } from "../../../components/lab/titration/TitrationWorkspace";
-import { PrecipitationWorkspace } from "../../../components/lab/precipitation/PrecipitationWorkspace";
 import { useLabSession } from "../../../components/lab/useLabSession";
 import type { ExperimentId } from "../../../experiments/registry";
 import type { TitrationRetrySkillId } from "../../../experiments/titration/retry";
@@ -85,21 +84,9 @@ export function LabRouteShell({
       <div className={styles.workspace}>
         <section
           className={styles.bench}
-          aria-label={titrationState ? "Immersive lab workspace" : undefined}
-          aria-labelledby={titrationState ? undefined : "bench-heading"}
+          aria-label="Immersive lab workspace"
           data-immersive={titrationState ? "true" : "false"}
         >
-          {!titrationState && (
-            <div>
-              <p className={styles.eyebrow}>Lab workspace</p>
-              <h2 id="bench-heading">Practice precise technique</h2>
-              <p>
-                Choose verified solutions, make observations, and submit each
-                conclusion through the shared experiment engine.
-              </p>
-            </div>
-          )}
-
           {isPending && (
             <p className={styles.loading} role="status" aria-live="polite">
               Preparing your lab session…
@@ -113,19 +100,23 @@ export function LabRouteShell({
             </div>
           )}
 
-          {isReady && state && (
-            <>
-              {titrationState ? (
-                <TitrationWorkspace />
-              ) : (
-                <PrecipitationWorkspace />
-              )}
-            </>
-          )}
+          {isReady && state && <TitrationWorkspace />}
         </section>
 
         {isReady && titrationState && (
           <div className={styles.accessoryTray}>
+            <details className={styles.accessoryCard} open>
+              <summary>
+                <span aria-hidden="true">☰</span>
+                <span>
+                  <strong>Procedure</strong>
+                  <small>Steps for this lab, for reference</small>
+                </span>
+              </summary>
+              <div className={styles.accessoryContent}>
+                <TitrationProcedureGuide />
+              </div>
+            </details>
             <details className={styles.accessoryCard}>
               <summary>
                 <span aria-hidden="true">▤</span>
@@ -156,12 +147,6 @@ export function LabRouteShell({
               </div>
             </details>
           </div>
-        )}
-
-        {isReady && !titrationState && (
-          <aside className={styles.summary} aria-labelledby="coach-heading">
-            <CoachPanel />
-          </aside>
         )}
       </div>
     </main>

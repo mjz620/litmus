@@ -51,7 +51,7 @@ export class StudentAssignmentLaunchError extends Error {
 }
 
 function asRegisteredExperimentId(value: string): ExperimentId | null {
-  if (value === "acid_base_titration" || value === "precipitation_solubility") {
+  if (value === "acid_base_titration") {
     return value;
   }
   return null;

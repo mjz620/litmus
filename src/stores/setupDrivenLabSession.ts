@@ -5,7 +5,9 @@ import type {
 } from "../experiments/titration/titration";
 import {
   TITRATION_V2_EXPECTED_HASH,
-  validateStrictMigratedTitrationV2
+  validateStrictMigratedTitrationV2,
+  validateFullTitrationV2,
+  FULL_TITRATION_V2_SOURCE_HASH
 } from "../lab-workflows/definitions/titration";
 import {
   createLabWorkflowConsumerContext,
@@ -34,6 +36,8 @@ import { evaluateLabWorkflowEligibilityV2 } from "../lab-workflows/validation";
 export const SETUP_DRIVEN_TITRATION_RUNTIME_FLAG = "setup-v2" as const;
 /** Temporary escape hatch through LC2-803; removed from student entry in LC2-804. */
 export const LEGACY_TITRATION_RUNTIME_FLAG = "legacy" as const;
+/** Opt into the mid-procedure endpoint-control drill. */
+export const ENDPOINT_DRILL_TITRATION_RUNTIME_FLAG = "endpoint-drill" as const;
 export const SETUP_DRIVEN_TITRATION_WORKFLOW_ID =
   "workflow.endpoint_control_prelab.seed.v1" as const;
 export const SETUP_DRIVEN_TITRATION_VALIDATION_TIME =
@@ -50,6 +54,20 @@ export const STRICT_TITRATION_SETUP_SELECTION: SetupDrivenLabSelection =
   Object.freeze({
     workflowId: SETUP_DRIVEN_TITRATION_WORKFLOW_ID,
     workflowHash: TITRATION_V2_EXPECTED_HASH
+  });
+
+export const FULL_TITRATION_WORKFLOW_ID =
+  "workflow.acid_base_titration.full.v2" as const;
+
+/**
+ * The complete procedure from a clean bench. This is the default for a student
+ * session; STRICT_TITRATION_SETUP_SELECTION is the endpoint-control drill,
+ * which starts mid-titration and is reached through the retry flow.
+ */
+export const FULL_TITRATION_SETUP_SELECTION: SetupDrivenLabSelection =
+  Object.freeze({
+    workflowId: FULL_TITRATION_WORKFLOW_ID,
+    workflowHash: FULL_TITRATION_V2_SOURCE_HASH
   });
 
 export interface SetupDrivenRuntimeInspection {
@@ -222,19 +240,40 @@ export function resolveLabSessionRuntimeMode(
   return "setup_driven_v2";
 }
 
-export function normalizeSetupDrivenTitrationAction(
+/**
+ * Legacy titration action → the v2 action it corresponds to, with the
+ * parameters that action's schema declares.
+ */
+function titrationActionContract(
   action: Readonly<TitrationAction>
-): NormalizedLabAction {
-  const base = {
-    schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
-    sourceEquipmentInstanceId: "titrant_burette",
-    targetEquipmentInstanceIds: []
-  } as const;
+): {
+  readonly actionId: string;
+  readonly parameters: NormalizedLabAction["parameters"];
+} {
   switch (action.type) {
+    case "rinse_burette":
+      return {
+        actionId: "action.rinse.v1",
+        parameters: [
+          { key: "solvent", valueType: "enum", value: action.solvent }
+        ]
+      };
+    case "fill_burette":
+      return {
+        actionId: "action.fill.v1",
+        parameters: [
+          { key: "volumeML", valueType: "number", value: action.volumeML }
+        ]
+      };
+    case "select_indicator":
+      return {
+        actionId: "action.add_indicator.v1",
+        parameters: [
+          { key: "indicator", valueType: "enum", value: action.indicator }
+        ]
+      };
     case "read_meniscus":
       return {
-        ...base,
-        permissionId: "migration.permission.s1.a1",
         actionId: "action.read_volume.v1",
         parameters: [
           { key: "reportedML", valueType: "number", value: action.reportedML }
@@ -242,10 +281,7 @@ export function normalizeSetupDrivenTitrationAction(
       };
     case "add_titrant":
       return {
-        ...base,
-        permissionId: "migration.permission.s2.a1",
         actionId: "action.dispense.v1",
-        targetEquipmentInstanceIds: ["analyte_flask"],
         parameters: [
           { key: "volumeML", valueType: "number", value: action.volumeML },
           { key: "durationS", valueType: "number", value: action.durationS }
@@ -254,9 +290,50 @@ export function normalizeSetupDrivenTitrationAction(
     default:
       throw new SetupDrivenSessionError(
         SETUP_DRIVEN_SESSION_ERROR_CODES.actionUnsupported,
-        `The strict setup-driven titration definition does not permit ${action.type}.`
+        `The setup-driven titration definition does not permit ${action.type}.`
       );
   }
+}
+
+/**
+ * Normalize a legacy titration action against the workflow actually loaded.
+ *
+ * Permission IDs and equipment bindings are read from the workflow rather than
+ * hardcoded: the endpoint drill names its permissions `migration.permission.*`
+ * and only permits reading and dispensing, so a hardcoded mapping silently
+ * excluded every preparation step of a full procedure.
+ */
+export function normalizeSetupDrivenTitrationAction(
+  action: Readonly<TitrationAction>,
+  workflow?: Readonly<ValidatedLabWorkflowSpecV2>
+): NormalizedLabAction {
+  const contract = titrationActionContract(action);
+  const permission = workflow?.permittedActions.find(
+    ({ actionId }) => actionId === contract.actionId
+  );
+  if (workflow && !permission) {
+    throw new SetupDrivenSessionError(
+      SETUP_DRIVEN_SESSION_ERROR_CODES.actionUnsupported,
+      `The loaded workflow does not permit ${contract.actionId}.`
+    );
+  }
+
+  return {
+    schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
+    permissionId:
+      permission?.id ??
+      (contract.actionId === "action.read_volume.v1"
+        ? "migration.permission.s1.a1"
+        : "migration.permission.s2.a1"),
+    actionId: contract.actionId,
+    sourceEquipmentInstanceId:
+      permission?.sourceEquipmentInstanceId ?? "titrant_burette",
+    targetEquipmentInstanceIds: [
+      ...(permission?.targetEquipmentInstanceIds ??
+        (contract.actionId === "action.dispense.v1" ? ["analyte_flask"] : []))
+    ],
+    parameters: contract.parameters
+  };
 }
 
 export function createSetupDrivenTitrationSession(
@@ -270,7 +347,11 @@ export function createSetupDrivenTitrationSession(
   }
   const workflow =
     input.workflow ??
-    validateStrictMigratedTitrationV2(SETUP_DRIVEN_TITRATION_VALIDATION_TIME);
+    (input.selection.workflowId === FULL_TITRATION_WORKFLOW_ID
+      ? validateFullTitrationV2(SETUP_DRIVEN_TITRATION_VALIDATION_TIME)
+      : validateStrictMigratedTitrationV2(
+          SETUP_DRIVEN_TITRATION_VALIDATION_TIME
+        ));
   const eligibility = evaluateLabWorkflowEligibilityV2(workflow, "preview");
   if (
     !eligibility.eligible ||

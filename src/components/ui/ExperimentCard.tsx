@@ -1,49 +1,38 @@
 import Link from "next/link";
 
-import type {
-  ExperimentId,
-  ExperimentMetadata
-} from "../../experiments/registry";
-import { getExperimentPath } from "./experimentRoutes";
+import type { ExperimentCatalogEntry } from "./experimentCatalog";
 
 import styles from "./ExperimentCard.module.css";
 
-interface ExperimentCardProps {
-  id: ExperimentId;
-  title: string;
-  version: string;
-  metadata: ExperimentMetadata;
-}
-
-export function ExperimentCard({
-  id,
-  title,
-  version,
-  metadata
-}: ExperimentCardProps) {
+/**
+ * One lab in the chooser.
+ *
+ * It shows the two facts a student decides on — how long, how hard — and
+ * nothing else. Version numbers, engine names, and a count of "skills
+ * practiced" were all removed: they were surfaced because the data existed,
+ * not because anyone reads them, and a bare integer beside "Intermediate"
+ * reads as a score to a student already worried about looking foolish.
+ */
+export function ExperimentCard({ entry }: { entry: ExperimentCatalogEntry }) {
   return (
     <article className={styles.card}>
-      <div className={styles.cardHeader}>
-        <span className={styles.availability}>Available</span>
-        <span className={styles.version}>v{version}</span>
-      </div>
-      <h2>{title}</h2>
-      <p className={styles.description}>{metadata.description}</p>
+      <h2>{entry.title}</h2>
+      <p className={styles.description}>{entry.description}</p>
       <dl className={styles.details}>
         <div>
-          <dt>Estimated time</dt>
-          <dd>{metadata.estimatedMinutes} minutes</dd>
+          <dt>Takes about</dt>
+          <dd>{entry.estimatedMinutes} minutes</dd>
         </div>
         <div>
           <dt>Difficulty</dt>
-          <dd>{metadata.difficulty}</dd>
-        </div>
-        <div>
-          <dt>Skills practiced</dt>
-          <dd>{Object.keys(metadata.readinessWeights).length}</dd>
+          <dd>{entry.difficulty}</dd>
         </div>
       </dl>
-      <Link className={styles.cta} href={getExperimentPath(id)}>
+      <Link
+        className={`ui-button ${styles.cta}`}
+        href={entry.href}
+        aria-label={`Start practice: ${entry.title}`}
+      >
         Start practice
       </Link>
     </article>

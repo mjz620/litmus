@@ -3,3 +3,14 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: var(--space-4);
 }
+
+.teacherNote {
+  margin: var(--space-8) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.teacherNote a {
+  color: var(--color-primary);
+  font-weight: var(--type-ui-semibold);
+}

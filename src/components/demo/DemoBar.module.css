@@ -28,7 +28,7 @@
   height: 2.5rem;
   place-items: center;
   border-radius: var(--radius-md);
-  background: #d98963;
+  background: var(--color-accent);
   color: #3b2922;
   font-size: 1.05rem;
 }

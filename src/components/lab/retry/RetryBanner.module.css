@@ -21,7 +21,7 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: #d98963;
+  background: var(--color-accent);
   color: #3b2922;
   font-size: 1.1rem;
   font-weight: 850;
