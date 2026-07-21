@@ -10,6 +10,10 @@ import {
   authoredEvaluateRequestSchema,
   evaluateRequestSchema
 } from "../../../lib/agent/evaluatorSchemas";
+import {
+  LLM_ROUTE_LIMITERS,
+  guardLlmRoute
+} from "../../../lib/api/llmRouteGuard";
 
 export const runtime = "nodejs";
 export const maxDuration = 20;
@@ -88,6 +92,10 @@ async function authoredResponse(body: unknown) {
 }
 
 export async function POST(request: Request) {
+  // Reaches a paid model: authenticate and consume budget before reading a body.
+  const guard = await guardLlmRoute({ limiter: LLM_ROUTE_LIMITERS.evaluate });
+  if (!guard.ok) return guard.response;
+
   let body: unknown;
   try {
     body = await request.json();

@@ -1,12 +1,28 @@
 import { readFileSync } from "node:fs";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { POST } from "../../../../src/app/api/lab-composer/author/capability/route";
 import {
   capabilityAuthorErrorResponseSchema,
   capabilityAuthorSuccessResponseSchema
 } from "../../../../src/lib/agent/lab-authoring/capabilityAuthorSchemas";
+
+/*
+ * These routes reach a paid model and now authenticate first. The guard is
+ * stubbed here so each test still exercises the handler it is about; the
+ * 401/403 behaviour itself is covered in tests/api/llmRouteGuard.test.ts.
+ */
+const authState = vi.hoisted(() => ({ userId: "capability-default-caller" }));
+
+vi.mock("../../../../src/lib/persistence/labDefinitionApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../../src/lib/persistence/labDefinitionApi")>()),
+  authenticateComposerPrincipal: vi.fn(async () => ({
+    userId: authState.userId,
+    role: "teacher" as const
+  }))
+}));
+
 
 const body = {
   contractVersion: "2.0.0",
@@ -23,6 +39,12 @@ function request(
   ip: string,
   headers: Record<string, string> = {}
 ): Request {
+  /*
+   * The rate budget is keyed by authenticated user, not by address, so the
+   * per-caller isolation these tests rely on is expressed through the stubbed
+   * principal. The `ip` argument names the caller in both dimensions.
+   */
+  authState.userId = ip;
   return new Request("http://localhost/api/lab-composer/author/capability", {
     method: "POST",
     headers: {

@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { POST } from "../../../../src/app/api/lab-composer/judge/route";
 import { runCapabilityAuthoring } from "../../../../src/lib/agent/lab-authoring/capabilityAuthor";
@@ -12,6 +12,19 @@ import {
   type WorkflowJudgeRequest
 } from "../../../../src/lib/agent/lab-workflow-judge/schemas";
 import { validatedLabWorkflowSpecV2Schema } from "../../../../src/lab-workflows/schema/v2";
+
+/*
+ * The judge reaches a paid model and now authenticates as a teacher first.
+ * 401/403 behaviour is covered in tests/api/llmRouteGuard.test.ts.
+ */
+vi.mock("../../../../src/lib/persistence/labDefinitionApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../../src/lib/persistence/labDefinitionApi")>()),
+  authenticateComposerPrincipal: vi.fn(async () => ({
+    userId: "00000000-0000-4000-8000-0000000000bb",
+    role: "teacher" as const
+  }))
+}));
+
 
 const AUTHOR_REQUEST: CapabilityAuthorRequest = {
   contractVersion: "2.0.0",

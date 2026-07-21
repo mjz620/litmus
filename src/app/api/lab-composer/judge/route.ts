@@ -6,6 +6,7 @@ import {
   WorkflowJudgeInputError
 } from "../../../../lib/agent/lab-workflow-judge/judge";
 import { checkWorkflowJudgeRateLimit } from "../../../../lib/agent/lab-workflow-judge/rateLimit";
+import { authenticateComposerPrincipal } from "../../../../lib/persistence/labDefinitionApi";
 import {
   WORKFLOW_JUDGE_LIMITS,
   workflowJudgeRequestSchema
@@ -13,14 +14,6 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
-
-function requesterKey(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    "anonymous"
-  );
-}
 
 function errorResponse(error: WorkflowJudgeInputError, headers?: HeadersInit) {
   return NextResponse.json(createWorkflowJudgeErrorResponse(error), {
@@ -91,7 +84,36 @@ async function review(input: unknown) {
 }
 
 export async function POST(request: Request) {
-  const rate = checkWorkflowJudgeRateLimit(requesterKey(request));
+  /*
+   * The Workflow Judge is a teacher-facing Composer tool that reaches a paid
+   * model. Authenticate first, then key the existing rate budget to the user
+   * rather than the address — a whole class shares one school NAT, so an
+   * address-keyed budget limits the wrong thing.
+   */
+  let guard: Awaited<ReturnType<typeof authenticateComposerPrincipal>>;
+  try {
+    guard = await authenticateComposerPrincipal();
+  } catch {
+    // Fail closed: an auth backend fault must never admit the caller.
+    return NextResponse.json(
+      { ok: false, error: "Authentication is unavailable." },
+      { status: 503 }
+    );
+  }
+  if (!guard) {
+    return NextResponse.json(
+      { ok: false, error: "Authentication required." },
+      { status: 401 }
+    );
+  }
+  if (guard.role !== "teacher") {
+    return NextResponse.json(
+      { ok: false, error: "Teacher access required." },
+      { status: 403 }
+    );
+  }
+
+  const rate = checkWorkflowJudgeRateLimit(guard.userId);
   const rateHeaders = {
     "X-RateLimit-Limit": String(rate.limit),
     "X-RateLimit-Remaining": String(rate.remaining)

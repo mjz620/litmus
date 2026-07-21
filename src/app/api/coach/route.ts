@@ -10,6 +10,10 @@ import {
 } from "../../../lib/agent/authoredCoachSchemas";
 import { generateCoachResponse } from "../../../lib/agent/coach";
 import { coachRequestSchema } from "../../../lib/agent/schemas";
+import {
+  LLM_ROUTE_LIMITERS,
+  guardLlmRoute
+} from "../../../lib/api/llmRouteGuard";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
@@ -88,6 +92,10 @@ async function authoredResponse(body: unknown) {
 }
 
 export async function POST(request: Request) {
+  // Reaches a paid model: authenticate and consume budget before reading a body.
+  const guard = await guardLlmRoute({ limiter: LLM_ROUTE_LIMITERS.coach });
+  if (!guard.ok) return guard.response;
+
   let body: unknown;
   try {
     body = await request.json();

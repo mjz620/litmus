@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
 
 import {
+  LLM_ROUTE_LIMITERS,
+  guardLlmRoute
+} from "../../../lib/api/llmRouteGuard";
+import {
   mintRealtimeToken,
   realtimeTokenRequestSchema
 } from "../../../lib/voice/token";
 
 export async function POST(request: Request) {
+  /*
+   * Mints a realtime session token against the project's OpenAI account. This
+   * was previously unauthenticated, which handed anonymous callers a usable
+   * voice session on the project's billing.
+   */
+  const guard = await guardLlmRoute({
+    limiter: LLM_ROUTE_LIMITERS.realtimeToken
+  });
+  if (!guard.ok) return guard.response;
+
   let body: unknown;
   try {
     body = await request.json();

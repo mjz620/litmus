@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { POST } from "../../src/app/api/evaluate/route";
 import { createAuthoredEvaluationRequest } from "../../src/lib/agent/authoredEvaluator";
@@ -12,6 +12,20 @@ import {
   assembleGenericLabRuntime,
   createCapabilityGenericRuntimePorts
 } from "../../src/lab-workflows/runtime";
+
+/*
+ * These routes reach a paid model and now authenticate first. The guard is
+ * stubbed here so each test still exercises the handler it is about; the
+ * 401/403 behaviour itself is covered in tests/api/llmRouteGuard.test.ts.
+ */
+vi.mock("../../src/lib/persistence/labDefinitionApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/lib/persistence/labDefinitionApi")>()),
+  authenticateComposerPrincipal: vi.fn(async () => ({
+    userId: "00000000-0000-4000-8000-0000000000aa",
+    role: "teacher" as const
+  }))
+}));
+
 
 const workflow = validateSolutionPreparationV2("2026-07-18T22:30:00.000Z");
 const sessionId = "authored-evaluate-route";

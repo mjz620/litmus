@@ -14,18 +14,12 @@ import {
   type CapabilityAuthorStreamEvent
 } from "../../../../../lib/agent/lab-authoring/capabilityAuthorSchemas";
 import { checkCapabilityAuthorRateLimit } from "../../../../../lib/agent/lab-authoring/capabilityRateLimit";
+import { authenticateComposerPrincipal } from "../../../../../lib/persistence/labDefinitionApi";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const CAPABILITY_AUTHOR_STREAM_TYPE = "application/x-ndjson";
-
-function requesterKey(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0];
-  return (
-    forwarded?.trim() || request.headers.get("x-real-ip")?.trim() || "anonymous"
-  );
-}
 
 function errorResponse(
   error: CapabilityAuthoringError,
@@ -148,7 +142,48 @@ function streamedGeneration(
 }
 
 export async function POST(request: Request) {
-  const rateLimit = checkCapabilityAuthorRateLimit(requesterKey(request));
+  /*
+   * Capability authoring is a teacher-facing Composer tool that reaches a paid
+   * model. Authenticate first, then key the existing rate budget to the user
+   * rather than the address — a whole class shares one school NAT, so an
+   * address-keyed budget limits the wrong thing.
+   */
+  let principal: Awaited<ReturnType<typeof authenticateComposerPrincipal>>;
+  try {
+    principal = await authenticateComposerPrincipal();
+  } catch {
+    // Fail closed: an auth backend fault must never admit the caller.
+    return errorResponse(
+      new CapabilityAuthoringError(
+        "authoring.unauthenticated.v2",
+        "Authentication is unavailable.",
+        503,
+        true
+      )
+    );
+  }
+  if (!principal) {
+    return errorResponse(
+      new CapabilityAuthoringError(
+        "authoring.unauthenticated.v2",
+        "Authentication required.",
+        401,
+        false
+      )
+    );
+  }
+  if (principal.role !== "teacher") {
+    return errorResponse(
+      new CapabilityAuthoringError(
+        "authoring.forbidden.v2",
+        "Teacher access required.",
+        403,
+        false
+      )
+    );
+  }
+
+  const rateLimit = checkCapabilityAuthorRateLimit(principal.userId);
   const rateHeaders = {
     "X-RateLimit-Limit": String(rateLimit.limit),
     "X-RateLimit-Remaining": String(rateLimit.remaining)
