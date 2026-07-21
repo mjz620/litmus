@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import OpenAI, { type APIError } from "openai";
+
 import type { LabDraftCommand } from "../../../lab-workflows/authoring";
 import { createBlankLabDraftV2 } from "../../../lab-workflows/definitions/blank-lab";
 import { SOLUTION_PREPARATION_AUTHORING_COMMANDS } from "../../../lab-workflows/definitions/solution-preparation";
@@ -159,10 +161,7 @@ const AUTHOR_PROGRESS = Object.freeze({
 
 const DETERMINISTIC_FALLBACK_TIMEOUT_MS = 4_000;
 const DETERMINISTIC_FALLBACK_ERROR_CODES = new Set<CapabilityAuthorErrorCode>([
-  "authoring.model_unavailable.v2",
-  "authoring.tool_failure.v2",
-  "authoring.timeout.v2",
-  "authoring.output_invalid.v2"
+  "authoring.provider_retryable.v2"
 ]);
 
 const UNSAFE_OR_OUT_OF_SCOPE_REQUEST_PATTERN =
@@ -690,6 +689,36 @@ function timeoutError(): CapabilityAuthoringError {
   );
 }
 
+function providerFailure(error: APIError): CapabilityAuthoringError {
+  if (
+    error.status === 400 ||
+    error.status === 401 ||
+    error.status === 403 ||
+    error.status === 404
+  ) {
+    return new CapabilityAuthoringError(
+      "authoring.provider_configuration.v2",
+      "Capability authoring provider configuration needs attention.",
+      502,
+      false
+    );
+  }
+  if (error.status === 429 || (error.status !== undefined && error.status >= 500)) {
+    return new CapabilityAuthoringError(
+      "authoring.provider_retryable.v2",
+      "Capability authoring provider is temporarily unavailable.",
+      503,
+      true
+    );
+  }
+  return new CapabilityAuthoringError(
+    "authoring.model_unavailable.v2",
+    "Capability authoring provider is unavailable.",
+    503,
+    false
+  );
+}
+
 async function plannerRoundWithAbort(
   planner: CapabilityAuthorPlanner,
   context: CapabilityAuthorPlannerContext
@@ -1001,6 +1030,7 @@ export async function runCapabilityAuthoring(
     });
   } catch (error) {
     if (error instanceof CapabilityAuthoringError) throw error;
+    if (error instanceof OpenAI.APIError) throw providerFailure(error);
     if (error instanceof CapabilityAuthorToolError) {
       throw new CapabilityAuthoringError(
         "authoring.tool_failure.v2",

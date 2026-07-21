@@ -11,7 +11,10 @@ export const CAPABILITY_AUTHOR_LIMITS = Object.freeze({
   classContextCharacters: 1_000,
   maxRevisionAttempts: 3,
   maxModelCalls: 9,
-  maxOutputTokensPerCall: 6_000,
+  // Five trace cases can each contain up to 32 typed actions. Keep enough
+  // room for the complete structured plan rather than treating truncation as
+  // malformed model output.
+  maxOutputTokensPerCall: 12_000,
   timeoutMs: 55_000,
   rateLimitRequests: 5,
   rateLimitWindowMs: 60_000,
@@ -106,6 +109,65 @@ export const capabilityAuthorPlanSchema = z
       });
     }
   });
+
+const STRICT_OUTPUT_FORBIDDEN_SCHEMA_KEYS = new Set([
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems",
+  "pattern",
+  "format",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "$schema",
+  "default"
+]);
+
+/**
+ * OpenAI strict JSON Schema accepts the object/union structure produced by
+ * Zod, but rejects validation bounds such as `maxItems` and `minLength`.
+ * Those bounds remain mandatory when the returned plan is parsed below; this
+ * projection is only the provider's output-shape contract.
+ */
+export function strictifyCapabilityAuthorOutputSchema(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(strictifyCapabilityAuthorOutputSchema);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const entries = Object.entries(value)
+    .filter(([key]) => !STRICT_OUTPUT_FORBIDDEN_SCHEMA_KEYS.has(key))
+    .map(([key, nested]) => [
+      key === "oneOf" ? "anyOf" : key,
+      strictifyCapabilityAuthorOutputSchema(nested)
+    ] as const);
+  const anyOfEntries = entries.filter(([key]) => key === "anyOf");
+  if (anyOfEntries.length < 2) return Object.fromEntries(entries);
+  return Object.fromEntries([
+    ...entries.filter(([key]) => key !== "anyOf"),
+    [
+      "anyOf",
+      anyOfEntries.flatMap(([, nested]) =>
+        Array.isArray(nested) ? nested : [nested]
+      )
+    ]
+  ]);
+}
+
+/** A fresh JSON-safe strict schema for each provider request. */
+export function capabilityAuthorPlanStrictJsonSchema(): Record<string, unknown> {
+  const schema = strictifyCapabilityAuthorOutputSchema(
+    z.toJSONSchema(capabilityAuthorPlanSchema)
+  );
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
+    throw new Error("Capability author output schema must be an object.");
+  }
+  return schema as Record<string, unknown>;
+}
 
 export const capabilityAuthorDiagnosticSchema = z.strictObject({
   source: z.enum(["validation", "trace", "tool", "model", "limit"]),
@@ -290,11 +352,17 @@ export const capabilityAuthorErrorCodeSchema = z.enum([
   "authoring.invalid_json.v2",
   "authoring.invalid_request.v2",
   "authoring.request_too_large.v2",
+  // Authoring reaches a paid model, so the route authenticates before running.
+  "authoring.unauthenticated.v2",
+  "authoring.forbidden.v2",
   "authoring.rate_limited.v2",
   "authoring.model_refused.v2",
+  "authoring.provider_configuration.v2",
+  "authoring.provider_retryable.v2",
   "authoring.model_unavailable.v2",
   "authoring.tool_failure.v2",
   "authoring.timeout.v2",
+  "authoring.output_truncated.v2",
   "authoring.output_invalid.v2",
   "authoring.internal_failure.v2"
 ]);

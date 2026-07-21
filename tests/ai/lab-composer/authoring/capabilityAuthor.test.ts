@@ -368,7 +368,12 @@ describe("LC2-601 bounded capability author", () => {
       mode: "live",
       model: "failed-live-model",
       async runRound() {
-        throw new Error("provider unavailable");
+        throw new CapabilityAuthoringError(
+          "authoring.provider_retryable.v2",
+          "Capability authoring provider is temporarily unavailable.",
+          503,
+          true
+        );
       }
     };
 

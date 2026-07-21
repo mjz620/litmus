@@ -1,8 +1,8 @@
 import "server-only";
 
 import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
+import { z } from "zod";
 
 import {
   CAPABILITY_AUTHOR_DEFAULT_MODEL,
@@ -18,7 +18,8 @@ import {
 } from "./capabilityAuthor";
 import {
   CAPABILITY_AUTHOR_LIMITS,
-  capabilityAuthorPlanSchema
+  capabilityAuthorPlanSchema,
+  capabilityAuthorPlanStrictJsonSchema
 } from "./capabilityAuthorSchemas";
 import { CAPABILITY_AUTHOR_TOOLS } from "./capabilityTools.server";
 
@@ -31,11 +32,38 @@ function providerErrorSummary(error: unknown) {
     status: typeof value.status === "number" ? value.status : undefined,
     code: typeof value.code === "string" ? value.code : undefined,
     type: typeof value.type === "string" ? value.type : undefined,
+    requestId:
+      typeof value.requestID === "string" ? value.requestID : undefined,
+    param: typeof value.param === "string" ? value.param : undefined,
     message:
       typeof value.message === "string"
         ? value.message.slice(0, 500)
         : "Unknown provider error"
   };
+}
+
+function outputValidationIssues(error: z.ZodError): readonly string[] {
+  return error.issues.slice(0, 16).map((issue) => {
+    const path = issue.path.join(".") || "$";
+    return `${path}: ${issue.message}`;
+  });
+}
+
+function outputValidationRepairPrompt(error: z.ZodError): string {
+  return JSON.stringify({
+    correction:
+      "Your previous final plan did not satisfy the required response contract. Return the complete JSON plan again, with no commentary.",
+    issues: outputValidationIssues(error)
+  });
+}
+
+export interface CapabilityAuthorOpenAiClient {
+  readonly responses: Pick<OpenAI["responses"], "create">;
+}
+
+export interface CreateOpenAiCapabilityAuthorPlannerOptions {
+  readonly client?: CapabilityAuthorOpenAiClient;
+  readonly model?: string;
 }
 
 function hasRefusal(
@@ -55,15 +83,20 @@ function hasRefusal(
   );
 }
 
-export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
+export function createOpenAiCapabilityAuthorPlanner(
+  options: CreateOpenAiCapabilityAuthorPlannerOptions = {}
+): CapabilityAuthorPlanner {
   const model =
+    options.model ??
     process.env.OPENAI_LAB_CAPABILITY_AUTHOR_MODEL ??
     CAPABILITY_AUTHOR_DEFAULT_MODEL;
-  const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    maxRetries: 0,
-    timeout: CAPABILITY_AUTHOR_LIMITS.timeoutMs
-  });
+  const client =
+    options.client ??
+    new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      maxRetries: 0,
+      timeout: CAPABILITY_AUTHOR_LIMITS.timeoutMs
+    });
 
   return Object.freeze({
     mode: "live" as const,
@@ -88,6 +121,7 @@ export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
       let modelCalls = 0;
       let inputTokens = 0;
       let outputTokens = 0;
+      let usedOutputValidationRepair = false;
 
       for (
         let round = 0;
@@ -95,7 +129,7 @@ export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
         round += 1
       ) {
         const response = await client.responses
-          .parse(
+          .create(
             {
               model,
               input,
@@ -106,24 +140,35 @@ export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
                 CAPABILITY_AUTHOR_LIMITS.maxOutputTokensPerCall,
               store: false,
               text: {
-                format: zodTextFormat(
-                  capabilityAuthorPlanSchema,
-                  "capability_author_plan"
-                )
+                format: {
+                  type: "json_schema",
+                  name: "capability_author_plan",
+                  strict: true,
+                  schema: capabilityAuthorPlanStrictJsonSchema()
+                }
               }
             },
             { signal: context.signal }
           )
           .catch((error: unknown) => {
             console.error(
-              "Capability author provider request failed.",
-              providerErrorSummary(error)
+              `Capability author provider request failed: ${JSON.stringify(
+                providerErrorSummary(error)
+              )}`
             );
             throw error;
           });
         modelCalls += 1;
         inputTokens += response.usage?.input_tokens ?? 0;
         outputTokens += response.usage?.output_tokens ?? 0;
+        if (response.status === "incomplete") {
+          throw new CapabilityAuthoringError(
+            "authoring.output_truncated.v2",
+            "The capability author response was incomplete before the plan finished.",
+            502,
+            true
+          );
+        }
         if (hasRefusal(response.output)) {
           throw new CapabilityAuthoringError(
             "authoring.model_refused.v2",
@@ -137,7 +182,28 @@ export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
           (item) => item.type === "function_call"
         );
         if (toolCalls.length === 0) {
-          if (!response.output_parsed) {
+          let parsedPlan: unknown;
+          try {
+            parsedPlan = capabilityAuthorPlanSchema.parse(
+              JSON.parse(response.output_text)
+            );
+          } catch (error) {
+            if (
+              error instanceof z.ZodError &&
+              !usedOutputValidationRepair &&
+              round + 1 < Math.min(5, context.modelCallsRemaining)
+            ) {
+              usedOutputValidationRepair = true;
+              console.warn(
+                "Capability author output failed validation; requesting one repair.",
+                { issues: outputValidationIssues(error) }
+              );
+              input.push({
+                role: "user",
+                content: outputValidationRepairPrompt(error)
+              });
+              continue;
+            }
             throw new CapabilityAuthoringError(
               "authoring.output_invalid.v2",
               "The capability author returned no bounded plan.",
@@ -146,7 +212,7 @@ export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
             );
           }
           return {
-            plan: response.output_parsed,
+            plan: parsedPlan,
             usage: { modelCalls, inputTokens, outputTokens }
           };
         }
@@ -162,15 +228,7 @@ export function createOpenAiCapabilityAuthorPlanner(): CapabilityAuthorPlanner {
           } else if (item.type === "reasoning") {
             input.push(item);
           } else if (item.type === "message") {
-            input.push({
-              ...item,
-              content: item.content.map((content) => {
-                if (content.type !== "output_text") return content;
-                const { parsed: ignoredParsed, ...wireContent } = content;
-                void ignoredParsed;
-                return wireContent;
-              })
-            });
+            input.push(item);
           }
         }
         for (const toolCall of toolCalls) {
