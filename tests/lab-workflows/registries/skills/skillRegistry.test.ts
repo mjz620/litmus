@@ -20,6 +20,8 @@ describe("canonical Lab Composer skill registry", () => {
       .map(({ id }) => id);
 
     expect(verified).toEqual([
+      "measure_mass",
+      "measure_dissolution_enthalpy",
       "endpoint_control",
       "meniscus_reading",
       "burette_conditioning",
@@ -39,7 +41,22 @@ describe("canonical Lab Composer skill registry", () => {
   });
 
   it("publishes a versioned snapshot for family-neutral verified skills", () => {
-    expect(skillRegistry.snapshotId).toBe("skills.2.1.0");
+    expect(skillRegistry.snapshotId).toBe("skills.2.2.0");
+    expect(skillRegistry.get("measure_mass")).toMatchObject({
+      availability: "verified",
+      requiredComponentIds: [
+        "component.balance.v1",
+        "component.weighing_boat.v1"
+      ]
+    });
+    expect(skillRegistry.get("measure_dissolution_enthalpy")).toMatchObject({
+      availability: "verified",
+      requiredComponentIds: [
+        "component.balance.v1",
+        "component.calorimeter.v1",
+        "component.thermometer.v1"
+      ]
+    });
     expect(skillRegistry.get("volumetric_transfer")).toMatchObject({
       supportedFamilyIds: [],
       availability: "verified"
@@ -103,18 +120,25 @@ describe("canonical Lab Composer skill registry", () => {
   });
 
   it("rejects duplicate canonical IDs and alias conflicts", () => {
-    const first = SKILL_REGISTRY_DEFINITIONS[0];
+    const first = SKILL_REGISTRY_DEFINITIONS.find(
+      ({ id }) => id === "endpoint_control"
+    )!;
     expect(() => createSkillRegistry([first, { ...first }])).toThrowError(
       new SkillRegistryError("skill_registry.duplicate_id", first.id)
     );
 
     const conflict = {
-      ...SKILL_REGISTRY_DEFINITIONS[1],
+      ...SKILL_REGISTRY_DEFINITIONS.find(
+        ({ id }) => id === "meniscus_reading"
+      )!,
       id: "data_recording",
       aliases: ["volumetric_reading"]
     } satisfies SkillRegistryDefinition;
     expect(() =>
-      createSkillRegistry([SKILL_REGISTRY_DEFINITIONS[1], conflict])
+      createSkillRegistry([
+        SKILL_REGISTRY_DEFINITIONS.find(({ id }) => id === "meniscus_reading")!,
+        conflict
+      ])
     ).toThrowError(
       new SkillRegistryError(
         "skill_registry.alias_conflict",

@@ -4,6 +4,18 @@ const ENGINE = ["engine.titration.v1"] as const;
 
 export const EVENT_FLAG_REGISTRY_ENTRIES = [
   {
+    id: "flag.indicator_unsuitable.v1",
+    version: "1.0.0",
+    semanticFlag: "indicator_unsuitable",
+    workflowReferenceId: "flag.indicator_unsuitable.v1",
+    emittedBySemanticEventTypes: ["select_indicator"],
+    canonicalSkillId: "endpoint_control",
+    severity: "warning",
+    coachEligible: true,
+    positiveStaySilentEvidenceReasonId: "evidence.indicator_suitable.v1",
+    compatibleEngineIds: ENGINE
+  },
+  {
     id: "flag.flow_rate_high_near_endpoint.v1",
     version: "1.0.0",
     semanticFlag: "flow_rate_high_near_endpoint",
@@ -69,6 +81,68 @@ export const EVENT_FLAG_REGISTRY_ENTRIES = [
 
 export const EVENT_TYPE_REGISTRY_ENTRIES = [
   {
+    id: "event.collect_precipitate.v1",
+    version: "1.0.0",
+    semanticEventType: "collect_precipitate",
+    workflowReferenceId: "event.collect_precipitate.v1",
+    observationKeys: [
+      "massG",
+      "sourceEquipmentInstanceId",
+      "targetEquipmentInstanceId"
+    ],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.tare_balance.v1",
+    version: "1.0.0",
+    semanticEventType: "tare_balance",
+    workflowReferenceId: "event.tare_balance.v1",
+    observationKeys: ["tareOffsetG"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.place_on_balance.v1",
+    version: "1.0.0",
+    semanticEventType: "place_on_balance",
+    workflowReferenceId: "event.place_on_balance.v1",
+    observationKeys: ["equipmentInstanceId"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.remove_from_balance.v1",
+    version: "1.0.0",
+    semanticEventType: "remove_from_balance",
+    workflowReferenceId: "event.remove_from_balance.v1",
+    observationKeys: ["equipmentInstanceId"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.transfer_solid.v1",
+    version: "1.0.0",
+    semanticEventType: "transfer_solid",
+    workflowReferenceId: "event.transfer_solid.v1",
+    observationKeys: [
+      "massG",
+      "sourceEquipmentInstanceId",
+      "targetEquipmentInstanceId"
+    ],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
+    id: "event.read_balance.v1",
+    version: "1.0.0",
+    semanticEventType: "read_balance",
+    workflowReferenceId: "event.read_balance.v1",
+    observationKeys: ["actualG", "reportedG", "errorG", "tared"],
+    emittedSemanticFlags: [],
+    compatibleEngineIds: []
+  },
+  {
     id: "rinse_burette",
     version: "1.0.0",
     semanticEventType: "rinse_burette",
@@ -111,7 +185,7 @@ export const EVENT_TYPE_REGISTRY_ENTRIES = [
     semanticEventType: "select_indicator",
     workflowReferenceId: null,
     observationKeys: ["indicator"],
-    emittedSemanticFlags: [],
+    emittedSemanticFlags: ["indicator_unsuitable"],
     compatibleEngineIds: ENGINE
   },
   {

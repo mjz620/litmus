@@ -6,6 +6,12 @@ import type {
 } from "../components";
 
 export type ActionRegistryId =
+  | "action.collect_precipitate.v1"
+  | "action.tare_balance.v1"
+  | "action.place_on_balance.v1"
+  | "action.remove_from_balance.v1"
+  | "action.transfer_solid.v1"
+  | "action.read_balance.v1"
   | "action.add_indicator.v1"
   | "action.dispense.v1"
   | "action.fill.v1"
@@ -24,6 +30,12 @@ export type ActionRegistryId =
   | "action.transfer_liquid.v1";
 
 export type ActionParameterSchemaId =
+  | "schema.action_parameters.collect_precipitate.v1"
+  | "schema.action_parameters.tare_balance.v1"
+  | "schema.action_parameters.place_on_balance.v1"
+  | "schema.action_parameters.remove_from_balance.v1"
+  | "schema.action_parameters.transfer_solid.v1"
+  | "schema.action_parameters.read_balance.v1"
   | "schema.action_parameters.add_indicator.v1"
   | "schema.action_parameters.dispense.v1"
   | "schema.action_parameters.fill.v1"
@@ -62,6 +74,12 @@ export type LabActionErrorCode =
   | "action-error.target_capability_missing.v1";
 
 export type ActionEventContractId =
+  | "event-contract.collect_precipitate.v1"
+  | "event-contract.tare_balance.v1"
+  | "event-contract.place_on_balance.v1"
+  | "event-contract.remove_from_balance.v1"
+  | "event-contract.transfer_solid.v1"
+  | "event-contract.read_balance.v1"
   | "event-contract.add_indicator_legacy.v1"
   | "event-contract.add_titrant.v1"
   | "event-contract.fill_burette.v1"
@@ -85,7 +103,7 @@ export interface ActionParameterDefinition {
   readonly key: string;
   readonly valueType: "enum" | "number" | "string";
   readonly required: boolean;
-  readonly unitId?: "unit.celsius.v1" | "unit.ml.v1";
+  readonly unitId?: "unit.celsius.v1" | "unit.g.v1" | "unit.ml.v1";
   readonly minimum?: number;
   readonly maximum?: number;
   readonly allowedValues?: readonly string[];

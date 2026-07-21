@@ -252,6 +252,8 @@ function compileMaterials(
       materialPhase: profile.phase,
       initialConcentrationM,
       initialTemperatureC: profile.initialTemperatureC,
+      molarMassGPerMol: profile.molarMassGPerMol ?? null,
+      acidBaseDissociation: profile.acidBaseDissociation ?? null,
       initializationPresetSchemaId: profile.initializationPresetSchemaId,
       providedChemistryCapabilityIds: [
         ...profile.providedChemistryCapabilityIds

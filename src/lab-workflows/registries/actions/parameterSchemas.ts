@@ -4,6 +4,35 @@ import type {
   ActionParameterSchemaEntry
 } from "./types";
 
+export const TARE_BALANCE_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+export const COLLECT_PRECIPITATE_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+export const PLACE_ON_BALANCE_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+export const REMOVE_FROM_BALANCE_ACTION_PARAMETERS =
+  [] as const satisfies readonly ActionParameterDefinition[];
+export const TRANSFER_SOLID_ACTION_PARAMETERS = [
+  {
+    key: "massG",
+    valueType: "number",
+    required: true,
+    unitId: "unit.g.v1",
+    minimum: 0.000001,
+    maximum: 100
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+export const READ_BALANCE_ACTION_PARAMETERS = [
+  {
+    key: "reportedG",
+    valueType: "number",
+    required: true,
+    unitId: "unit.g.v1",
+    minimum: -500,
+    maximum: 500
+  }
+] as const satisfies readonly ActionParameterDefinition[];
+
 export const RINSE_ACTION_PARAMETERS = [
   {
     key: "solvent",
@@ -160,6 +189,58 @@ export const READ_TEMPERATURE_ACTION_PARAMETERS = [
 
 export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
   {
+    id: "schema.action_parameters.collect_precipitate.v1",
+    version: "1.0.0",
+    description:
+      "No authored parameters; the deterministic chemistry observable supplies the dry solid mass.",
+    additionalProperties: false,
+    actionIds: ["action.collect_precipitate.v1"],
+    parameters: COLLECT_PRECIPITATE_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.tare_balance.v1",
+    version: "1.0.0",
+    description:
+      "No authored parameters; tare captures the current gross pan mass.",
+    additionalProperties: false,
+    actionIds: ["action.tare_balance.v1"],
+    parameters: TARE_BALANCE_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.place_on_balance.v1",
+    version: "1.0.0",
+    description:
+      "No authored parameters; source and target identify vessel and balance.",
+    additionalProperties: false,
+    actionIds: ["action.place_on_balance.v1"],
+    parameters: PLACE_ON_BALANCE_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.remove_from_balance.v1",
+    version: "1.0.0",
+    description:
+      "No authored parameters; removes the exact vessel currently on the pan.",
+    additionalProperties: false,
+    actionIds: ["action.remove_from_balance.v1"],
+    parameters: REMOVE_FROM_BALANCE_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.transfer_solid.v1",
+    version: "1.0.0",
+    description: "Bounded conserved solid mass in grams.",
+    additionalProperties: false,
+    actionIds: ["action.transfer_solid.v1"],
+    parameters: TRANSFER_SOLID_ACTION_PARAMETERS
+  },
+  {
+    id: "schema.action_parameters.read_balance.v1",
+    version: "1.0.0",
+    description: "Student-reported balance reading in grams.",
+    additionalProperties: false,
+    actionIds: ["action.read_balance.v1"],
+    parameters: READ_BALANCE_ACTION_PARAMETERS
+  },
+  {
     id: "schema.action_parameters.rinse.v1",
     version: "1.0.0",
     description:
@@ -257,7 +338,8 @@ export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
   {
     id: "schema.action_parameters.mix_calorimeter.v1",
     version: "1.0.0",
-    description: "Bounded positive count of coffee-cup calorimeter mix strokes.",
+    description:
+      "Bounded positive count of coffee-cup calorimeter mix strokes.",
     additionalProperties: false,
     actionIds: ["action.mix_calorimeter.v1"],
     parameters: MIX_CALORIMETER_ACTION_PARAMETERS
@@ -273,7 +355,8 @@ export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
   {
     id: "schema.action_parameters.place_thermometer.v1",
     version: "1.0.0",
-    description: "No authored parameters; placement is exact equipment pairing.",
+    description:
+      "No authored parameters; placement is exact equipment pairing.",
     additionalProperties: false,
     actionIds: ["action.place_thermometer.v1"],
     parameters: PLACE_THERMOMETER_ACTION_PARAMETERS
@@ -299,6 +382,6 @@ export const ACTION_PARAMETER_SCHEMA_ENTRIES = [
 
 export const actionParameterSchemaRegistry = createSupportingRegistry(
   "action parameter schema",
-  "action-parameter-schemas.2.1.0",
+  "action-parameter-schemas.2.2.0",
   ACTION_PARAMETER_SCHEMA_ENTRIES
 );

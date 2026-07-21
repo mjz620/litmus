@@ -25,6 +25,7 @@ import { engineRegistry } from "../../../../src/lab-workflows/registries/engines
 import {
   LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS,
   REAGENT_REGISTRY_ENTRIES,
+  SOLID_MOLAR_MASS_G_PER_MOL,
   materialIsVerified,
   materialRegistry,
   materialSupportsContainerCapabilities,
@@ -42,7 +43,7 @@ import { createSchemaValidWorkflowDraft } from "../../schema/fixtures";
 describe("LC2-102 material profiles", () => {
   it("evolves the exact reagent entries through one material facade", () => {
     expect(materialRegistry).toBe(reagentRegistry);
-    expect(reagentRegistry.snapshotId).toBe("reagents.5.2.0");
+    expect(reagentRegistry.snapshotId).toBe("reagents.5.4.0");
     expect(LEGACY_REAGENT_REGISTRY_SNAPSHOT_IDS).toEqual([
       "reagents.1.0.0",
       "reagents.2.0.0",
@@ -52,13 +53,22 @@ describe("LC2-102 material profiles", () => {
       "reagents.3.1.0",
       "reagents.4.0.0",
       "reagents.5.0.0",
-      "reagents.5.1.0"
+      "reagents.5.1.0",
+      "reagents.5.2.0",
+      "reagents.5.3.0"
     ]);
     expect(materialRegistry.list().map(({ id }) => id)).toEqual([
+      "reagent.ammonium_nitrate_solid.v1",
+      "reagent.calcium_chloride_solid.v1",
+      "reagent.sodium_hydroxide_solid.v1",
+      "reagent.sodium_chloride_solid.v1",
       "reagent.hydrochloric_acid_0_100m.v1",
+      "reagent.hydrochloric_acid_titrant_0_100m.v1",
       "reagent.sodium_hydroxide_0_100m.v1",
       "reagent.hydrochloric_acid_aqueous.v1",
       "reagent.sodium_hydroxide_aqueous.v1",
+      "reagent.acetic_acid_0_100m.v1",
+      "reagent.ammonia_0_100m.v1",
       "reagent.phenolphthalein.v1",
       "reagent.bromothymol_blue.v1",
       "reagent.methyl_orange.v1",
@@ -105,6 +115,26 @@ describe("LC2-102 material profiles", () => {
     expect(
       materialRegistry.get("reagent.hydrochloric_acid_0_100m.v1")
     ).not.toHaveProperty("concentrationAuthoring");
+  });
+
+  it("derives solid moles from the registered published formula masses", () => {
+    const expected = {
+      "reagent.ammonium_nitrate_solid.v1": 2.5 / 80.0434,
+      "reagent.calcium_chloride_solid.v1": 2.5 / 110.984,
+      "reagent.sodium_hydroxide_solid.v1": 2.5 / 39.9971,
+      "reagent.sodium_chloride_solid.v1": 2.5 / 58.44277
+    } as const;
+
+    for (const [id, expectedMoles] of Object.entries(expected)) {
+      const profile = materialRegistry.get(id);
+      expect(profile.phase).toBe("solid");
+      expect(profile.molarMassGPerMol).toBe(
+        SOLID_MOLAR_MASS_G_PER_MOL[
+          id as keyof typeof SOLID_MOLAR_MASS_G_PER_MOL
+        ]
+      );
+      expect(2.5 / profile.molarMassGPerMol!).toBeCloseTo(expectedMoles, 12);
+    }
   });
 
   it("separates authorable sodium chloride identity from its bounded initialization", () => {
@@ -445,7 +475,7 @@ describe("LC2-102 material profiles", () => {
       ENDPOINT_CONTROL_PRELAB_EXPECTED_HASH
     );
     expect(outcome.validation.registrySnapshotIds.reagents).toBe(
-      "reagents.5.2.0"
+      "reagents.5.4.0"
     );
   });
 

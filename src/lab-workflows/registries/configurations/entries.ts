@@ -83,7 +83,9 @@ function quantity(
     schemaId:
       unitId === "unit.ml.v1"
         ? "schema.quantity.volume_ml.v1"
-        : "schema.quantity.drop_count.v1",
+        : unitId === "unit.g.v1"
+          ? "schema.quantity.mass_g.v1"
+          : "schema.quantity.drop_count.v1",
     amount,
     unitId,
     compatibleMaterialProfileIds
@@ -91,6 +93,61 @@ function quantity(
 }
 
 export const CONFIGURATION_REGISTRY_ENTRIES = [
+  entry(
+    "placement.calorimetry_balance_left.v1",
+    "placement",
+    "Laboratory balance at the registered calorimetry weighing station.",
+    {
+      compatibleComponentIds: ["component.balance.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
+    "placement.calorimetry_weighing_boat.v1",
+    "placement",
+    "Weighing boat beside the registered calorimetry balance.",
+    {
+      compatibleComponentIds: ["component.weighing_boat.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
+    "placement.calorimetry_solid_stock_right.v1",
+    "placement",
+    "Solid reagent stock at the registered calorimetry station.",
+    {
+      compatibleComponentIds: ["component.reagent_bottle.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.calorimetry_bench.v1"
+    }
+  ),
+  entry(
+    "component_config.balance.centigram.v1",
+    "component_configuration",
+    "Verified 500 g school balance with 0.01 g resolution.",
+    {
+      compatibleComponentIds: ["component.balance.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.balance.v1"
+    }
+  ),
+  entry(
+    "component_config.weighing_boat.2g.v1",
+    "component_configuration",
+    "Verified reusable weighing boat with a deterministic 2.00 g empty mass.",
+    {
+      compatibleComponentIds: ["component.weighing_boat.v1"],
+      compatibleFamilyIds: [],
+      scope: "equipment",
+      schemaId: "schema.equipment_configuration.weighing_boat.v1"
+    }
+  ),
   entry(
     "engine_config.titration.strong_acid_strong_base_25ml.v1",
     "engine_configuration",
@@ -419,6 +476,28 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "placement.precipitation_balance_left.v1",
+    "placement",
+    "School balance at the precipitation gravimetry station.",
+    {
+      compatibleComponentIds: ["component.balance.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.precipitation_bench.v1"
+    }
+  ),
+  entry(
+    "placement.precipitation_weighing_boat_right.v1",
+    "placement",
+    "Weighing boat at the precipitation drying station.",
+    {
+      compatibleComponentIds: ["component.weighing_boat.v1"],
+      compatibleFamilyIds: [],
+      scope: "layout",
+      schemaId: "schema.layout_configuration.precipitation_bench.v1"
+    }
+  ),
+  entry(
     "placement.calorimeter_center.v1",
     "placement",
     "Coffee-cup calorimeter at the verified calorimetry bench center.",
@@ -495,6 +574,12 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     { adapterKey: "endpointObserved" }
   ),
   entry(
+    "observable.indicator_suitable.v1",
+    "observable",
+    "Engine-owned indication that the chosen indicator transition occurs within the registered endpoint tolerance.",
+    { adapterKey: "indicatorSuitable", compatibleFamilyIds: [] }
+  ),
+  entry(
     "observable.solution_ph.v1",
     "observable",
     "Deterministic flask-solution pH from the acid-base equilibrium model, reported to 0.01 pH.",
@@ -549,6 +634,48 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "observable.precipitation_ion_product.v1",
+    "observable",
+    "Reaction quotient Q from the conserved mixed-ion inventory before precipitation.",
+    { adapterKey: "precipitationIonProduct", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.solubility_product.v1",
+    "observable",
+    "Registered 25 degree Celsius solubility product used for the selected precipitate.",
+    { adapterKey: "solubilityProduct", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.precipitation_saturation_ratio.v1",
+    "observable",
+    "Deterministic Q divided by Ksp; values above one precipitate.",
+    { adapterKey: "precipitationSaturationRatio", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.precipitate_amount_mol.v1",
+    "observable",
+    "Equilibrium amount of registered precipitate in moles.",
+    { adapterKey: "precipitateAmountMol", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.precipitate_mass_g.v1",
+    "observable",
+    "Equilibrium dry precipitate mass derived from conserved ion inventory.",
+    { adapterKey: "precipitateMassG", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.dissolved_silver_m.v1",
+    "observable",
+    "Post-equilibrium dissolved silver-ion concentration in mol/L.",
+    { adapterKey: "dissolvedSilverM", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.dissolved_chloride_m.v1",
+    "observable",
+    "Post-equilibrium dissolved chloride-ion concentration in mol/L.",
+    { adapterKey: "dissolvedChlorideM", compatibleFamilyIds: [] }
+  ),
+  entry(
     "observable.calorimeter_temperature_c.v1",
     "observable",
     "Equilibrium coffee-cup calorimeter temperature in Celsius from conserved thermal energy.",
@@ -574,6 +701,30 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
       adapterKey: "calorimeterVolumeML",
       compatibleFamilyIds: []
     }
+  ),
+  entry(
+    "observable.balance_reading_g.v1",
+    "observable",
+    "Current resolution-quantized laboratory balance reading in grams.",
+    { adapterKey: "balanceReadingG", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.reacted_amount_mol.v1",
+    "observable",
+    "Moles of registered limiting material that have reacted or dissolved.",
+    { adapterKey: "reactedAmountMol", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.reaction_heat_j.v1",
+    "observable",
+    "Signed reaction heat in joules; endothermic is positive.",
+    { adapterKey: "reactionHeatJ", compatibleFamilyIds: [] }
+  ),
+  entry(
+    "observable.measured_molar_enthalpy_kj_per_mol.v1",
+    "observable",
+    "Measured molar enthalpy calculated from reaction heat and the student-reported mass.",
+    { adapterKey: "measuredMolarEnthalpyKJPerMol", compatibleFamilyIds: [] }
   ),
   entry(
     "observation.reported_volume_ml.v1",
@@ -650,11 +801,17 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Canonical workflow reference for controlled_addition_near_endpoint."
   ),
   entry(
+    "evidence.indicator_suitable.v1",
+    "evidence_reason",
+    "Canonical workflow reference for indicator_suitable_for_equivalence."
+  ),
+  entry(
     "device.chromebook_core.v1",
     "device_profile",
     "Demand-rendered core profile for Chromebook-class hardware."
   ),
   entry("unit.ml.v1", "unit", "Milliliter volume unit."),
+  entry("unit.g.v1", "unit", "Gram mass unit.", { compatibleFamilyIds: [] }),
   entry("unit.drop.v1", "unit", "Bounded indicator drop-count unit."),
   entry("unit.celsius.v1", "unit", "Celsius temperature unit.", {
     compatibleFamilyIds: []
@@ -665,6 +822,22 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   entry("unit.mol_per_l.v1", "unit", "Moles of solute per liter of solution.", {
     compatibleFamilyIds: []
   }),
+  entry("unit.mol.v1", "unit", "Amount of substance in moles.", {
+    compatibleFamilyIds: []
+  }),
+  entry("unit.kj_per_mol.v1", "unit", "Kilojoules per mole.", {
+    compatibleFamilyIds: []
+  }),
+  schema(
+    "schema.equipment_configuration.balance.v1",
+    "equipment",
+    "Strict metadata contract for registered laboratory-balance configurations."
+  ),
+  schema(
+    "schema.equipment_configuration.weighing_boat.v1",
+    "equipment",
+    "Strict metadata contract for registered weighing-vessel configurations."
+  ),
   schema(
     "schema.equipment_configuration.burette.v1",
     "equipment",
@@ -757,6 +930,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Strict metadata contract for a code-owned pure-liquid identity without authored composition."
   ),
   schema(
+    "schema.material_initialization.solid.v1",
+    "material_initialization",
+    "Strict metadata contract for a code-owned solid identity and formula mass."
+  ),
+  schema(
     "schema.model_configuration.strong_acid_strong_base_25ml.v1",
     "model",
     "Strict metadata contract for the current legacy titration configuration."
@@ -767,16 +945,48 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     "Strict positive integer drop-count metadata contract."
   ),
   schema(
+    "schema.quantity.mass_g.v1",
+    "quantity",
+    "Strict finite positive gram-mass metadata contract."
+  ),
+  schema(
     "schema.quantity.volume_ml.v1",
     "quantity",
     "Strict finite positive milliliter-volume metadata contract."
   ),
+  quantity("quantity-preset.ammonium_nitrate_2_50g.v1", 2.5, "unit.g.v1", [
+    "reagent.ammonium_nitrate_solid.v1"
+  ]),
+  quantity("quantity-preset.calcium_chloride_2_50g.v1", 2.5, "unit.g.v1", [
+    "reagent.calcium_chloride_solid.v1"
+  ]),
+  quantity("quantity-preset.sodium_hydroxide_2_50g.v1", 2.5, "unit.g.v1", [
+    "reagent.sodium_hydroxide_solid.v1"
+  ]),
+  quantity("quantity-preset.sodium_chloride_2_50g.v1", 2.5, "unit.g.v1", [
+    "reagent.sodium_chloride_solid.v1"
+  ]),
   quantity(
     "quantity-preset.hydrochloric_acid_0_100m_25ml.v1",
     25,
     "unit.ml.v1",
     ["reagent.hydrochloric_acid_0_100m.v1"]
   ),
+  quantity(
+    "quantity-preset.hydrochloric_acid_0_100m_50ml.v1",
+    50,
+    "unit.ml.v1",
+    ["reagent.hydrochloric_acid_titrant_0_100m.v1"]
+  ),
+  quantity("quantity-preset.acetic_acid_0_100m_25ml.v1", 25, "unit.ml.v1", [
+    "reagent.acetic_acid_0_100m.v1"
+  ]),
+  quantity("quantity-preset.ammonia_0_100m_25ml.v1", 25, "unit.ml.v1", [
+    "reagent.ammonia_0_100m.v1"
+  ]),
+  quantity("quantity-preset.ammonia_0_100m_50ml.v1", 50, "unit.ml.v1", [
+    "reagent.ammonia_0_100m.v1"
+  ]),
   quantity(
     "quantity-preset.hydrochloric_acid_solution_25ml.v1",
     25,

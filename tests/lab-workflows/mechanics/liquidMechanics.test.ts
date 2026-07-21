@@ -10,6 +10,7 @@ import {
 } from "../../../src/lab-workflows/chemistry-models/material-ledger";
 import {
   LIQUID_MECHANICS_ERROR_CODES as ERROR,
+  BALANCE_MECHANICAL_ADAPTER,
   BURETTE_MECHANICAL_ADAPTER,
   LIQUID_MECHANICAL_ADAPTERS,
   LiquidMechanicsError,
@@ -539,7 +540,10 @@ describe("reusable liquid equipment mechanics", () => {
     expect(getLiquidMechanicalAdapter("mechanical-adapter.burette.v1")).toBe(
       BURETTE_MECHANICAL_ADAPTER
     );
-    expect(LIQUID_MECHANICAL_ADAPTERS).toHaveLength(10);
+    expect(getLiquidMechanicalAdapter("mechanical-adapter.balance.v1")).toBe(
+      BALANCE_MECHANICAL_ADAPTER
+    );
+    expect(LIQUID_MECHANICAL_ADAPTERS).toHaveLength(11);
     expectMechanicsError(
       () => getLiquidMechanicalAdapter("mechanical-adapter.burette.closest.v1"),
       ERROR.unknownAdapter
@@ -549,6 +553,7 @@ describe("reusable liquid equipment mechanics", () => {
   it("contains no family dispatch, chemistry formulas, framework, browser, or network imports", () => {
     const files = [
       "adapters.ts",
+      "balanceAdapters.ts",
       "calorimetryAdapters.ts",
       "errors.ts",
       "index.ts",

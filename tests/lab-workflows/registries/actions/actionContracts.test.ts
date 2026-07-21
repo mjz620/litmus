@@ -18,6 +18,60 @@ import { componentRegistry } from "../../../../src/lab-workflows/registries/comp
 import { eventTypeRegistry } from "../../../../src/lab-workflows/registries/event-flags";
 
 const EXPECTED_ACTION_CONTRACTS = {
+  "action.collect_precipitate.v1": {
+    source: ["capability.contain_liquid.v1"],
+    target: ["capability.receive_solid.v1"],
+    parameterSchemaId: "schema.action_parameters.collect_precipitate.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    eventContractId: "event-contract.collect_precipitate.v1",
+    behavior: "discrete"
+  },
+  "action.tare_balance.v1": {
+    source: ["capability.measure_mass.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.tare_balance.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    eventContractId: "event-contract.tare_balance.v1",
+    behavior: "discrete"
+  },
+  "action.place_on_balance.v1": {
+    source: ["capability.contain_solid.v1"],
+    target: ["capability.measure_mass.v1"],
+    parameterSchemaId: "schema.action_parameters.place_on_balance.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    eventContractId: "event-contract.place_on_balance.v1",
+    behavior: "discrete"
+  },
+  "action.remove_from_balance.v1": {
+    source: ["capability.measure_mass.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.remove_from_balance.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    eventContractId: "event-contract.remove_from_balance.v1",
+    behavior: "discrete"
+  },
+  "action.transfer_solid.v1": {
+    source: ["capability.contain_solid.v1", "capability.dispense_solid.v1"],
+    target: ["capability.receive_solid.v1"],
+    parameterSchemaId: "schema.action_parameters.transfer_solid.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    eventContractId: "event-contract.transfer_solid.v1",
+    behavior: "discrete"
+  },
+  "action.read_balance.v1": {
+    source: ["capability.measure_mass.v1"],
+    target: [],
+    parameterSchemaId: "schema.action_parameters.read_balance.v1",
+    preconditionIds: [],
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    eventContractId: "event-contract.read_balance.v1",
+    behavior: "discrete"
+  },
   "action.rinse.v1": {
     source: ["capability.contain_liquid.v1"],
     target: [
@@ -186,12 +240,14 @@ const EXPECTED_ACTION_CONTRACTS = {
 
 describe("LC2-101 capability-based action contracts", () => {
   it("pins the new snapshot while retaining the legacy snapshot reference", () => {
-    expect(ACTION_REGISTRY_SNAPSHOT_ID).toBe("actions.3.1.0");
+    expect(ACTION_REGISTRY_SNAPSHOT_ID).toBe("actions.3.3.0");
     expect(actionRegistry.snapshotId).toBe(ACTION_REGISTRY_SNAPSHOT_ID);
     expect(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS).toEqual([
       "actions.1.0.0",
       "actions.2.0.0",
-      "actions.3.0.0"
+      "actions.3.0.0",
+      "actions.3.1.0",
+      "actions.3.2.0"
     ]);
     expect(Object.isFrozen(LEGACY_ACTION_REGISTRY_SNAPSHOT_IDS)).toBe(true);
   });

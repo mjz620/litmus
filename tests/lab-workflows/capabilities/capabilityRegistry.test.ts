@@ -27,7 +27,11 @@ describe("capability registry", () => {
       "capability.fill_to_mark.v1",
       "capability.measure_temperature.v1",
       "capability.seal_lid.v1",
-      "capability.accept_probe.v1"
+      "capability.accept_probe.v1",
+      "capability.contain_solid.v1",
+      "capability.receive_solid.v1",
+      "capability.dispense_solid.v1",
+      "capability.measure_mass.v1"
     ]);
     expect(CHEMISTRY_CAPABILITY_IDS).toEqual([
       "chemistry.material_ledger.v1",
@@ -40,7 +44,7 @@ describe("capability registry", () => {
       "chemistry.thermal_energy.v1",
       "chemistry.precipitation_solubility.v1"
     ]);
-    expect(capabilityRegistry.snapshotId).toBe("capabilities.2.2.0");
+    expect(capabilityRegistry.snapshotId).toBe("capabilities.2.3.0");
     expect(capabilityRegistrySnapshot.entries).toBe(capabilityRegistry.list());
     expectTypeOf<EquipmentCapabilityId>().not.toEqualTypeOf<ChemistryCapabilityId>();
   });

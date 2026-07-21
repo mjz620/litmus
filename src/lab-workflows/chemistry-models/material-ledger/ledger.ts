@@ -32,6 +32,43 @@ function fail(
   throw new MaterialLedgerError(code, message, details);
 }
 
+/**
+ * Apply the ledger's hard conservation failure to a deterministic derived
+ * quantity (for example ion formula units split between solution and solid).
+ * Inputs are already integer-scaled by the owning chemistry model.
+ */
+export function assertIntegerQuantityConserved(input: {
+  readonly materialInstanceId: string;
+  readonly initialUnits: number;
+  readonly allocatedUnits: number;
+}): void {
+  if (
+    !Number.isSafeInteger(input.initialUnits) ||
+    input.initialUnits < 0 ||
+    !Number.isSafeInteger(input.allocatedUnits) ||
+    input.allocatedUnits < 0
+  ) {
+    fail(
+      ERROR.invalidLedger,
+      "Conservation inputs must be non-negative safe integers.",
+      {
+        materialInstanceId: input.materialInstanceId
+      }
+    );
+  }
+  if (input.initialUnits !== input.allocatedUnits) {
+    fail(
+      ERROR.conservationViolation,
+      `Material ${input.materialInstanceId} is not conserved.`,
+      {
+        materialInstanceId: input.materialInstanceId,
+        initialUnits: input.initialUnits,
+        allocatedUnits: input.allocatedUnits
+      }
+    );
+  }
+}
+
 function canonicalizeMaterial(
   material: MaterialLedgerMaterial
 ): MaterialLedgerMaterial {

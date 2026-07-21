@@ -92,7 +92,8 @@ describe("verified component entry metadata", () => {
       "action.fill.v1",
       "action.rinse_transfer_device.v1",
       "action.transfer_liquid.v1",
-      "action.pour_liquid.v1"
+      "action.pour_liquid.v1",
+      "action.transfer_solid.v1"
     ]);
     expect(indicatorBottle.allowedActionIds).toEqual([
       "action.select_indicator.v1"
@@ -141,7 +142,6 @@ describe("verified component entry metadata", () => {
     expect(componentRegistry.has("component.beaker.v1")).toBe(true);
     for (const id of [
       "component.graduated_cylinder.v1",
-      "component.balance.v1",
       "component.heat_source_bunsen.v1"
     ]) {
       expect(componentRegistry.has(id)).toBe(false);
@@ -157,7 +157,8 @@ describe("verified component entry metadata", () => {
       allowedActionIds: [
         "action.pour_liquid.v1",
         "action.mix_calorimeter.v1",
-        "action.set_calorimeter_lid.v1"
+        "action.set_calorimeter_lid.v1",
+        "action.transfer_solid.v1"
       ]
     });
     expect(componentRegistry.get("component.thermometer.v1")).toMatchObject({
@@ -168,6 +169,23 @@ describe("verified component entry metadata", () => {
         "action.place_thermometer.v1",
         "action.remove_thermometer.v1",
         "action.read_temperature.v1"
+      ]
+    });
+    expect(componentRegistry.get("component.balance.v1")).toMatchObject({
+      mechanicalAdapterAvailability: "verified",
+      visualAdapterDefinitionAvailability: "verified",
+      measurement: {
+        kind: "mass",
+        unitId: "unit.g.v1",
+        reportIncrementML: 0.01
+      }
+    });
+    expect(componentRegistry.get("component.weighing_boat.v1")).toMatchObject({
+      mechanicalAdapterId: "mechanical-adapter.balance.v1",
+      capabilityIds: [
+        "capability.contain_solid.v1",
+        "capability.receive_solid.v1",
+        "capability.dispense_solid.v1"
       ]
     });
   });

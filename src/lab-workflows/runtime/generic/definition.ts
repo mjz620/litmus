@@ -1026,8 +1026,7 @@ export function createGenericLabDefinition(
        * equipment and ledger, so no serialized engine state is involved.
        */
       const initialization = program.workflow.initialization ?? null;
-      let equipmentFieldOverrides: readonly NativeEquipmentFieldOverride[] =
-        [];
+      let equipmentFieldOverrides: readonly NativeEquipmentFieldOverride[] = [];
       let simulatedElapsedSeconds = 0;
       materialLedger = authoredMaterialLedger;
       if (initialization) {
@@ -1225,6 +1224,7 @@ export function createGenericLabDefinition(
       targets: resolved.targets,
       equipment: state.equipment,
       materialLedger: state.materialLedger,
+      chemistry: state.chemistry,
       preconditions: resolved.binding.preconditions
     });
     const legacyAdapter = legacyAdapterFor(compiled);

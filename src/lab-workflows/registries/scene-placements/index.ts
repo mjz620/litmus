@@ -7,7 +7,7 @@ import type {
 } from "./types";
 
 export const SCENE_PLACEMENT_REGISTRY_SNAPSHOT_ID =
-  "scene-placements.2.1.0" as const;
+  "scene-placements.2.3.0" as const;
 
 export const scenePlacementRegistry = createSupportingRegistry(
   "scene placement",

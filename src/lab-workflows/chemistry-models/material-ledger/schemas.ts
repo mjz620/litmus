@@ -6,6 +6,7 @@ const idSchema = z.string().min(1).max(240);
 const amountSchema = z.number().finite().nonnegative();
 export const materialQuantityUnitIdSchema = z.enum([
   "unit.drop.v1",
+  "unit.g.v1",
   "unit.ml.v1"
 ]);
 

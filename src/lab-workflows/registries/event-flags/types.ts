@@ -2,6 +2,7 @@ export type EventFlagRegistryId =
   | "burette_not_conditioned"
   | "flag.endpoint_overshoot.v1"
   | "flag.flow_rate_high_near_endpoint.v1"
+  | "flag.indicator_unsuitable.v1"
   | "meniscus_misread"
   | "result_out_of_tolerance";
 

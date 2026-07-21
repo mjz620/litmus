@@ -10,8 +10,10 @@ import {
 
 describe("component registry", () => {
   it("lists the verified titration and solution-preparation component contracts", () => {
-    expect(componentRegistry.snapshotId).toBe("components.3.4.0");
+    expect(componentRegistry.snapshotId).toBe("components.3.6.0");
     expect(componentRegistry.list().map(({ id }) => id)).toEqual([
+      "component.balance.v1",
+      "component.weighing_boat.v1",
       "component.burette.v1",
       "component.erlenmeyer_flask.v1",
       "component.reagent_bottle.v1",
@@ -45,7 +47,9 @@ describe("component registry", () => {
   });
 
   it("rejects duplicate IDs with a stable error", () => {
-    const duplicate = COMPONENT_REGISTRY_ENTRIES[0];
+    const duplicate = COMPONENT_REGISTRY_ENTRIES.find(
+      ({ id }) => id === "component.burette.v1"
+    )!;
 
     expect(() =>
       createComponentRegistry([duplicate, { ...duplicate }])

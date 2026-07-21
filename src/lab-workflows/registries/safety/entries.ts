@@ -45,8 +45,8 @@ export const SAFETY_REGISTRY_ENTRIES = [
     prohibited: false,
     compatibleFamilyIds: [],
     studentFacingText:
-      "Wear assigned eye protection and treat hot and cold water as real thermal hazards in a physical lab.",
+      "Wear assigned eye protection and treat hot water and registered solid reagents as real hazards in a physical lab.",
     teacherFacingText:
-      "This verified virtual coffee-cup calorimetry path uses registered aqueous materials only and does not replace local laboratory safety instruction."
+      "This verified virtual coffee-cup calorimetry path uses registered thermal liquids and solids; it does not replace SDS review or local laboratory safety instruction."
   }
 ] as const satisfies readonly SafetyRegistryEntry[];

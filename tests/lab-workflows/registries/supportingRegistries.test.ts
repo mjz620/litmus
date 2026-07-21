@@ -49,7 +49,9 @@ describe("Lab Composer supporting registries", () => {
   });
 
   it("rejects duplicate IDs and returns frozen snapshots", () => {
-    const duplicate = ACTION_REGISTRY_ENTRIES[0];
+    const duplicate = ACTION_REGISTRY_ENTRIES.find(
+      ({ id }) => id === "action.rinse.v1"
+    )!;
     expect(() =>
       createSupportingRegistry("action", "test", [duplicate, { ...duplicate }])
     ).toThrowError(
@@ -189,7 +191,7 @@ describe("Lab Composer supporting registries", () => {
     ).toBe("observedColor");
   });
 
-  it("represents every current titration semantic flag accurately", () => {
+  it("represents every legacy-engine titration semantic flag accurately", () => {
     let state = titration.createInitialState(EXAMPLE_STRONG);
     const emittedFlags = new Set<string>();
 
@@ -243,8 +245,22 @@ describe("Lab Composer supporting registries", () => {
     expect([...emittedFlags].sort()).toEqual(
       eventFlagRegistry
         .list()
+        .filter(({ semanticFlag }) => semanticFlag !== "indicator_unsuitable")
         .map(({ semanticFlag }) => semanticFlag)
         .sort()
+    );
+  });
+
+  it("registers native indicator suitability with a positive stay-silent case", () => {
+    expect(eventFlagRegistry.get("flag.indicator_unsuitable.v1")).toMatchObject(
+      {
+        semanticFlag: "indicator_unsuitable",
+        emittedBySemanticEventTypes: ["select_indicator"],
+        positiveStaySilentEvidenceReasonId: "evidence.indicator_suitable.v1"
+      }
+    );
+    expect(configurationRegistry.has("evidence.indicator_suitable.v1")).toBe(
+      true
     );
   });
 

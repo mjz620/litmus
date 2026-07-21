@@ -15,7 +15,13 @@ import {
   RINSE_ACTION_PARAMETERS,
   SELECT_INDICATOR_ACTION_PARAMETERS,
   SET_CALORIMETER_LID_ACTION_PARAMETERS,
-  TRANSFER_LIQUID_ACTION_PARAMETERS
+  TRANSFER_LIQUID_ACTION_PARAMETERS,
+  TARE_BALANCE_ACTION_PARAMETERS,
+  PLACE_ON_BALANCE_ACTION_PARAMETERS,
+  REMOVE_FROM_BALANCE_ACTION_PARAMETERS,
+  TRANSFER_SOLID_ACTION_PARAMETERS,
+  READ_BALANCE_ACTION_PARAMETERS,
+  COLLECT_PRECIPITATE_ACTION_PARAMETERS
 } from "./parameterSchemas";
 
 const ENGINE = ["engine.titration.v1"] as const;
@@ -34,6 +40,143 @@ const CONNECTION_ERRORS = [
 ] as const;
 
 export const ACTION_REGISTRY_ENTRIES = [
+  {
+    id: "action.collect_precipitate.v1",
+    version: "1.0.0",
+    purpose:
+      "Filter, wash, and dry the engine-owned precipitate into a weighing vessel.",
+    engineActionType: null,
+    actorComponentIds: ["component.beaker.v1"],
+    targetComponentIds: ["component.weighing_boat.v1"],
+    requiredSourceCapabilityIds: ["capability.contain_liquid.v1"],
+    requiredTargetCapabilityIds: ["capability.receive_solid.v1"],
+    parameterSchemaId: "schema.action_parameters.collect_precipitate.v1",
+    preconditionIds: [],
+    possibleErrorCodes: CONNECTION_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    emittedEventContractId: "event-contract.collect_precipitate.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: [],
+    parameters: COLLECT_PRECIPITATE_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["collect_precipitate"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.tare_balance.v1",
+    version: "1.0.0",
+    purpose: "Zero the balance with the current weighing vessel on its pan.",
+    engineActionType: null,
+    actorComponentIds: ["component.balance.v1"],
+    targetComponentIds: [],
+    requiredSourceCapabilityIds: ["capability.measure_mass.v1"],
+    requiredTargetCapabilityIds: [],
+    parameterSchemaId: "schema.action_parameters.tare_balance.v1",
+    preconditionIds: [],
+    possibleErrorCodes: SOURCE_ONLY_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    emittedEventContractId: "event-contract.tare_balance.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: [],
+    parameters: TARE_BALANCE_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["tare_balance"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.place_on_balance.v1",
+    version: "1.0.0",
+    purpose: "Place a weighing vessel on the balance pan.",
+    engineActionType: null,
+    actorComponentIds: ["component.weighing_boat.v1"],
+    targetComponentIds: ["component.balance.v1"],
+    requiredSourceCapabilityIds: ["capability.contain_solid.v1"],
+    requiredTargetCapabilityIds: ["capability.measure_mass.v1"],
+    parameterSchemaId: "schema.action_parameters.place_on_balance.v1",
+    preconditionIds: [],
+    possibleErrorCodes: CONNECTION_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    emittedEventContractId: "event-contract.place_on_balance.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: [],
+    parameters: PLACE_ON_BALANCE_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["place_on_balance"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.remove_from_balance.v1",
+    version: "1.0.0",
+    purpose: "Remove the current weighing vessel from the balance pan.",
+    engineActionType: null,
+    actorComponentIds: ["component.balance.v1"],
+    targetComponentIds: [],
+    requiredSourceCapabilityIds: ["capability.measure_mass.v1"],
+    requiredTargetCapabilityIds: [],
+    parameterSchemaId: "schema.action_parameters.remove_from_balance.v1",
+    preconditionIds: [],
+    possibleErrorCodes: SOURCE_ONLY_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    emittedEventContractId: "event-contract.remove_from_balance.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: [],
+    parameters: REMOVE_FROM_BALANCE_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["remove_from_balance"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.transfer_solid.v1",
+    version: "1.0.0",
+    purpose:
+      "Move a bounded conserved solid mass between compatible containers.",
+    engineActionType: null,
+    actorComponentIds: [
+      "component.reagent_bottle.v1",
+      "component.weighing_boat.v1"
+    ],
+    targetComponentIds: [
+      "component.weighing_boat.v1",
+      "component.calorimeter.v1"
+    ],
+    requiredSourceCapabilityIds: [
+      "capability.contain_solid.v1",
+      "capability.dispense_solid.v1"
+    ],
+    requiredTargetCapabilityIds: ["capability.receive_solid.v1"],
+    parameterSchemaId: "schema.action_parameters.transfer_solid.v1",
+    preconditionIds: [],
+    possibleErrorCodes: CONNECTION_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    emittedEventContractId: "event-contract.transfer_solid.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: ["solid_sample"],
+    parameters: TRANSFER_SOLID_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["transfer_solid"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
+  {
+    id: "action.read_balance.v1",
+    version: "1.0.0",
+    purpose: "Record the displayed balance mass in grams.",
+    engineActionType: null,
+    actorComponentIds: ["component.balance.v1"],
+    targetComponentIds: [],
+    requiredSourceCapabilityIds: ["capability.measure_mass.v1"],
+    requiredTargetCapabilityIds: [],
+    parameterSchemaId: "schema.action_parameters.read_balance.v1",
+    preconditionIds: [],
+    possibleErrorCodes: SOURCE_ONLY_ERRORS,
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    emittedEventContractId: "event-contract.read_balance.v1",
+    behavior: "discrete",
+    requiredReagentRoleIds: [],
+    parameters: READ_BALANCE_ACTION_PARAMETERS,
+    emittedSemanticEventTypes: ["read_balance"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: []
+  },
   {
     id: "action.rinse.v1",
     version: "1.0.0",

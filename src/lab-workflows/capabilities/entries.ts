@@ -118,6 +118,30 @@ export const CAPABILITY_REGISTRY_ENTRIES = [
     "Accepts placement of a registered temperature probe.",
     "verified"
   ),
+  equipment(
+    "capability.contain_solid.v1",
+    "Contain solid",
+    "Maintains a conserved solid inventory in an equipment instance.",
+    "verified"
+  ),
+  equipment(
+    "capability.receive_solid.v1",
+    "Receive solid",
+    "Accepts a deterministic solid-mass transfer.",
+    "verified"
+  ),
+  equipment(
+    "capability.dispense_solid.v1",
+    "Dispense solid",
+    "Releases a bounded conserved solid mass.",
+    "verified"
+  ),
+  equipment(
+    "capability.measure_mass.v1",
+    "Measure mass",
+    "Exposes a deterministic, resolution-quantized mass reading.",
+    "verified"
+  ),
   chemistry(
     "chemistry.material_ledger.v1",
     "Material ledger",

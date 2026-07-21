@@ -124,11 +124,13 @@ function createNearEndpointSeed(
   if (
     analyte.initialConcentrationM === null ||
     titrant.initialConcentrationM === null ||
+    analyte.acidBaseDissociation === null ||
+    titrant.acidBaseDissociation === null ||
     analyte.quantityUnitId !== ML_UNIT_ID ||
     titrant.quantityUnitId !== ML_UNIT_ID
   ) {
     fail(
-      "The near-endpoint preset requires milliliter analyte and titrant bindings with exact concentrations."
+      "The near-endpoint preset requires milliliter analyte and titrant bindings with exact concentrations and registered acid/base metadata."
     );
   }
   const analyteVolumeML = ledgerAmountAt(
@@ -143,11 +145,24 @@ function createNearEndpointSeed(
   const equivalenceML = equivalenceVolumeML(
     {
       analyte: {
-        type: "strong_acid",
+        type: analyte.acidBaseDissociation.type,
         concentrationM: analyte.initialConcentrationM,
-        volumeML: analyteVolumeML
+        volumeML: analyteVolumeML,
+        ...(analyte.acidBaseDissociation.type === "weak_acid"
+          ? { pKa: analyte.acidBaseDissociation.pKa25C }
+          : analyte.acidBaseDissociation.type === "weak_base"
+            ? { pKb: analyte.acidBaseDissociation.pKb25C }
+            : {})
       },
-      titrant: { concentrationM: titrant.initialConcentrationM }
+      titrant: {
+        type: titrant.acidBaseDissociation.type,
+        concentrationM: titrant.initialConcentrationM,
+        ...(titrant.acidBaseDissociation.type === "weak_acid"
+          ? { pKa: titrant.acidBaseDissociation.pKa25C }
+          : titrant.acidBaseDissociation.type === "weak_base"
+            ? { pKb: titrant.acidBaseDissociation.pKb25C }
+            : {})
+      }
     },
     1
   );
@@ -194,8 +209,7 @@ function createNearEndpointSeed(
   });
 
   const indicatorBottles = program.equipment.filter(
-    (binding) =>
-      binding.equipmentDefinitionId === INDICATOR_BOTTLE_COMPONENT_ID
+    (binding) => binding.equipmentDefinitionId === INDICATOR_BOTTLE_COMPONENT_ID
   );
   return {
     materialLedger,

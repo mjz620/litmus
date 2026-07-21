@@ -6,13 +6,13 @@ import {
 
 export const eventFlagRegistry = createSupportingRegistry(
   "event flag",
-  "event-flags.1.0.0",
+  "event-flags.1.1.0",
   EVENT_FLAG_REGISTRY_ENTRIES
 );
 
 export const eventTypeRegistry = createSupportingRegistry(
   "event type",
-  "event-types.2.1.0",
+  "event-types.2.3.0",
   EVENT_TYPE_REGISTRY_ENTRIES
 );
 

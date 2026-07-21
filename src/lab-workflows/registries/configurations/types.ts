@@ -38,6 +38,8 @@ export type ConfigurationScope =
 export type ConfigurationSchemaId =
   | ActionParameterSchemaId
   | "schema.equipment_configuration.beaker.v1"
+  | "schema.equipment_configuration.balance.v1"
+  | "schema.equipment_configuration.weighing_boat.v1"
   | "schema.equipment_configuration.burette.v1"
   | "schema.equipment_configuration.calorimeter.v1"
   | "schema.equipment_configuration.erlenmeyer_flask.v1"
@@ -55,11 +57,20 @@ export type ConfigurationSchemaId =
   | "schema.material_initialization.bounded_concentration.v1"
   | "schema.material_initialization.indicator.v1"
   | "schema.material_initialization.pure_liquid.v1"
+  | "schema.material_initialization.solid.v1"
   | "schema.model_configuration.strong_acid_strong_base_25ml.v1"
   | "schema.quantity.drop_count.v1"
+  | "schema.quantity.mass_g.v1"
   | "schema.quantity.volume_ml.v1";
 
 export type QuantityPresetId =
+  | "quantity-preset.acetic_acid_0_100m_25ml.v1"
+  | "quantity-preset.ammonia_0_100m_25ml.v1"
+  | "quantity-preset.ammonia_0_100m_50ml.v1"
+  | "quantity-preset.ammonium_nitrate_2_50g.v1"
+  | "quantity-preset.calcium_chloride_2_50g.v1"
+  | "quantity-preset.sodium_hydroxide_2_50g.v1"
+  | "quantity-preset.sodium_chloride_2_50g.v1"
   | "quantity-preset.bromothymol_blue_1_drop.v1"
   | "quantity-preset.bromothymol_blue_2_drops.v1"
   | "quantity-preset.distilled_water_50ml.v1"
@@ -69,6 +80,7 @@ export type QuantityPresetId =
   | "quantity-preset.distilled_water_hot_60c_50ml.v1"
   | "quantity-preset.distilled_water_hot_60c_100ml.v1"
   | "quantity-preset.hydrochloric_acid_0_100m_25ml.v1"
+  | "quantity-preset.hydrochloric_acid_0_100m_50ml.v1"
   | "quantity-preset.hydrochloric_acid_solution_25ml.v1"
   | "quantity-preset.methyl_orange_1_drop.v1"
   | "quantity-preset.methyl_orange_2_drops.v1"
@@ -116,9 +128,10 @@ export interface QuantityPresetRegistryEntry extends ConfigurationRegistryEntryB
   readonly scope: "quantity";
   readonly schemaId:
     | "schema.quantity.drop_count.v1"
+    | "schema.quantity.mass_g.v1"
     | "schema.quantity.volume_ml.v1";
   readonly amount: number;
-  readonly unitId: "unit.drop.v1" | "unit.ml.v1";
+  readonly unitId: "unit.drop.v1" | "unit.g.v1" | "unit.ml.v1";
   readonly compatibleMaterialProfileIds: readonly ReagentRegistryId[];
 }
 

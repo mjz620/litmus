@@ -29,6 +29,12 @@ const EQUIPMENT_OBSERVABLE_SOURCES: readonly EquipmentObservableSource[] =
       stateFieldKey: "meniscusReadingML",
       observableId: "observable.burette_reading_ml.v1",
       unitId: "unit.ml.v1"
+    }),
+    Object.freeze({
+      equipmentDefinitionId: "component.balance.v1",
+      stateFieldKey: "currentReadingG",
+      observableId: "observable.balance_reading_g.v1",
+      unitId: "unit.g.v1"
     })
   ]);
 

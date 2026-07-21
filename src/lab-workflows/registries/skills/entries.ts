@@ -5,6 +5,49 @@ const CALORIMETRY = "family.calorimetry.v1";
 
 export const SKILL_REGISTRY_DEFINITIONS = [
   {
+    id: "measure_mass",
+    version: "1.0.0",
+    description:
+      "Tares a balance, transfers a solid sample, and records mass at the apparatus resolution.",
+    aliases: [],
+    supportedFamilyIds: [],
+    requiredComponentIds: [
+      "component.balance.v1",
+      "component.weighing_boat.v1"
+    ],
+    recommendedComponentIds: [],
+    relevantEventFlagIds: [],
+    positiveEvidenceReasonIds: [],
+    assessmentModeIds: ["assessment.event_performance.v1"],
+    coachTriggerTypeIds: [],
+    adaptiveRetryPatternIds: [],
+    examplePrompts: [
+      "Create a lab that teaches taring and weighing a solid sample."
+    ],
+    restricted: false
+  },
+  {
+    id: "measure_dissolution_enthalpy",
+    version: "1.0.0",
+    description:
+      "Connects a measured solid mass and temperature change to deterministic molar dissolution enthalpy.",
+    aliases: [],
+    supportedFamilyIds: [],
+    requiredComponentIds: [
+      "component.balance.v1",
+      "component.calorimeter.v1",
+      "component.thermometer.v1"
+    ],
+    recommendedComponentIds: ["component.weighing_boat.v1"],
+    relevantEventFlagIds: [],
+    positiveEvidenceReasonIds: [],
+    assessmentModeIds: ["assessment.event_performance.v1"],
+    coachTriggerTypeIds: [],
+    adaptiveRetryPatternIds: [],
+    examplePrompts: ["Create an ammonium nitrate dissolution calorimetry lab."],
+    restricted: false
+  },
+  {
     id: "endpoint_control",
     version: "1.0.0",
     description:

@@ -7,6 +7,163 @@ const SOLUTION_PREPARATION_SAFETY_NOTICE_ID =
 
 export const COMPONENT_REGISTRY_ENTRIES = [
   {
+    id: "component.balance.v1",
+    version: "1.0.0",
+    displayName: "Laboratory balance",
+    capabilityIds: ["capability.measure_mass.v1"],
+    stateSchemaId: "schema.equipment_state.balance.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.balance.centigram.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.balance.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Tare a weighing vessel and report its deterministic mass to the registered resolution.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "currentReadingG",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Resolution-quantized displayed mass."
+        },
+        {
+          key: "tareOffsetG",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Gross mass removed by the most recent tare."
+        },
+        {
+          key: "panEquipmentInstanceId",
+          valueType: "string",
+          nullable: true,
+          runtimeOwned: true,
+          description: "Exact equipment instance currently on the pan."
+        },
+        {
+          key: "resolutionG",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered balance reporting resolution."
+        },
+        {
+          key: "lastReportedG",
+          valueType: "number",
+          nullable: true,
+          runtimeOwned: true,
+          description: "Most recent student-reported mass."
+        }
+      ]
+    },
+    allowedActionIds: [
+      "action.tare_balance.v1",
+      "action.place_on_balance.v1",
+      "action.remove_from_balance.v1",
+      "action.read_balance.v1"
+    ],
+    allowedRoleIds: ["mass_balance"],
+    emittedEventTypes: [
+      "tare_balance",
+      "place_on_balance",
+      "remove_from_balance",
+      "read_balance"
+    ],
+    measurement: {
+      kind: "mass",
+      unitId: "unit.g.v1",
+      capacityML: 500,
+      graduationIncrementML: 0.01,
+      reportIncrementML: 0.01,
+      toleranceML: 0.01,
+      quantitative: true,
+      description: "School centigram balance with a 0.01 g display resolution."
+    },
+    visualAdapterId: "Balance",
+    accessibilityRequirements: [
+      "Expose the current reading, tare state, pan occupancy, and gram unit as text.",
+      "Provide keyboard-equivalent place, tare, remove, and read controls."
+    ],
+    safetyConstraintIds: [],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
+  },
+  {
+    id: "component.weighing_boat.v1",
+    version: "1.0.0",
+    displayName: "Weighing boat",
+    capabilityIds: [
+      "capability.contain_solid.v1",
+      "capability.receive_solid.v1",
+      "capability.dispense_solid.v1"
+    ],
+    stateSchemaId: "schema.equipment_state.weighing_boat.v1",
+    stateSchemaAvailability: "verified",
+    defaultConfigurationPresetId: "component_config.weighing_boat.2g.v1",
+    defaultConfigurationPresetAvailability: "verified",
+    visualAdapterDefinitionId: "visual-adapter.weighing_boat.v1",
+    visualAdapterDefinitionAvailability: "verified",
+    mechanicalAdapterId: "mechanical-adapter.balance.v1",
+    mechanicalAdapterAvailability: "verified",
+    purpose:
+      "Receive and transfer a conserved solid sample during weighing by difference.",
+    stateSchema: {
+      schemaVersion: "1.0.0",
+      additionalProperties: false,
+      fields: [
+        {
+          key: "emptyMassG",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered empty weighing-vessel mass."
+        },
+        {
+          key: "onBalance",
+          valueType: "boolean",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Whether the boat is currently on a balance pan."
+        },
+        {
+          key: "collectedPrecipitateMassG",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description:
+            "Dry precipitate mass collected from deterministic chemistry truth."
+        }
+      ]
+    },
+    allowedActionIds: [
+      "action.place_on_balance.v1",
+      "action.remove_from_balance.v1",
+      "action.transfer_solid.v1",
+      "action.collect_precipitate.v1"
+    ],
+    allowedRoleIds: ["weighing_vessel"],
+    emittedEventTypes: [
+      "place_on_balance",
+      "remove_from_balance",
+      "transfer_solid",
+      "collect_precipitate"
+    ],
+    measurement: null,
+    visualAdapterId: "WeighingBoat",
+    accessibilityRequirements: [
+      "Expose its empty mass, contained solid, and balance placement as text."
+    ],
+    safetyConstraintIds: [],
+    compatibleFamilyIds: [],
+    performanceTier: "core"
+  },
+  {
     id: "component.burette.v1",
     version: "1.0.0",
     displayName: "Burette",
@@ -203,7 +360,9 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     displayName: "Reagent bottle",
     capabilityIds: [
       "capability.contain_liquid.v1",
-      "capability.dispense_liquid.v1"
+      "capability.dispense_liquid.v1",
+      "capability.contain_solid.v1",
+      "capability.dispense_solid.v1"
     ],
     stateSchemaId: "schema.equipment_state.reagent_bottle.v1",
     stateSchemaAvailability: "verified",
@@ -242,7 +401,8 @@ export const COMPONENT_REGISTRY_ENTRIES = [
       "action.fill.v1",
       "action.rinse_transfer_device.v1",
       "action.transfer_liquid.v1",
-      "action.pour_liquid.v1"
+      "action.pour_liquid.v1",
+      "action.transfer_solid.v1"
     ],
     allowedRoleIds: ["titrant_source", "stock_solution_source"],
     emittedEventTypes: ["rinse_burette", "fill_burette", "refill_burette"],
@@ -592,7 +752,8 @@ export const COMPONENT_REGISTRY_ENTRIES = [
       "capability.receive_liquid.v1",
       "capability.mix.v1",
       "capability.seal_lid.v1",
-      "capability.accept_probe.v1"
+      "capability.accept_probe.v1",
+      "capability.receive_solid.v1"
     ],
     stateSchemaId: "schema.equipment_state.calorimeter.v1",
     stateSchemaAvailability: "verified",
@@ -663,7 +824,8 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     allowedActionIds: [
       "action.pour_liquid.v1",
       "action.mix_calorimeter.v1",
-      "action.set_calorimeter_lid.v1"
+      "action.set_calorimeter_lid.v1",
+      "action.transfer_solid.v1"
     ],
     allowedRoleIds: ["calorimetry_vessel"],
     emittedEventTypes: [
@@ -699,7 +861,8 @@ export const COMPONENT_REGISTRY_ENTRIES = [
     capabilityIds: ["capability.measure_temperature.v1"],
     stateSchemaId: "schema.equipment_state.thermometer.v1",
     stateSchemaAvailability: "verified",
-    defaultConfigurationPresetId: "component_config.thermometer.digital_0_1c.v1",
+    defaultConfigurationPresetId:
+      "component_config.thermometer.digital_0_1c.v1",
     defaultConfigurationPresetAvailability: "verified",
     visualAdapterDefinitionId: "visual-adapter.thermometer.v1",
     visualAdapterDefinitionAvailability: "verified",
@@ -838,9 +1001,13 @@ export const COMPONENT_REGISTRY_ENTRIES = [
         }
       ]
     },
-    allowedActionIds: ["action.pour_liquid.v1", "action.mix_solution.v1"],
+    allowedActionIds: [
+      "action.pour_liquid.v1",
+      "action.mix_solution.v1",
+      "action.collect_precipitate.v1"
+    ],
     allowedRoleIds: ["reaction_vessel", "calorimetry_vessel"],
-    emittedEventTypes: ["pour_liquid", "mix_solution"],
+    emittedEventTypes: ["pour_liquid", "mix_solution", "collect_precipitate"],
     measurement: {
       kind: "approximate_volume",
       unitId: "unit.ml.v1",

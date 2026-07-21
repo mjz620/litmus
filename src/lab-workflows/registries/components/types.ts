@@ -4,6 +4,8 @@ import type {
 } from "../../capabilities";
 
 export type ComponentRegistryId =
+  | "component.balance.v1"
+  | "component.weighing_boat.v1"
   | "component.burette.v1"
   | "component.erlenmeyer_flask.v1"
   | "component.reagent_bottle.v1"
@@ -16,6 +18,8 @@ export type ComponentRegistryId =
   | "component.beaker.v1";
 
 export type EquipmentStateSchemaId =
+  | "schema.equipment_state.balance.v1"
+  | "schema.equipment_state.weighing_boat.v1"
   | "schema.equipment_state.burette.v1"
   | "schema.equipment_state.erlenmeyer_flask.v1"
   | "schema.equipment_state.reagent_bottle.v1"
@@ -28,6 +32,8 @@ export type EquipmentStateSchemaId =
   | "schema.equipment_state.beaker.v1";
 
 export type ComponentConfigurationPresetId =
+  | "component_config.balance.centigram.v1"
+  | "component_config.weighing_boat.2g.v1"
   | "component_config.burette.50ml.v1"
   | "component_config.erlenmeyer.125ml.v1"
   | "component_config.indicator_dropper.v1"
@@ -41,6 +47,8 @@ export type ComponentConfigurationPresetId =
   | "component_config.beaker.250ml.v1";
 
 export type VisualAdapterDefinitionId =
+  | "visual-adapter.balance.v1"
+  | "visual-adapter.weighing_boat.v1"
   | "visual-adapter.burette.v1"
   | "visual-adapter.erlenmeyer_flask.v1"
   | "visual-adapter.reagent_bottle.v1"
@@ -53,6 +61,7 @@ export type VisualAdapterDefinitionId =
   | "visual-adapter.beaker.v1";
 
 export type MechanicalAdapterId =
+  | "mechanical-adapter.balance.v1"
   | "mechanical-adapter.burette.v1"
   | "mechanical-adapter.erlenmeyer_flask.v1"
   | "mechanical-adapter.reagent_bottle.v1"
@@ -96,8 +105,9 @@ export interface MeasurementCapability {
     | "volumetric_delivery"
     | "volumetric_transfer"
     | "volumetric_containment"
-    | "temperature";
-  readonly unitId: "unit.ml.v1" | "unit.celsius.v1";
+    | "temperature"
+    | "mass";
+  readonly unitId: "unit.ml.v1" | "unit.celsius.v1" | "unit.g.v1";
   readonly capacityML: number;
   readonly graduationIncrementML: number;
   readonly reportIncrementML: number;
@@ -141,7 +151,9 @@ export interface ComponentRegistryEntry {
     | "WashStation"
     | "VolumetricPipette"
     | "VolumetricFlask"
-    | "WashBottle";
+    | "WashBottle"
+    | "Balance"
+    | "WeighingBoat";
   readonly accessibilityRequirements: readonly string[];
   readonly safetyConstraintIds: readonly string[];
   readonly compatibleFamilyIds: readonly string[];
@@ -149,7 +161,7 @@ export interface ComponentRegistryEntry {
 }
 
 export interface ComponentRegistrySnapshot {
-  readonly snapshotId: "components.3.4.0";
+  readonly snapshotId: "components.3.6.0";
   readonly entries: readonly ComponentRegistryEntry[];
 }
 
@@ -160,7 +172,9 @@ export const LEGACY_COMPONENT_REGISTRY_SNAPSHOT_IDS = Object.freeze([
   "components.3.0.0",
   "components.3.1.0",
   "components.3.2.0",
-  "components.3.3.0"
+  "components.3.3.0",
+  "components.3.4.0",
+  "components.3.5.0"
 ] as const);
 
 export type ComponentRegistryErrorCode =

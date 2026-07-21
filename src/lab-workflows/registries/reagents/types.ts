@@ -10,11 +10,14 @@ import type {
 import type { SafetyRegistryId } from "../safety/types";
 
 export type ReagentRegistryId =
+  | "reagent.acetic_acid_0_100m.v1"
+  | "reagent.ammonia_0_100m.v1"
   | "reagent.bromothymol_blue.v1"
   | "reagent.distilled_water.v1"
   | "reagent.distilled_water_cold_20c.v1"
   | "reagent.distilled_water_hot_60c.v1"
   | "reagent.hydrochloric_acid_0_100m.v1"
+  | "reagent.hydrochloric_acid_titrant_0_100m.v1"
   | "reagent.hydrochloric_acid_aqueous.v1"
   | "reagent.methyl_orange.v1"
   | "reagent.phenolphthalein.v1"
@@ -23,12 +26,26 @@ export type ReagentRegistryId =
   | "reagent.sodium_chloride_aqueous.v1"
   | "reagent.sodium_chloride_1_000m.v1"
   | "reagent.silver_nitrate_0_100m.v1"
-  | "reagent.sodium_chloride_0_100m.v1";
+  | "reagent.sodium_chloride_0_100m.v1"
+  | "reagent.ammonium_nitrate_solid.v1"
+  | "reagent.calcium_chloride_solid.v1"
+  | "reagent.sodium_hydroxide_solid.v1"
+  | "reagent.sodium_chloride_solid.v1";
 
 export type MaterialProfileId = ReagentRegistryId;
-export type MaterialPhase = "aqueous_solution" | "indicator" | "pure_liquid";
+export type MaterialPhase =
+  | "aqueous_solution"
+  | "indicator"
+  | "pure_liquid"
+  | "solid";
 export type MaterialAvailability = "declared" | "verified" | "restricted";
 export type MaterialUsageMode = "legacy_action_parameter" | "material_binding";
+
+export type AcidBaseDissociationProfile =
+  | { readonly type: "strong_acid" }
+  | { readonly type: "strong_base" }
+  | { readonly type: "weak_acid"; readonly pKa25C: number }
+  | { readonly type: "weak_base"; readonly pKb25C: number };
 
 export interface MaterialProfile {
   readonly id: ReagentRegistryId;
@@ -44,10 +61,15 @@ export interface MaterialProfile {
     | "schema.material_initialization.aqueous_solution.v1"
     | "schema.material_initialization.indicator.v1"
     | "schema.material_initialization.pure_liquid.v1"
+    | "schema.material_initialization.solid.v1"
   >;
   readonly quantityPresetIds: readonly QuantityPresetId[];
   readonly safetyPolicyIds: readonly SafetyRegistryId[];
   readonly availability: MaterialAvailability;
+  /** Published formula mass used by deterministic mass-to-mole conversion. */
+  readonly molarMassGPerMol?: number | null;
+  /** Registered monoprotic behavior at 25 °C; null for non-acid/base materials. */
+  readonly acidBaseDissociation?: AcidBaseDissociationProfile | null;
   readonly concentrationAuthoring?: {
     readonly configurationSchemaId: "schema.material_initialization.bounded_concentration.v1";
     readonly unitId: "unit.mol_per_l.v1";
@@ -79,10 +101,11 @@ export interface ReagentRegistryEntry extends MaterialProfile {
     | "diluent"
     | "rinse_solvent"
     | "stock_solution"
+    | "solid_sample"
     | "titrant"
   )[];
   readonly requestedAmountLimits: readonly {
-    readonly unitId: "unit.drop.v1" | "unit.ml.v1";
+    readonly unitId: "unit.drop.v1" | "unit.g.v1" | "unit.ml.v1";
     readonly minimum: number;
     readonly maximum: number;
   }[];

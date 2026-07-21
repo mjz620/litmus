@@ -4,9 +4,12 @@ import {
   MATERIAL_LEDGER_ERROR_CODES as ERROR,
   MaterialLedgerError,
   applyExecutedMaterialAction,
+  assertIntegerQuantityConserved,
   createMaterialTransfer,
   initializeMaterialLedger,
+  integerUnitsToQuantity,
   materialAmountAt,
+  quantityToIntegerUnits,
   validateMaterialLedger,
   volumeAt
 } from "../../../src/lab-workflows/chemistry-models/material-ledger";
@@ -65,6 +68,69 @@ function transfer(amount: number) {
 }
 
 describe("material ledger and volume conservation", () => {
+  it("applies the hard ledger failure to derived integer inventories", () => {
+    expect(() =>
+      assertIntegerQuantityConserved({
+        materialInstanceId: "derived.silver-ion",
+        initialUnits: 1_000,
+        allocatedUnits: 999
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: ERROR.conservationViolation })
+    );
+  });
+
+  it("round-trips gram quantities at the shared micro-unit precision", () => {
+    const accumulatedMassG = 2.47 + 0.01 + 0.01;
+    expect(quantityToIntegerUnits(2.47, "unit.g.v1")).toBe(2_470_000);
+    expect(quantityToIntegerUnits(accumulatedMassG, "unit.g.v1")).toBe(
+      2_490_000
+    );
+    expect(integerUnitsToQuantity(2_490_000, "unit.g.v1")).toBe(2.49);
+  });
+
+  it("conserves transferred solid mass without adding liquid volume", () => {
+    const initial = initializeMaterialLedger([
+      {
+        materialInstanceId: "material.solid",
+        materialProfileId: "reagent.ammonium_nitrate_solid.v1",
+        materialVersion: "1.0.0",
+        containerInstanceId: "source",
+        amount: 2.47,
+        unitId: "unit.g.v1"
+      }
+    ]);
+    const delta = createMaterialTransfer(initial, {
+      materialInstanceId: "material.solid",
+      sourceEquipmentInstanceId: "source",
+      targetEquipmentInstanceId: "target",
+      amount: 1.23,
+      unitId: "unit.g.v1"
+    });
+    const next = applyExecutedMaterialAction(
+      initial,
+      {
+        actionId: "action.transfer_solid.v1",
+        sourceEquipmentInstanceId: "source",
+        targetEquipmentInstanceIds: ["target"],
+        materialInstanceIds: ["material.solid"],
+        transfers: [delta]
+      },
+      CAPACITIES
+    );
+
+    expect(materialAmountAt(next, "material.solid", "source")).toBe(1.24);
+    expect(materialAmountAt(next, "material.solid", "target")).toBe(1.23);
+    expect(volumeAt(next, "target")).toBe(0);
+    expect(
+      next.materials[0]!.locations.reduce(
+        (total, location) =>
+          total + quantityToIntegerUnits(location.amount, "unit.g.v1"),
+        0
+      )
+    ).toBe(2_470_000);
+  });
+
   it("initializes exact quantities and applies immutable, deterministic split transfers", () => {
     const { initial, action } = transfer(12.34);
     const before = structuredClone(initial);

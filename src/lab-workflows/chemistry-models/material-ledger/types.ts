@@ -1,6 +1,9 @@
 export const MATERIAL_LEDGER_SCHEMA_VERSION = "1.0.0" as const;
 
-export type MaterialQuantityUnitId = "unit.drop.v1" | "unit.ml.v1";
+export type MaterialQuantityUnitId =
+  | "unit.drop.v1"
+  | "unit.g.v1"
+  | "unit.ml.v1";
 
 export interface MaterialLocationQuantity {
   readonly equipmentInstanceId: string;

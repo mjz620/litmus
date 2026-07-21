@@ -15,7 +15,11 @@ export const EQUIPMENT_CAPABILITY_IDS = Object.freeze([
   "capability.fill_to_mark.v1",
   "capability.measure_temperature.v1",
   "capability.seal_lid.v1",
-  "capability.accept_probe.v1"
+  "capability.accept_probe.v1",
+  "capability.contain_solid.v1",
+  "capability.receive_solid.v1",
+  "capability.dispense_solid.v1",
+  "capability.measure_mass.v1"
 ] as const);
 
 export type EquipmentCapabilityId = (typeof EQUIPMENT_CAPABILITY_IDS)[number];

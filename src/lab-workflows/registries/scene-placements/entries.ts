@@ -2,6 +2,48 @@ import type { VerifiedScenePlacement } from "./types";
 
 export const VERIFIED_SCENE_PLACEMENT_ENTRIES = [
   {
+    id: "placement.calorimetry_balance_left.v1",
+    version: "1.0.0",
+    displayName: "Calorimetry balance station",
+    equipmentDefinitionId: "component.balance.v1",
+    visualAdapterDefinitionId: "visual-adapter.balance.v1",
+    anchorId: "anchor.calorimetry.balance.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [-0.75, 0.1],
+    footprintHalfExtentsXZ: [0.15, 0.12],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.calorimetry_weighing_boat.v1",
+    version: "1.0.0",
+    displayName: "Calorimetry weighing-boat station",
+    equipmentDefinitionId: "component.weighing_boat.v1",
+    visualAdapterDefinitionId: "visual-adapter.weighing_boat.v1",
+    anchorId: "anchor.calorimetry.weighing_boat.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [-0.35, 0.45],
+    footprintHalfExtentsXZ: [0.1, 0.08],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.calorimetry_solid_stock_right.v1",
+    version: "1.0.0",
+    displayName: "Calorimetry solid stock station",
+    equipmentDefinitionId: "component.reagent_bottle.v1",
+    visualAdapterDefinitionId: "visual-adapter.reagent_bottle.v1",
+    anchorId: "anchor.calorimetry.solid_stock.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0.55, 0.1],
+    footprintHalfExtentsXZ: [0.12, 0.12],
+    rotationOrder: 0
+  },
+  {
     id: "placement.bench_center_stand.v1",
     version: "1.0.0",
     displayName: "Center dispensing station",
@@ -294,6 +336,34 @@ export const VERIFIED_SCENE_PLACEMENT_ENTRIES = [
     yawRadians: 0,
     footprintCenterXZ: [0.45, 0.12],
     footprintHalfExtentsXZ: [0.1, 0.1],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.precipitation_balance_left.v1",
+    version: "1.0.0",
+    displayName: "Precipitation gravimetry balance station",
+    equipmentDefinitionId: "component.balance.v1",
+    visualAdapterDefinitionId: "visual-adapter.balance.v1",
+    anchorId: "anchor.precipitation.balance.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [-0.72, -0.2],
+    footprintHalfExtentsXZ: [0.15, 0.12],
+    rotationOrder: 0
+  },
+  {
+    id: "placement.precipitation_weighing_boat_right.v1",
+    version: "1.0.0",
+    displayName: "Precipitation dry-solid weighing station",
+    equipmentDefinitionId: "component.weighing_boat.v1",
+    visualAdapterDefinitionId: "visual-adapter.weighing_boat.v1",
+    anchorId: "anchor.precipitation.weighing_boat.v1",
+    assemblyId: null,
+    translation: [0, 0, 0],
+    yawRadians: 0,
+    footprintCenterXZ: [0.7, -0.2],
+    footprintHalfExtentsXZ: [0.1, 0.08],
     rotationOrder: 0
   }
 ] as const satisfies readonly VerifiedScenePlacement[];

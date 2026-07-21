@@ -87,7 +87,7 @@ describe("chemistry model metadata registry", () => {
         compatibilityRuntimeAdapterId: "runtime-adapter.titration.v1"
       })
     ]);
-    expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.2.1.0");
+    expect(chemistryModelRegistry.snapshotId).toBe("chemistry-models.2.2.0");
     expect(chemistryModelRegistry.list()).toHaveLength(6);
     expect(chemistryModelRegistrySnapshot.entries).toBe(
       chemistryModelRegistry.list()

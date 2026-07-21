@@ -48,7 +48,7 @@ const CURRENT_LAYOUT = [
 
 describe("LC2-409 verified scene placement registry", () => {
   it("registers exact code-owned poses that cross-resolve to equipment and layout contracts", () => {
-    expect(SCENE_PLACEMENT_REGISTRY_SNAPSHOT_ID).toBe("scene-placements.2.1.0");
+    expect(SCENE_PLACEMENT_REGISTRY_SNAPSHOT_ID).toBe("scene-placements.2.3.0");
     expect(Object.isFrozen(scenePlacementRegistry.list())).toBe(true);
 
     for (const pose of scenePlacementRegistry.list()) {

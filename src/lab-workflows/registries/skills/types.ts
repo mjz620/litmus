@@ -4,6 +4,8 @@ export type CanonicalSkillId =
   | "data_recording"
   | "endpoint_control"
   | "heat_transfer"
+  | "measure_mass"
+  | "measure_dissolution_enthalpy"
   | "meniscus_reading"
   | "net_ionic_equations"
   | "precipitate_observation"
@@ -92,7 +94,7 @@ export class SkillRegistryError extends Error {
 }
 
 export interface SkillRegistry {
-  readonly snapshotId: "skills.2.1.0";
+  readonly snapshotId: "skills.2.2.0";
   list(): readonly SkillRegistryEntry[];
   get(id: CanonicalSkillId): SkillRegistryEntry;
   resolve(id: string): SkillResolution;

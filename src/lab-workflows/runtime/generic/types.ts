@@ -22,7 +22,10 @@ import type {
   ValidatedLabWorkflowSpecV2,
   ValidationResultV2
 } from "../../schema/v2";
-import type { MaterialPhase } from "../../registries/reagents";
+import type {
+  AcidBaseDissociationProfile,
+  MaterialPhase
+} from "../../registries/reagents";
 import type { WorkflowDiagnosis, WorkflowRule } from "../../schema/conditions";
 import type { SemanticEventEnvelopeV2 } from "../../events";
 
@@ -173,6 +176,8 @@ export interface CompiledMaterialBinding extends MaterialBindingV2_1 {
   readonly materialPhase: MaterialPhase;
   readonly initialConcentrationM: number | null;
   readonly initialTemperatureC: number | null;
+  readonly molarMassGPerMol?: number | null;
+  readonly acidBaseDissociation: AcidBaseDissociationProfile | null;
   readonly initializationPresetSchemaId: string;
   readonly providedChemistryCapabilityIds: readonly string[];
   readonly requiredContainerCapabilityIds: readonly EquipmentCapabilityId[];
@@ -246,6 +251,8 @@ export interface GenericMechanicalContext {
   readonly targets: readonly Readonly<GenericEquipmentState>[];
   readonly equipment: readonly Readonly<GenericEquipmentState>[];
   readonly materialLedger: Readonly<MaterialLedger>;
+  /** Previous deterministic chemistry projection; mechanics may read registered observables only. */
+  readonly chemistry?: Readonly<GenericChemistryProjection>;
   readonly preconditions: readonly EquipmentPreconditionEntry[];
 }
 

@@ -4,6 +4,9 @@ import type {
 } from "../components";
 
 export type ScenePlacementId =
+  | "placement.calorimetry_balance_left.v1"
+  | "placement.calorimetry_weighing_boat.v1"
+  | "placement.calorimetry_solid_stock_right.v1"
   | "placement.bench_center_stand.v1"
   | "placement.bench_center_stand_reversed.v1"
   | "placement.bench_left_stand.v1"
@@ -24,10 +27,15 @@ export type ScenePlacementId =
   | "placement.calorimetry_stock_right.v1"
   | "placement.bench_vessel_center.v1"
   | "placement.precipitation_stock_left.v1"
-  | "placement.precipitation_stock_right.v1";
+  | "placement.precipitation_stock_right.v1"
+  | "placement.precipitation_balance_left.v1"
+  | "placement.precipitation_weighing_boat_right.v1";
 
 export type SceneAssemblyId = "assembly.dispense_station.v1";
 export type SceneAnchorId =
+  | "anchor.calorimetry.balance.v1"
+  | "anchor.calorimetry.weighing_boat.v1"
+  | "anchor.calorimetry.solid_stock.v1"
   | "anchor.dispense.center.v1"
   | "anchor.dispense.left.v1"
   | "anchor.indicator.left.v1"
@@ -44,7 +52,9 @@ export type SceneAnchorId =
   | "anchor.calorimetry.stock.v1"
   | "anchor.bench.vessel.v1"
   | "anchor.precipitation.stock_left.v1"
-  | "anchor.precipitation.stock_right.v1";
+  | "anchor.precipitation.stock_right.v1"
+  | "anchor.precipitation.balance.v1"
+  | "anchor.precipitation.weighing_boat.v1";
 
 export type SceneVector3 = readonly [number, number, number];
 export type SceneVector2 = readonly [number, number];

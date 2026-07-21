@@ -1,4 +1,5 @@
 export {
+  assertIntegerQuantityConserved,
   applyExecutedMaterialAction,
   createMaterialTransfer,
   initializeMaterialLedger,

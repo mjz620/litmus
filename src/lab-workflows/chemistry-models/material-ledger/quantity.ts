@@ -5,6 +5,14 @@ import {
 import type { MaterialLedger, MaterialQuantityUnitId } from "./types";
 
 const VOLUME_UNITS_PER_ML = 1_000_000;
+/** Micrograms preserve exact centigram-balance readings in the shared ledger. */
+const MASS_UNITS_PER_G = 1_000_000;
+
+function unitsPerQuantity(unitId: MaterialQuantityUnitId): number {
+  if (unitId === "unit.ml.v1") return VOLUME_UNITS_PER_ML;
+  if (unitId === "unit.g.v1") return MASS_UNITS_PER_G;
+  return 1;
+}
 
 export function quantityToIntegerUnits(
   amount: number,
@@ -18,7 +26,7 @@ export function quantityToIntegerUnits(
       { amount }
     );
   }
-  const scale = unitId === "unit.ml.v1" ? VOLUME_UNITS_PER_ML : 1;
+  const scale = unitsPerQuantity(unitId);
   const scaled = Math.round(amount * scale);
   /*
    * Tolerance scales with magnitude. A fixed absolute epsilon rejected totals
@@ -56,7 +64,7 @@ export function integerUnitsToQuantity(
       { units, unitId }
     );
   }
-  return unitId === "unit.ml.v1" ? units / VOLUME_UNITS_PER_ML : units;
+  return units / unitsPerQuantity(unitId);
 }
 
 export function volumeAt(

@@ -7,7 +7,99 @@ const SOLUTION_SAFETY = [
   "safety.virtual_solution_preparation_ppe_notice.v1"
 ] as const;
 
+/*
+ * Monoprotic dissociation data at 25 °C:
+ * - Acetic acid pKa 4.756: NIST critically selected ionization data,
+ *   https://www.nist.gov/system/files/documents/srd/jpcrd615.pdf
+ * - Aqueous ammonia pKb 4.751: CRC value reproduced by the U.S. ATSDR,
+ *   https://www.ncbi.nlm.nih.gov/books/NBK598719/
+ * Strong HCl and NaOH are represented as fully dissociated at the dilute
+ * school-lab concentrations registered below, the standard AP-chemistry model.
+ */
+export const ACID_BASE_DISSOCIATION_25C = Object.freeze({
+  aceticAcid: { type: "weak_acid", pKa25C: 4.756 } as const,
+  ammonia: { type: "weak_base", pKb25C: 4.751 } as const,
+  hydrochloricAcid: { type: "strong_acid" } as const,
+  sodiumHydroxide: { type: "strong_base" } as const
+});
+
+/*
+ * Formula masses from NIST Chemistry WebBook SRD 69 (accessed 2026-07-20):
+ * NH4NO3 https://webbook.nist.gov/cgi/cbook.cgi?ID=C6484522
+ * CaCl2 https://webbook.nist.gov/cgi/cbook.cgi?ID=C10043524
+ * NaOH https://webbook.nist.gov/cgi/cbook.cgi?ID=C1310732
+ * NaCl https://webbook.nist.gov/cgi/cbook.cgi?ID=C7647145
+ * Values are retained at NIST's published precision; the display layer may
+ * round, but engine mass-to-mole conversion must not substitute nicer values.
+ */
+export const SOLID_MOLAR_MASS_G_PER_MOL = Object.freeze({
+  "reagent.ammonium_nitrate_solid.v1": 80.0434,
+  "reagent.calcium_chloride_solid.v1": 110.984,
+  "reagent.sodium_hydroxide_solid.v1": 39.9971,
+  "reagent.sodium_chloride_solid.v1": 58.44277
+} as const);
+
+function solid(
+  id: keyof typeof SOLID_MOLAR_MASS_G_PER_MOL,
+  displayName: string,
+  quantityPresetId:
+    | "quantity-preset.ammonium_nitrate_2_50g.v1"
+    | "quantity-preset.calcium_chloride_2_50g.v1"
+    | "quantity-preset.sodium_hydroxide_2_50g.v1"
+    | "quantity-preset.sodium_chloride_2_50g.v1"
+): ReagentRegistryEntry {
+  return {
+    id,
+    version: "1.0.0",
+    displayName,
+    phase: "solid",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.thermal_energy.v1"],
+    compatibleContainerCapabilityIds: ["capability.contain_solid.v1"],
+    initializationPresetSchemaId: "schema.material_initialization.solid.v1",
+    quantityPresetIds: [quantityPresetId],
+    safetyPolicyIds: ["safety.virtual_calorimetry_ppe_notice.v1"],
+    availability: "verified",
+    molarMassGPerMol: SOLID_MOLAR_MASS_G_PER_MOL[id],
+    profileKind: "solid",
+    concentrationM: null,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: [
+      "component.reagent_bottle.v1",
+      "component.weighing_boat.v1",
+      "component.calorimeter.v1"
+    ],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: [],
+    allowedRoleIds: ["solid_sample"],
+    requestedAmountLimits: [
+      { unitId: "unit.g.v1", minimum: 0.0001, maximum: 100 }
+    ],
+    safetyConstraintIds: ["safety.virtual_calorimetry_ppe_notice.v1"]
+  };
+}
+
 export const REAGENT_REGISTRY_ENTRIES = [
+  solid(
+    "reagent.ammonium_nitrate_solid.v1",
+    "Ammonium nitrate solid",
+    "quantity-preset.ammonium_nitrate_2_50g.v1"
+  ),
+  solid(
+    "reagent.calcium_chloride_solid.v1",
+    "Anhydrous calcium chloride solid",
+    "quantity-preset.calcium_chloride_2_50g.v1"
+  ),
+  solid(
+    "reagent.sodium_hydroxide_solid.v1",
+    "Sodium hydroxide solid",
+    "quantity-preset.sodium_hydroxide_2_50g.v1"
+  ),
+  solid(
+    "reagent.sodium_chloride_solid.v1",
+    "Sodium chloride solid",
+    "quantity-preset.sodium_chloride_2_50g.v1"
+  ),
   {
     id: "reagent.hydrochloric_acid_0_100m.v1",
     version: "1.0.0",
@@ -31,7 +123,40 @@ export const REAGENT_REGISTRY_ENTRIES = [
       { unitId: "unit.ml.v1", minimum: 0.01, maximum: 125 }
     ],
     safetyConstraintIds: SAFETY,
-    availability: "verified"
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.hydrochloricAcid
+  },
+  {
+    id: "reagent.hydrochloric_acid_titrant_0_100m.v1",
+    version: "1.0.0",
+    displayName: "0.100 M hydrochloric acid titrant",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.acid_base_equilibrium.v1"],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.hydrochloric_acid_0_100m_50ml.v1"],
+    safetyPolicyIds: SAFETY,
+    profileKind: "aqueous_solution",
+    concentrationM: 0.1,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: [
+      "component.reagent_bottle.v1",
+      "component.burette.v1"
+    ],
+    compatibleEngineIds: ENGINE,
+    compatibleFamilyIds: FAMILY,
+    allowedRoleIds: ["titrant"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ],
+    safetyConstraintIds: SAFETY,
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.hydrochloricAcid
   },
   {
     id: "reagent.sodium_hydroxide_0_100m.v1",
@@ -65,7 +190,8 @@ export const REAGENT_REGISTRY_ENTRIES = [
       { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
     ],
     safetyConstraintIds: SAFETY,
-    availability: "verified"
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.sodiumHydroxide
   },
   {
     id: "reagent.hydrochloric_acid_aqueous.v1",
@@ -100,7 +226,8 @@ export const REAGENT_REGISTRY_ENTRIES = [
       { unitId: "unit.ml.v1", minimum: 0.01, maximum: 125 }
     ],
     safetyConstraintIds: SAFETY,
-    availability: "verified"
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.hydrochloricAcid
   },
   {
     id: "reagent.sodium_hydroxide_aqueous.v1",
@@ -144,7 +271,67 @@ export const REAGENT_REGISTRY_ENTRIES = [
       { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
     ],
     safetyConstraintIds: SAFETY,
-    availability: "verified"
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.sodiumHydroxide
+  },
+  {
+    id: "reagent.acetic_acid_0_100m.v1",
+    version: "1.0.0",
+    displayName: "0.100 M acetic acid",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.acid_base_equilibrium.v1"],
+    compatibleContainerCapabilityIds: ["capability.receive_liquid.v1"],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.acetic_acid_0_100m_25ml.v1"],
+    safetyPolicyIds: SAFETY,
+    profileKind: "aqueous_solution",
+    concentrationM: 0.1,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: ["component.erlenmeyer_flask.v1"],
+    compatibleEngineIds: ENGINE,
+    compatibleFamilyIds: FAMILY,
+    allowedRoleIds: ["analyte"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 125 }
+    ],
+    safetyConstraintIds: SAFETY,
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.aceticAcid
+  },
+  {
+    id: "reagent.ammonia_0_100m.v1",
+    version: "1.0.0",
+    displayName: "0.100 M aqueous ammonia",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.acid_base_equilibrium.v1"],
+    compatibleContainerCapabilityIds: ["capability.receive_liquid.v1"],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: [
+      "quantity-preset.ammonia_0_100m_25ml.v1",
+      "quantity-preset.ammonia_0_100m_50ml.v1"
+    ],
+    safetyPolicyIds: SAFETY,
+    profileKind: "aqueous_solution",
+    concentrationM: 0.1,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: [
+      "component.erlenmeyer_flask.v1",
+      "component.reagent_bottle.v1",
+      "component.burette.v1"
+    ],
+    compatibleEngineIds: ENGINE,
+    compatibleFamilyIds: FAMILY,
+    allowedRoleIds: ["analyte", "titrant"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 125 }
+    ],
+    safetyConstraintIds: SAFETY,
+    availability: "verified",
+    acidBaseDissociation: ACID_BASE_DISSOCIATION_25C.ammonia
   },
   {
     id: "reagent.phenolphthalein.v1",
@@ -376,9 +563,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     displayName: "0.100 M silver nitrate solution",
     phase: "aqueous_solution",
     usageModes: ["material_binding"],
-    providedChemistryCapabilityIds: [
-      "chemistry.precipitation_solubility.v1"
-    ],
+    providedChemistryCapabilityIds: ["chemistry.precipitation_solubility.v1"],
     compatibleContainerCapabilityIds: [
       "capability.contain_liquid.v1",
       "capability.dispense_liquid.v1"
@@ -406,9 +591,7 @@ export const REAGENT_REGISTRY_ENTRIES = [
     displayName: "0.100 M sodium chloride solution",
     phase: "aqueous_solution",
     usageModes: ["material_binding"],
-    providedChemistryCapabilityIds: [
-      "chemistry.precipitation_solubility.v1"
-    ],
+    providedChemistryCapabilityIds: ["chemistry.precipitation_solubility.v1"],
     compatibleContainerCapabilityIds: [
       "capability.contain_liquid.v1",
       "capability.dispense_liquid.v1"
