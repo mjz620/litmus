@@ -13,6 +13,14 @@
 //   supabase/migrations/202607170002_rls_policies.sql
 //   supabase/seed.sql   (skip with --no-seed)
 //
+// This is a BOOTSTRAP path: it stands an empty project up. The list above is
+// deliberately not the full migrations directory, and re-running it against an
+// established project fails on `create table`.
+//
+// To apply one migration to a project that already exists, name it:
+//   node scripts/apply-remote-db.mjs --file supabase/migrations/xxx.sql
+// which runs only that file and never touches the seed.
+//
 // The token is read from the environment only and never printed.
 
 import { readFileSync } from "node:fs";
@@ -53,11 +61,33 @@ if (!ref) {
   process.exit(1);
 }
 
-const files = [
-  "supabase/migrations/202607170001_initial_schema.sql",
-  "supabase/migrations/202607170002_rls_policies.sql"
-];
-if (!process.argv.includes("--no-seed")) files.push("supabase/seed.sql");
+/*
+ * --file may be repeated. Naming files opts out of the bootstrap list and the
+ * seed entirely, so applying one migration to a live project cannot re-run the
+ * schema or re-seed rows as a side effect.
+ */
+function explicitFiles(argv) {
+  const named = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] !== "--file") continue;
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) {
+      console.error("--file needs a path, e.g. --file supabase/migrations/x.sql");
+      process.exit(1);
+    }
+    named.push(value);
+  }
+  return named;
+}
+
+const named = explicitFiles(process.argv);
+const files = named.length
+  ? named
+  : [
+      "supabase/migrations/202607170001_initial_schema.sql",
+      "supabase/migrations/202607170002_rls_policies.sql",
+      ...(process.argv.includes("--no-seed") ? [] : ["supabase/seed.sql"])
+    ];
 
 async function runSql(label, sql) {
   const res = await fetch(
