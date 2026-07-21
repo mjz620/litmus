@@ -11,6 +11,7 @@ import {
 } from "../../../../components/ui/ProductShell";
 import { computeClassAnalytics } from "../../../../lib/analytics/classAnalytics";
 import { loadClassAnalyticsInput } from "../../../../lib/analytics/server";
+import { requireTeacherForClass } from "../../../../components/teacher/requireTeacherForClass";
 import { hasPublicSupabaseEnvironment } from "../../../../lib/env";
 import { createLabAssignmentService } from "../../../../lib/persistence/labDefinitionApi";
 import { createServerSupabaseClient } from "../../../../lib/supabase/server";
@@ -28,6 +29,7 @@ export default async function ClassDashboardPage({
 }: PageProps) {
   const { classId } = await params;
   const { filter } = await searchParams;
+  await requireTeacherForClass(classId, `/teacher/classes/${classId}`);
   const analytics = computeClassAnalytics(
     await loadClassAnalyticsInput(classId)
   );

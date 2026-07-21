@@ -11,6 +11,11 @@ type ContentWidth = "narrow" | "standard" | "wide" | "composer";
 interface ProductShellProps {
   children: ReactNode;
   width?: ContentWidth;
+  /**
+   * Drops the site header. The demo playground already renders its own bar
+   * through the /demo layout; stacking both reads as a broken page.
+   */
+  hideSiteHeader?: boolean;
 }
 
 interface PageHeaderProps {
@@ -24,11 +29,12 @@ interface PageHeaderProps {
 
 export function ProductShell({
   children,
-  width = "standard"
+  width = "standard",
+  hideSiteHeader = false
 }: ProductShellProps) {
   return (
     <>
-      <ProductHeader />
+      {!hideSiteHeader && <ProductHeader />}
       <main className={styles.page} data-width={width}>
         {children}
       </main>

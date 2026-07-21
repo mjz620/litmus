@@ -9,7 +9,7 @@ import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
  */
 export default function DemoComposerPage() {
   return (
-    <ProductShell width="composer">
+    <ProductShell width="composer" hideSiteHeader>
       <PageHeader
         eyebrow="Lab Composer"
         title="Build a student lab"

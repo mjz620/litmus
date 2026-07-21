@@ -47,7 +47,11 @@ export function DemoTeacherDashboard() {
             </div>
             <span>{analytics.students.length} students</span>
           </div>
-          <RosterTable classId={DEMO_CLASS_ID} students={analytics.students} />
+          <RosterTable
+            classId={DEMO_CLASS_ID}
+            students={analytics.students}
+            studentHref={(studentId) => `/demo/teacher/students/${studentId}`}
+          />
         </section>
       </div>
     </main>
