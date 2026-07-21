@@ -66,6 +66,7 @@ interface LabSceneProps {
   /** Engine-owned appearance projected into the beaker contents. */
   beakerContentsColor?: string;
   thermometerPlaced?: boolean;
+  weighingBoatOnBalance?: boolean;
   hideCalorimeterLid?: boolean;
   hideThermometer?: boolean;
   hideWashBottle?: boolean;
@@ -145,6 +146,7 @@ export function LabScene({
   calorimeterLidClosed = true,
   beakerContentsColor = "clear",
   thermometerPlaced = false,
+  weighingBoatOnBalance = false,
   hideCalorimeterLid = false,
   hideThermometer = false,
   hideWashBottle = false,
@@ -193,6 +195,16 @@ export function LabScene({
   const beakerPose = poseFor("visual-adapter.beaker.v1");
   const balancePose = poseFor("visual-adapter.balance.v1");
   const weighingBoatPose = poseFor("visual-adapter.weighing_boat.v1");
+  const weighingBoatWorldPosition =
+    weighingBoatOnBalance && balancePose
+      ? (() => {
+          const [x, y, z] = worldPositionForEquipmentPose(balancePose);
+          // The registered balance pan is 0.089 m above its local origin.
+          return [x, y + 0.089, z] as const;
+        })()
+      : weighingBoatPose
+        ? worldPositionForEquipmentPose(weighingBoatPose)
+        : null;
   /* Probe seats inside the vessel it measures, rather than at its own stand. */
   const seatedInVessel = thermometerPlaced && calorimeterPose != null;
   const calorimeterWorldPosition = calorimeterPose
@@ -232,7 +244,13 @@ export function LabScene({
                   : selected === "balance"
                     ? focusFor(balancePose, LABORATORY_BALANCE_HIT)
                     : selected === "weighingBoat"
-                      ? focusFor(weighingBoatPose, WEIGHING_BOAT_HIT)
+                      ? weighingBoatWorldPosition
+                        ? focusPoseForBenchItem(
+                            weighingBoatWorldPosition,
+                            WEIGHING_BOAT_HIT.height,
+                            WEIGHING_BOAT_HIT.centerY
+                          )
+                        : null
                       : null;
   const thermometerDrop =
     thermometerPlaced && !seatedInVessel ? THERMOMETER_PLACED_DROP : 0;
@@ -883,40 +901,48 @@ export function LabScene({
         </group>
       )}
 
-      {weighingBoatPose && enabledEquipmentIds.includes("weighingBoat") && (
-        <group
-          position={[...worldPositionForEquipmentPose(weighingBoatPose)]}
-          rotation={[0, weighingBoatPose.yawRadians, 0]}
-        >
-          <Interactable
-            id="weighingBoat"
-            enabled
-            label={EQUIPMENT.weighingBoat.name}
-            highlightShape={{
-              geometry: (
-                <cylinderGeometry
-                  args={[
-                    WEIGHING_BOAT_HIT.radius,
-                    WEIGHING_BOAT_HIT.radius,
-                    WEIGHING_BOAT_HIT.height,
-                    20,
-                    1,
-                    true
-                  ]}
-                />
-              ),
-              position: [0, WEIGHING_BOAT_HIT.centerY, 0],
-              labelPosition: [0, WEIGHING_BOAT_HIT.labelY, 0]
-            }}
-            hovered={hovered === "weighingBoat"}
-            selected={selected === "weighingBoat"}
-            onHover={onHover}
-            onSelect={onSelect}
+      {weighingBoatPose &&
+        weighingBoatWorldPosition &&
+        enabledEquipmentIds.includes("weighingBoat") && (
+          <group
+            position={[...weighingBoatWorldPosition]}
+            rotation={[
+              0,
+              weighingBoatOnBalance && balancePose
+                ? balancePose.yawRadians
+                : weighingBoatPose.yawRadians,
+              0
+            ]}
           >
-            <WeighingBoat />
-          </Interactable>
-        </group>
-      )}
+            <Interactable
+              id="weighingBoat"
+              enabled
+              label={EQUIPMENT.weighingBoat.name}
+              highlightShape={{
+                geometry: (
+                  <cylinderGeometry
+                    args={[
+                      WEIGHING_BOAT_HIT.radius,
+                      WEIGHING_BOAT_HIT.radius,
+                      WEIGHING_BOAT_HIT.height,
+                      20,
+                      1,
+                      true
+                    ]}
+                  />
+                ),
+                position: [0, WEIGHING_BOAT_HIT.centerY, 0],
+                labelPosition: [0, WEIGHING_BOAT_HIT.labelY, 0]
+              }}
+              hovered={hovered === "weighingBoat"}
+              selected={selected === "weighingBoat"}
+              onHover={onHover}
+              onSelect={onSelect}
+            >
+              <WeighingBoat />
+            </Interactable>
+          </group>
+        )}
 
       {calorimeterPose && enabledEquipmentIds.includes("calorimeter") && (
         <group

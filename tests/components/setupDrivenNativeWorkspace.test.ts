@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { completedActionMessage } from "../../src/components/lab/setup-driven/NativeSetupDrivenWorkspace";
+import {
+  completedActionMessage,
+  normalizedActionFromProjection,
+  suggestedMeasurementValue
+} from "../../src/components/lab/setup-driven/NativeSetupDrivenWorkspace";
 import { resolveSetupDrivenPoses } from "../../src/components/lab/setup-driven/setupDrivenPoses";
+import { validateDissolutionCalorimetryV2 } from "../../src/lab-workflows/definitions/calorimetry";
 import {
   SOLUTION_PREPARATION_V2_EXPECTED_HASH,
   validateSolutionPreparationV2
@@ -165,6 +170,98 @@ describe("LC2-503 native setup-driven student projection", () => {
       })
     );
     expect(runtime.getActionTrace().actions).toHaveLength(5);
+  });
+
+  it("dispatches the projected weighing-boat control exactly as the browser panel builds it", () => {
+    const dissolution = validateDissolutionCalorimetryV2(
+      "2026-07-20T12:00:00.000Z"
+    );
+    const runtime = createSetupDrivenNativeSession({
+      sessionId: "native-weighing-panel",
+      sessionSeed: "native-weighing-panel-seed",
+      selection: {
+        workflowId: dissolution.id,
+        workflowHash: dissolution.validation.canonicalSpecHash
+      },
+      workflow: dissolution
+    });
+    const projectedAction = runtime
+      .getProjection()
+      .actions.find(
+        ({ permissionId }) => permissionId === "permission.place_boat"
+      );
+
+    expect(projectedAction).toBeDefined();
+    const panelAction = normalizedActionFromProjection(
+      projectedAction as NonNullable<typeof projectedAction>,
+      () => ""
+    );
+    expect(panelAction).toEqual(
+      action(
+        "permission.place_boat",
+        "action.place_on_balance.v1",
+        "weighing_boat",
+        ["balance"]
+      )
+    );
+
+    runtime.dispatch(panelAction);
+
+    expect(
+      runtime
+        .getProjection()
+        .equipment.find(({ instanceId }) => instanceId === "weighing_boat")
+        ?.stateFields.onBalance
+    ).toBe(true);
+    expect(
+      runtime
+        .getProjection()
+        .actions.find(
+          ({ permissionId }) => permissionId === "permission.place_boat"
+        )?.available
+    ).toBe(false);
+    expect(
+      runtime
+        .getProjection()
+        .actions.find(({ permissionId }) => permissionId === "permission.tare")
+        ?.available
+    ).toBe(true);
+
+    const dispatchProjected = (
+      permissionId: string,
+      values: Readonly<Record<string, string>> = {}
+    ) => {
+      const projection = runtime.getProjection();
+      const projected = projection.actions.find(
+        (candidate) => candidate.permissionId === permissionId
+      );
+      if (!projected) throw new Error(`Missing ${permissionId}`);
+      runtime.dispatch(
+        normalizedActionFromProjection(
+          projected,
+          (key) =>
+            values[key] ?? suggestedMeasurementValue(projection, key) ?? ""
+        )
+      );
+    };
+
+    dispatchProjected("permission.tare");
+    dispatchProjected("permission.weigh_solid", { massG: "2.5" });
+    expect(
+      suggestedMeasurementValue(runtime.getProjection(), "reportedG")
+    ).toBe("2.50");
+    dispatchProjected("permission.read_mass");
+    dispatchProjected("permission.remove_boat");
+    dispatchProjected("permission.pour_water", { volumeML: "100" });
+    dispatchProjected("permission.add_solid", { massG: "2.5" });
+    dispatchProjected("permission.mix", { inversions: "10" });
+    dispatchProjected("permission.place_probe");
+    expect(
+      suggestedMeasurementValue(runtime.getProjection(), "reportedC")
+    ).toBe("18.2");
+    dispatchProjected("permission.read_temperature");
+
+    expect(runtime.getGenericState().workflowStatus).toBe("completed");
   });
 
   it("labels a completed conditioning step while keeping the next procedural step usable", () => {

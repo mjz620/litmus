@@ -217,9 +217,9 @@ export function ImmersiveSetupDrivenBench({
     configuration?.minDispenseVolumeML ?? DISPENSE_RESIDUE_ML;
   const dispenseEnabled = Boolean(
     dispatchDispenseCommit &&
-      dispenseAction?.available &&
-      projectedBurette &&
-      projectedBurette.availableML >= dispenseMinimumML
+    dispenseAction?.available &&
+    projectedBurette &&
+    projectedBurette.availableML >= dispenseMinimumML
   );
   const dispense = useDispenseGesture({
     availableML: projectedBurette?.availableML ?? 0,
@@ -252,14 +252,14 @@ export function ImmersiveSetupDrivenBench({
   const beaker = configuration.projectedState?.beaker;
   const indicatorSelectionEnabled = Boolean(
     onIndicatorShelfSelect &&
-      flask &&
-      !flask.indicatorAdded &&
-      projection.actions.some(
-        (action) =>
-          action.available &&
-          (action.actionId === "action.add_indicator.v1" ||
-            action.actionId === "action.select_indicator.v1")
-      )
+    flask &&
+    !flask.indicatorAdded &&
+    projection.actions.some(
+      (action) =>
+        action.available &&
+        (action.actionId === "action.add_indicator.v1" ||
+          action.actionId === "action.select_indicator.v1")
+    )
   );
   const calorimeterLidClosed = Boolean(
     projection.equipment.find(
@@ -272,6 +272,12 @@ export function ImmersiveSetupDrivenBench({
       ({ equipmentDefinitionId }) =>
         equipmentDefinitionId === "component.thermometer.v1"
     )?.stateFields.placed
+  );
+  const weighingBoatOnBalance = Boolean(
+    projection.equipment.find(
+      ({ equipmentDefinitionId }) =>
+        equipmentDefinitionId === "component.weighing_boat.v1"
+    )?.stateFields.onBalance
   );
 
   function handleSelect(equipment: EquipmentId) {
@@ -514,6 +520,7 @@ export function ImmersiveSetupDrivenBench({
               equipmentFillFractions={configuration.equipmentFillFractions}
               calorimeterLidClosed={calorimeterLidClosed}
               thermometerPlaced={thermometerPlaced}
+              weighingBoatOnBalance={weighingBoatOnBalance}
               hideCalorimeterLid={activeVisualGesture?.kind === "lid"}
               hideThermometer={activeVisualGesture?.kind === "place_probe"}
               hideWashBottle={

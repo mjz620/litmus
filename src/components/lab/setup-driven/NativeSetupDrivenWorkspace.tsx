@@ -1,6 +1,12 @@
 "use client";
 
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import Link from "next/link";
 
 import { createAuthoredCoachWorkflowContext } from "../../../lib/agent/authoredCoach";
@@ -152,6 +158,29 @@ function initialParameterValue(
   )
     return String(bounds.effectiveMinimum);
   return "";
+}
+
+/**
+ * Apparatus/chemistry truth is already present in the runtime projection.
+ * Measurement-report controls mirror that registered reading instead of
+ * defaulting to a registry safety ceiling such as 500 g or 120 °C.
+ */
+export function suggestedMeasurementValue(
+  projection: Readonly<SetupDrivenLabProjection>,
+  parameterKey: string
+): string | null {
+  const observableId =
+    parameterKey === "reportedG"
+      ? "observable.balance_reading_g.v1"
+      : parameterKey === "reportedC"
+        ? "observable.calorimeter_temperature_c.v1"
+        : parameterKey === "reportedML"
+          ? "observable.burette_reading_ml.v1"
+          : null;
+  if (!observableId) return null;
+  const reading = projection.observables[observableId];
+  if (typeof reading !== "number" || !Number.isFinite(reading)) return null;
+  return parameterKey === "reportedC" ? reading.toFixed(1) : reading.toFixed(2);
 }
 
 function equipmentLabel(
@@ -371,23 +400,65 @@ function ruleLabel(
 }
 
 function actionErrorMessage(error: unknown): string {
-  if (error instanceof GenericLabRuntimeError) {
-    if (error.code === "generic-runtime.parameter_invalid.v1")
+  const code =
+    error instanceof GenericLabRuntimeError ||
+    (typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string")
+      ? error.code
+      : null;
+  if (code) {
+    if (code === "generic-runtime.parameter_invalid.v1")
       return "That value is outside the permitted range. Check the field and try again.";
-    if (error.code === "generic-runtime.precondition_failed.v1")
+    if (code === "generic-runtime.precondition_failed.v1")
       return "That step is not possible with the equipment in its current state.";
-    if (error.code === "generic-runtime.workflow_terminal.v1")
+    if (code === "generic-runtime.workflow_terminal.v1")
       return "This attempt has ended. Restart the preview to try another approach.";
-    if (error.code === "generic-runtime.permission_unavailable.v1")
+    if (code === "generic-runtime.permission_unavailable.v1")
       return "That step is not available yet. Follow the highlighted next step.";
-    if (error.code === "generic-runtime.permission_mismatch.v1")
+    if (code === "generic-runtime.permission_mismatch.v1")
       return "This control is no longer connected to the current lab setup. Restart the attempt and try again.";
-    if (error.code === "generic-runtime.capability_mismatch.v1")
+    if (code === "generic-runtime.capability_mismatch.v1")
       return "Those two pieces of equipment cannot be used together for this step.";
-    if (error.code === "generic-runtime.transition_rejected.v1")
+    if (
+      code === "generic-runtime.transition_rejected.v1" &&
+      error instanceof Error
+    )
       return error.message;
   }
   return "That step was not applied. The lab remains at its last valid state.";
+}
+
+/**
+ * Build the exact typed action sent by the student controls. Keeping this
+ * conversion explicit lets the UI path be exercised against the real runtime
+ * instead of testing only hand-written actions that can drift from the panel.
+ */
+export function normalizedActionFromProjection(
+  action: SetupDrivenLabProjection["actions"][number],
+  valueFor: (parameterKey: string) => string,
+  parameterOverrides: Readonly<Record<string, string>> = {}
+): NormalizedLabAction {
+  return {
+    schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
+    permissionId: action.permissionId,
+    actionId: action.actionId,
+    sourceEquipmentInstanceId: action.sourceEquipmentInstanceId ?? undefined,
+    targetEquipmentInstanceIds: action.targetEquipmentInstanceIds,
+    parameters: [
+      ...action.numericParameterBounds.map(({ parameterKey }) => ({
+        key: parameterKey,
+        valueType: "number" as const,
+        value: Number(valueFor(parameterKey))
+      })),
+      ...registeredEnumParameters(action.actionId).map(({ key }) => ({
+        key,
+        valueType: "enum" as const,
+        value: parameterOverrides[key] ?? valueFor(key)
+      }))
+    ]
+  };
 }
 
 export function completedActionMessage(
@@ -485,9 +556,16 @@ export function NativeSetupDrivenWorkspace({
     readonly indicator: IndicatorId;
   } | null>(null);
   const gestureSequenceRef = useRef(0);
+  // A fast double click can arrive before React paints the newly unavailable
+  // permission. Hold the permission synchronously until the next projection
+  // is rendered so one physical click sequence produces one engine action.
+  const dispatchingPermissionRef = useRef<string | null>(null);
   const coachClient = useRef(new HttpCoachClient()).current;
   const coachMessageSequence = useRef(0);
   const servedCoachReasons = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    dispatchingPermissionRef.current = null;
+  }, [current.state.eventSequence]);
   const equipmentLabels = useMemo(
     () =>
       new Map(
@@ -505,6 +583,7 @@ export function NativeSetupDrivenWorkspace({
   ): string {
     return (
       values[`${action.permissionId}:${key}`] ??
+      suggestedMeasurementValue(current.projection, key) ??
       initialParameterValue(action, key)
     );
   }
@@ -585,21 +664,32 @@ export function NativeSetupDrivenWorkspace({
     action: SetupDrivenLabProjection["actions"][number],
     parameterOverrides?: Readonly<Record<string, string>>
   ) {
-    const parameters: NormalizedLabAction["parameters"] = [
-      ...action.numericParameterBounds.map(({ parameterKey }) => ({
-        key: parameterKey,
-        valueType: "number" as const,
-        value: Number(parameterValue(action, parameterKey))
-      })),
-      // Registered enum choices (rinse solvent, indicator, lid state) are as
-      // required as the numeric bounds; omitting them made every enum-typed
-      // titration step undispatchable from the keyboard panels.
-      ...registeredEnumParameters(action.actionId).map(({ key }) => ({
-        key,
-        valueType: "enum" as const,
-        value: parameterOverrides?.[key] ?? parameterValue(action, key)
-      }))
-    ];
+    if (dispatchingPermissionRef.current !== null) return;
+    dispatchingPermissionRef.current = action.permissionId;
+    let nextSnapshot: WorkspaceSnapshot;
+    try {
+      const normalizedAction = normalizedActionFromProjection(
+        action,
+        (key) => parameterValue(action, key),
+        parameterOverrides
+      );
+      /*
+       * The deterministic transition is authoritative and must not depend on
+       * optional audio or 3D presentation. Previously those ran first, so a
+       * browser presentation failure could prevent a valid lab step.
+       */
+      port.dispatch(normalizedAction);
+      nextSnapshot = snapshot(port);
+    } catch (dispatchError) {
+      dispatchingPermissionRef.current = null;
+      setError(actionErrorMessage(dispatchError));
+      return;
+    }
+
+    setCurrent(nextSnapshot);
+    setError(null);
+    triggerCoachOnDiagnoses(nextSnapshot.state);
+
     try {
       let poses: ReturnType<
         typeof resolveLabSceneConfiguration
@@ -639,21 +729,10 @@ export function NativeSetupDrivenWorkspace({
       } else if (action.actionId === "action.dispense.v1") {
         getLabSounds().playFromGesture("drop");
       }
-      port.dispatch({
-        schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
-        permissionId: action.permissionId,
-        actionId: action.actionId,
-        sourceEquipmentInstanceId:
-          action.sourceEquipmentInstanceId ?? undefined,
-        targetEquipmentInstanceIds: action.targetEquipmentInstanceIds,
-        parameters
-      });
-      const nextSnapshot = snapshot(port);
-      setCurrent(nextSnapshot);
-      setError(null);
-      triggerCoachOnDiagnoses(nextSnapshot.state);
-    } catch (dispatchError) {
-      setError(actionErrorMessage(dispatchError));
+    } catch {
+      // The action already succeeded. Presentation is best-effort and may be
+      // unavailable without invalidating deterministic lab state.
+      setActiveVisualGesture(null);
     }
   }
 
@@ -1104,10 +1183,10 @@ export function NativeSetupDrivenWorkspace({
                             {bounds.unitId === "unit.ml.v1"
                               ? " mL"
                               : bounds.unitId === "unit.celsius.v1"
-                              ? " °C"
-                              : bounds.unitId === "unit.g.v1"
-                                ? " g"
-                                : ""}
+                                ? " °C"
+                                : bounds.unitId === "unit.g.v1"
+                                  ? " g"
+                                  : ""}
                           </span>
                         </label>
                       );

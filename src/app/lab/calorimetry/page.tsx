@@ -15,6 +15,7 @@ export default function CalorimetryPracticePage() {
 
   return (
     <NativeSetupDrivenWorkspace
+      key={workflow.validation.canonicalSpecHash}
       workflow={workflow}
       replaySeed={`guest-practice:${CALORIMETRY_PRACTICE_PATH}`}
       mode="practice"
