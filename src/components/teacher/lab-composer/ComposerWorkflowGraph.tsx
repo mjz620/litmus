@@ -12,7 +12,7 @@ import {
   type Edge,
   type Node
 } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { LabDraftRemovalTarget } from "../../../lab-workflows/authoring";
 import type { WorkflowRule } from "../../../lab-workflows/schema/conditions";
@@ -164,6 +164,22 @@ export function ComposerWorkflowGraph({
   const [relationshipError, setRelationshipError] = useState<string | null>(
     null
   );
+  const errorBannerRef = useRef<HTMLParagraphElement>(null);
+  /*
+   * The banner mounts above the connect controls, which usually sit past the
+   * fold when the teacher clicks Connect cards — without this the rejection
+   * renders off-screen and the click reads as a silent no-op.
+   */
+  useEffect(() => {
+    if (relationshipError) {
+      errorBannerRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth"
+      });
+    }
+  }, [relationshipError]);
   const [predecessorRuleId, setPredecessorRuleId] = useState(ruleIds[0] ?? "");
   const [successorRuleId, setSuccessorRuleId] = useState(
     ruleIds[1] ?? ruleIds[0] ?? ""
@@ -326,7 +342,7 @@ export function ComposerWorkflowGraph({
         </div>
       </header>
       {(relationshipError || error) && (
-        <p className={styles.inlineError} role="alert">
+        <p className={styles.inlineError} role="alert" ref={errorBannerRef}>
           {relationshipError ?? error}
         </p>
       )}

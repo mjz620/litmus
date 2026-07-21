@@ -70,6 +70,10 @@ export const COMPOSER_STAGES: readonly ComposerStageDefinition[] =
     }
   ]);
 
+function counted(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 export function summarizeStageReadiness(
   draft: Readonly<LabWorkflowDraftV2>,
   stageId: ComposerStageId
@@ -79,7 +83,7 @@ export function summarizeStageReadiness(
       return draft.objectiveIds.length > 0
         ? {
             count: draft.objectiveIds.length,
-            summary: `${draft.objectiveIds.length} learning objective${draft.objectiveIds.length === 1 ? "" : "s"} selected`,
+            summary: `${counted(draft.objectiveIds.length, "learning objective")} selected`,
             state: "started"
           }
         : {
@@ -95,7 +99,7 @@ export function summarizeStageReadiness(
       return count > 0
         ? {
             count,
-            summary: `${draft.equipment.length} equipment · ${draft.materials.length} materials · ${draft.permittedActions.length} actions`,
+            summary: `${draft.equipment.length} equipment · ${counted(draft.materials.length, "material")} · ${counted(draft.permittedActions.length, "action")}`,
             state: "started"
           }
         : { count, summary: "Build the student bench", state: "needs-content" };
@@ -108,7 +112,7 @@ export function summarizeStageReadiness(
       return independentRules + draft.instructions.length > 0
         ? {
             count: independentRules + draft.instructions.length,
-            summary: `${independentRules} checks · ${dependencies} connections · ${draft.instructions.length} directions`,
+            summary: `${counted(independentRules, "check")} · ${counted(dependencies, "connection")} · ${counted(draft.instructions.length, "direction")}`,
             state: "started"
           }
         : {
@@ -121,7 +125,7 @@ export function summarizeStageReadiness(
       return draft.rubric.criteria.length > 0
         ? {
             count: draft.rubric.criteria.length,
-            summary: `${draft.rubric.criteria.length} grading items · ${draft.rubric.totalPoints} points`,
+            summary: `${counted(draft.rubric.criteria.length, "grading item")} · ${counted(draft.rubric.totalPoints, "point")}`,
             state: "started"
           }
         : {

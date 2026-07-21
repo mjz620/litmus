@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { ProductShell } from "../../ui/ProductShell";
 import { useEffect, useState } from "react";
@@ -9,6 +10,10 @@ import { LabRouteShell } from "../../../app/lab/[experimentId]/LabRouteShell";
 import { NativeSetupDrivenWorkspace } from "../../lab/setup-driven/NativeSetupDrivenWorkspace";
 import type { ValidatedLabWorkflowSpecV2 } from "../../../lab-workflows/schema/v2";
 import { evaluateLabWorkflowEligibilityV2 } from "../../../lab-workflows/validation";
+import {
+  COMPOSER_PATH,
+  composerHref
+} from "../../../lib/demo/demoEnvironment";
 import { LocalLabPreviewRepository } from "./localRepository";
 
 import styles from "./ComposerPreview.module.css";
@@ -23,6 +28,12 @@ export function ComposerPreview() {
     workflow: null,
     error: null
   });
+  /*
+   * The demo and teacher previews render the same component, so only the live
+   * pathname says which shell to return to.
+   */
+  const pathname = usePathname();
+  const returnHref = pathname ? composerHref(pathname) : COMPOSER_PATH;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -69,7 +80,7 @@ export function ComposerPreview() {
           <p className={styles.failureEyebrow}>Lab Composer preview</p>
           <h1>Preview expired</h1>
           <div role="status">{state.error}</div>
-          <Link href="/teacher/lab-composer">Return to the Composer</Link>
+          <Link href={returnHref}>Return to the Composer</Link>
         </div>
       </ProductShell>
     );
@@ -96,7 +107,7 @@ export function ComposerPreview() {
           <p>Teacher preview · student results are not saved</p>
           <strong>{workflow.metadata.title}</strong>
         </div>
-        <Link href="/teacher/lab-composer">← Return to Composer</Link>
+        <Link href={returnHref}>← Return to Composer</Link>
       </header>
       {workflow.compatibility ? (
         <LabRouteShell

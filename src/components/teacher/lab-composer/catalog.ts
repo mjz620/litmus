@@ -17,7 +17,7 @@ import {
   SOLUTION_PREPARATION_STOCK_1M_V2_DRAFT,
   SOLUTION_PREPARATION_V2_DRAFT
 } from "../../../lab-workflows/definitions/solution-preparation";
-import { NATIVE_TITRATION_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-control";
+import { NATIVE_ENDPOINT_DRILL_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-drill";
 import { WEAK_ACID_TITRATION_V1_DRAFT } from "../../../lab-workflows/definitions/titration/weak-acid-titration";
 import type { LabWorkflowDraftV2 } from "../../../lab-workflows/schema/v2";
 
@@ -50,7 +50,7 @@ export const composerLabTemplateCatalog: readonly ComposerLabTemplate[] =
       id: "titration" as const,
       title: "Acid–base titration",
       description: "Practice endpoint control and precise meniscus reading.",
-      draft: NATIVE_TITRATION_V2_DRAFT
+      draft: NATIVE_ENDPOINT_DRILL_V2_DRAFT
     }),
     Object.freeze({
       id: "weak_acid_titration" as const,

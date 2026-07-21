@@ -32,6 +32,12 @@ interface ComposerJudgePanelProps {
   readonly revisionsRemaining: number;
   readonly error: string | null;
   readonly terminationReason: string | null;
+  /**
+   * Set when the viewer cannot call the review API (guests and students — the
+   * route is teacher-gated). Shown in place of the remaining-calls line so the
+   * requirement is visible before a click rather than after a failed request.
+   */
+  readonly signInNotice: string | null;
   readonly onReview: () => void;
   readonly onAcceptSuggestion: (suggestion: ComposerJudgeSuggestion) => void;
   readonly onSkipSuggestion: (suggestion: ComposerJudgeSuggestion) => void;
@@ -63,6 +69,7 @@ export function ComposerJudgePanel({
   revisionsRemaining,
   error,
   terminationReason,
+  signInNotice,
   onReview,
   onAcceptSuggestion,
   onSkipSuggestion
@@ -206,7 +213,10 @@ export function ComposerJudgePanel({
         <button
           type="button"
           disabled={
-            !validatorReady || status === "running" || callsRemaining === 0
+            !validatorReady ||
+            status === "running" ||
+            callsRemaining === 0 ||
+            signInNotice !== null
           }
           onClick={onReview}
         >
@@ -217,9 +227,13 @@ export function ComposerJudgePanel({
               : "Run teaching review"}
         </button>
         <small>
-          {callsRemaining} review call{callsRemaining === 1 ? "" : "s"} and{" "}
-          {revisionsRemaining} suggested change
-          {revisionsRemaining === 1 ? "" : "s"} left in this page session.
+          {signInNotice ?? (
+            <>
+              {callsRemaining} review call{callsRemaining === 1 ? "" : "s"} and{" "}
+              {revisionsRemaining} suggested change
+              {revisionsRemaining === 1 ? "" : "s"} left in this page session.
+            </>
+          )}
         </small>
       </div>
 

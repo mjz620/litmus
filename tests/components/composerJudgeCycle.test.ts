@@ -172,7 +172,7 @@ describe("LC2-702 bounded Judge revision cycle", () => {
   it("stops early when the current workflow lacks the required native trace suite", () => {
     const compatibility = validateNativeTitrationV2(CHECKED_AT);
     expect(() => executeComposerJudgeTraces(compatibility, 1)).toThrow(
-      /does not yet have the five native/i
+      /legacy engine/i
     );
   });
 

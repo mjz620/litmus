@@ -74,3 +74,24 @@ export const EXPERIMENTS_PATH = "/experiments";
 export function labsIndexHref(pathname: string): string {
   return isDemoPathname(pathname) ? DEMO_LABS_PATH : EXPERIMENTS_PATH;
 }
+
+export const DEMO_COMPOSER_PATH = "/demo/composer";
+export const COMPOSER_PATH = "/lab-composer";
+export const DEMO_COMPOSER_PREVIEW_PATH = "/demo/composer/preview";
+export const COMPOSER_PREVIEW_PATH = "/teacher/lab-composer/preview";
+
+/**
+ * Where the Composer's Preview opens, and where that preview returns to.
+ * Inside the demo both stay under /demo: sending an evaluator to the teacher
+ * preview would drop them out of the playground shell mid-journey, the same
+ * way a production lab link would.
+ */
+export function composerPreviewHref(pathname: string): string {
+  return isDemoPathname(pathname)
+    ? DEMO_COMPOSER_PREVIEW_PATH
+    : COMPOSER_PREVIEW_PATH;
+}
+
+export function composerHref(pathname: string): string {
+  return isDemoPathname(pathname) ? DEMO_COMPOSER_PATH : COMPOSER_PATH;
+}

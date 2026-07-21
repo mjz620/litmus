@@ -3,10 +3,13 @@ import {
   type LabDraftCommand
 } from "../../../lab-workflows/authoring";
 import { createSolutionPreparationTracePlan } from "../../../lab-workflows/definitions/solution-preparation/tracePlan";
+import { createEndpointDrillTracePlan } from "../../../lab-workflows/definitions/titration/endpointDrillTracePlan";
 import {
   createGenericLabActionTrace,
-  runGenericTraceSuite
+  runGenericTraceSuite,
+  type GenericTraceSuiteCaseKind
 } from "../../../lab-workflows/replay";
+import type { NormalizedLabAction } from "../../../lab-workflows/runtime";
 import { createCapabilityGenericRuntimePorts } from "../../../lab-workflows/runtime";
 import type {
   LabWorkflowDraftV2,
@@ -56,16 +59,78 @@ function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();
 }
 
+interface ComposerJudgeTraceCase {
+  readonly kind: GenericTraceSuiteCaseKind;
+  readonly actions: readonly NormalizedLabAction[];
+}
+
+/*
+ * Scenario sets are authored per capability shape, not per draft, and every
+ * action in one names a specific permission. A teacher who removes or renames
+ * a permission has a legal lab that these scenarios can no longer drive, so
+ * the plan only applies while every permission it references still exists.
+ */
+const COMPOSER_JUDGE_TRACE_PLANS: readonly {
+  readonly requiredPermissionIds: readonly string[];
+  readonly create: () => readonly ComposerJudgeTraceCase[];
+}[] = [
+  {
+    requiredPermissionIds: [
+      "migration.permission.s1.a1",
+      "migration.permission.s2.a1"
+    ],
+    create: createEndpointDrillTracePlan
+  },
+  {
+    requiredPermissionIds: [
+      "permission.condition_pipette",
+      "permission.aspirate_stock",
+      "permission.deliver_aliquot",
+      "permission.fill_to_mark",
+      "permission.mix_solution"
+    ],
+    create: createSolutionPreparationTracePlan
+  }
+];
+
+function composerJudgeTracePlan(
+  workflow: Readonly<ValidatedLabWorkflowSpecV2>
+): readonly ComposerJudgeTraceCase[] | null {
+  if (workflow.compatibility) return null;
+  const available = new Set(workflow.permittedActions.map(({ id }) => id));
+  const plan = COMPOSER_JUDGE_TRACE_PLANS.find(({ requiredPermissionIds }) =>
+    requiredPermissionIds.every((id) => available.has(id))
+  );
+  return plan ? plan.create() : null;
+}
+
+/**
+ * The teaching review replays a capability's authored trace scenarios through
+ * the real runtime. A compatibility-bound draft cannot run them at all, and a
+ * lab whose permissions no scenario set covers has nothing to replay. Exposed
+ * so the composer can say so up front instead of spending one of the bounded
+ * review calls on a run that stops immediately.
+ */
+export function teachingReviewUnsupportedReason(
+  workflow: Readonly<ValidatedLabWorkflowSpecV2>
+): string | null {
+  if (workflow.compatibility) {
+    return "This lab still runs on the legacy engine, which the teaching review cannot replay.";
+  }
+  return composerJudgeTracePlan(workflow)
+    ? null
+    : "This lab's steps do not match a set of teaching-review scenarios yet. The Litmus checker still covers it.";
+}
+
 export function executeComposerJudgeTraces(
   workflow: Readonly<ValidatedLabWorkflowSpecV2>,
   attempt: number
 ): readonly CapabilityAuthorTraceSummary[] {
-  if (workflow.compatibility) {
-    throw new TypeError(
-      "This lab does not yet have the five native teaching-review scenarios."
-    );
+  const plan = composerJudgeTracePlan(workflow);
+  if (!plan) {
+    throw new TypeError(teachingReviewUnsupportedReason(workflow) ?? "");
   }
-  return createSolutionPreparationTracePlan().map((testCase) => {
+  return plan.map((testCase) => {
     const traceId = `trace.agent.${workflow.validation.canonicalSpecHash.slice(-12)}.${testCase.kind}.${attempt}`;
     const trace = createGenericLabActionTrace({
       traceId,

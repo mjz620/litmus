@@ -12,7 +12,7 @@ import {
   type LabDraftRemovalResolution,
   type LabDraftRemovalTarget
 } from "../../../lab-workflows/authoring";
-import { NATIVE_TITRATION_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-control";
+import { NATIVE_ENDPOINT_DRILL_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-drill";
 import { hashLabWorkflowSpec } from "../../../lab-workflows/hash";
 import type { WorkflowRule } from "../../../lab-workflows/schema/conditions";
 import {
@@ -68,6 +68,7 @@ import {
   COMPOSER_JUDGE_REVISION_LIMIT,
   createComposerJudgeSuggestions,
   reviewComposerWorkflow,
+  teachingReviewUnsupportedReason,
   type ComposerJudgeSuggestion
 } from "./composerJudgeCycle";
 import {
@@ -90,6 +91,8 @@ import {
   saveComposerDraft,
   type TeacherClassSummary
 } from "../../../lib/persistence/composerDefinitionClient";
+import { composerPreviewHref } from "../../../lib/demo/demoEnvironment";
+import { useViewer } from "../../auth/ViewerContext";
 
 import styles from "./LabComposer.module.css";
 import { reconciledSelection } from "./selection";
@@ -172,7 +175,10 @@ function ruleLabel(
           ?.purpose ?? titleCaseIdentifier(condition.actionId)
       );
     case "observable_within_tolerance":
-      return `${titleCaseIdentifier(condition.observableId)} from ${condition.minimum} to ${condition.maximum}`;
+      // A zero-width tolerance reads better as one value than "from X to X".
+      return condition.minimum === condition.maximum
+        ? `${titleCaseIdentifier(condition.observableId)} of exactly ${condition.minimum}`
+        : `${titleCaseIdentifier(condition.observableId)} from ${condition.minimum} to ${condition.maximum}`;
     case "rule_satisfied_before": {
       const predecessor = rules.find(
         ({ id }) => id === condition.predecessorRuleId
@@ -222,8 +228,21 @@ function ruleRole(rule: Readonly<WorkflowRule>): string {
 }
 
 export function LabComposer() {
+  const viewer = useViewer();
+  /*
+   * The proposal API is teacher-gated (guests 401, students 403). Saying so
+   * next to the button beats letting the request fail after the fact.
+   */
+  const agentSignInNotice =
+    viewer?.role === "teacher"
+      ? null
+      : "The AI draft proposal needs a teacher sign-in. Drafts, checks, and preview work without an account.";
+  const judgeSignInNotice =
+    viewer?.role === "teacher"
+      ? null
+      : "The optional teaching review needs a teacher sign-in. The Litmus checker and preview work without an account.";
   const [draft, setDraft] = useState<Readonly<LabWorkflowDraftV2>>(
-    NATIVE_TITRATION_V2_DRAFT
+    NATIVE_ENDPOINT_DRILL_V2_DRAFT
   );
   const [stage, setStage] = useState<ComposerStageId>("define");
   const [undoStack, setUndoStack] = useState<
@@ -364,7 +383,7 @@ export function LabComposer() {
   >(() => new Set());
   const judgeHistoryIdRef = useRef(0);
   const [baselineHash, setBaselineHash] = useState<string>(() =>
-    hashLabWorkflowSpec(NATIVE_TITRATION_V2_DRAFT)
+    hashLabWorkflowSpec(NATIVE_ENDPOINT_DRILL_V2_DRAFT)
   );
   const hydratedRef = useRef(false);
   const autosaveFailedRef = useRef(false);
@@ -465,17 +484,19 @@ export function LabComposer() {
   const validated = validationOutcome?.schemaValid ? validationOutcome : null;
   const currentHash = useMemo(() => hashLabWorkflowSpec(draft), [draft]);
   const hasUnsavedChanges = currentHash !== baselineHash;
+  const [suppressUnloadPrompt, setSuppressUnloadPrompt] = useState(false);
 
-  // Warn before leaving with unsaved changes.
+  // Warn before leaving with unsaved changes, except on navigations the
+  // Composer itself performs after persisting the draft.
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges || suppressUnloadPrompt) return;
     const handler = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, suppressUnloadPrompt]);
   const validationIsCurrent =
     validated?.validation.canonicalSpecHash === currentHash;
   const previewEligibility =
@@ -693,6 +714,10 @@ export function LabComposer() {
   }
 
   async function runTeachingReview() {
+    if (judgeSignInNotice) {
+      setJudgeError(judgeSignInNotice);
+      return;
+    }
     if (
       judgeStatus === "running" ||
       judgeCallsRemaining === 0 ||
@@ -703,6 +728,13 @@ export function LabComposer() {
       setJudgeError(
         "Check the current lab successfully before running the optional teaching review."
       );
+      return;
+    }
+    const unsupportedReason = teachingReviewUnsupportedReason(validated.spec);
+    if (unsupportedReason) {
+      // Say so before a bounded review call is spent on a run that would
+      // stop immediately.
+      setJudgeError(unsupportedReason);
       return;
     }
     const attempt = COMPOSER_JUDGE_CALL_LIMIT - judgeCallsRemaining + 1;
@@ -866,7 +898,13 @@ export function LabComposer() {
 
   async function generateAgentProposal() {
     const teacherRequest = agentTeacherRequest.trim();
-    if (!teacherRequest || agentBusy || agentRequestsRemaining === 0) return;
+    if (
+      !teacherRequest ||
+      agentBusy ||
+      agentRequestsRemaining === 0 ||
+      agentSignInNotice !== null
+    )
+      return;
     setAgentBusy(true);
     setAgentProgressUpdates([]);
     setAgentError(null);
@@ -891,6 +929,11 @@ export function LabComposer() {
       setAgentProposal(proposal);
       setAgentEvidenceState("ready");
     } catch (proposalError) {
+      // A request that never produced a proposal should not spend one of the
+      // bounded requests — an auth failure would otherwise drain the quota.
+      setAgentRequestsRemaining((remaining) =>
+        Math.min(AGENT_PROPOSAL_REQUEST_LIMIT, remaining + 1)
+      );
       setAgentProposal(null);
       setAgentEvidenceState(null);
       setAgentError(
@@ -1189,8 +1232,17 @@ export function LabComposer() {
       serializeLabDraft(draft)
     );
     previewRepository().save(validated.spec);
+    /*
+     * Preview is a step in authoring, not an exit from it: the draft is
+     * already persisted above and restored on return. Suppressing the
+     * unsaved-changes guard for this one navigation stops the browser from
+     * asking "Leave site?" at the exact moment a teacher asks to see their
+     * own edits — which read as the button doing nothing.
+     */
+    setSuppressUnloadPrompt(true);
     const hash = encodeURIComponent(validated.validation.canonicalSpecHash);
-    window.location.assign(`/teacher/lab-composer/preview?hash=${hash}`);
+    const previewPath = composerPreviewHref(window.location.pathname);
+    window.location.assign(`${previewPath}?hash=${hash}`);
   }
 
   function addEquipmentToSlot(definitionId: string, slotId: string) {
@@ -1749,6 +1801,7 @@ export function LabComposer() {
           proposal={agentProposal}
           evidenceState={agentEvidenceState}
           remainingRequests={agentRequestsRemaining}
+          signInNotice={agentSignInNotice}
           busy={agentBusy}
           progressUpdates={agentProgressUpdates}
           error={agentError}
@@ -1902,6 +1955,7 @@ export function LabComposer() {
           revisionsRemaining={judgeRevisionsRemaining}
           error={judgeError}
           terminationReason={judgeTerminationReason}
+          signInNotice={judgeSignInNotice}
           onReview={() => void runTeachingReview()}
           onAcceptSuggestion={(suggestion) =>
             void acceptJudgeSuggestion(suggestion)

@@ -15,6 +15,12 @@ interface ComposerAgentWorkspaceProps {
   readonly proposal: CapabilityAuthorSuccessResponse | null;
   readonly evidenceState: ComposerAgentEvidenceState | null;
   readonly remainingRequests: number;
+  /**
+   * Set when the viewer cannot call the proposal API (guests and students —
+   * the route is teacher-gated). Rendered in place of the quota line so the
+   * requirement is visible before a click instead of surfacing as a 401.
+   */
+  readonly signInNotice: string | null;
   readonly busy: boolean;
   readonly progressUpdates: readonly CapabilityAuthorProgress[];
   readonly error: string | null;
@@ -96,6 +102,7 @@ export function ComposerAgentWorkspace({
   proposal,
   evidenceState,
   remainingRequests,
+  signInNotice,
   busy,
   progressUpdates,
   error,
@@ -157,14 +164,20 @@ export function ComposerAgentWorkspace({
           <button
             className={styles.agentGenerateButton}
             type="submit"
-            disabled={busy || remainingRequests === 0 || !teacherRequest.trim()}
+            disabled={
+              busy ||
+              remainingRequests === 0 ||
+              !teacherRequest.trim() ||
+              signInNotice !== null
+            }
           >
             {submitLabel(proposal !== null, remainingRequests, busy)}
           </button>
           <small>
-            {remainingRequests === 0
-              ? "This page-session proposal limit has been reached."
-              : `${remainingRequests} bounded proposal request${remainingRequests === 1 ? "" : "s"} available in this page session.`}
+            {signInNotice ??
+              (remainingRequests === 0
+                ? "This page-session proposal limit has been reached."
+                : `${remainingRequests} bounded proposal request${remainingRequests === 1 ? "" : "s"} available in this page session.`)}
           </small>
         </div>
       </form>
