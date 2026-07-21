@@ -49,16 +49,41 @@ The Composer is a capability-safe authoring workspace rather than a free-form co
 Preview and assignment remain unavailable until the current workflow hash has a matching runnable validation result. Judge approval is advisory and cannot bypass that gate.
 
 ## Architecture
-
-```text
-Student action / teacher command
-  → typed action or atomic draft transaction
-  → ExperimentDefinition.step() / shared command layer
-  → deterministic state, validation, and semantic evidence
-      ├─ replay and versioned checkpoints
-      ├─ StudentModel and teacher analytics
-      ├─ bounded Coach / Author / Judge context
-      └─ exact-hash Preview and assignment eligibility
+```
+┌── STUDENT'S BROWSER (Chromebook-class hardware) ─────────────────────────┐
+│                                                                          │
+│   React 19 + Next.js UI  ◄──projects state──┐   React Three Fiber        │
+│   panels, readings, a11y text               │   3D bench (three.js),     │
+│           │ typed actions                   │   on-demand render loop    │
+│           ▼                                 │            ▲               │
+│   Zustand session store ────────────────────┘            │               │
+│           │                                              │               │
+│           ▼                                              │               │
+│   ┌── DETERMINISTIC LAB RUNTIME (TypeScript) ────────────────────────┐   │
+│   │  registries  → closed catalog: equipment, actions, materials,    │   │
+│   │                units, observables, placements                    │   │
+│   │  mechanics   → reusable technique: pour, dispense, tare, weigh   │   │
+│   │  chemistry   → acid–base, precipitation/Ksp, thermal/enthalpy    │   │
+│   │  ledger      → integer-unit mass & volume conservation           │   │
+│   │  replay      → bit-identical re-execution from the action trace  │   │
+│   └──────────────────────────┬───────────────────────────────────────┘   │
+│                              │ semantic events + observables             │
+└──────────────────────────────┼───────────────────────────────────────────┘
+                               │ HTTPS (batched checkpoints)
+                               ▼
+┌── VERCEL SERVERLESS FUNCTIONS (Next.js route handlers, Node) ────────────┐
+│   auth + per-user rate-limit guard on every model-reaching route         │
+│   /api/sessions/checkpoint · /api/coach · /api/evaluate                  │
+│   /api/lab-composer/author/capability · /api/lab-composer/judge          │
+└──────────┬──────────────────────────────────────────┬────────────────────┘
+           ▼                                          ▼
+┌── SUPABASE ────────────────────────┐   ┌── OPENAI RESPONSES API ────────┐
+│  Postgres + Auth + Row Level       │   │  GPT-5.6                       │
+│  Security                          │   │  Coach · Evaluator             │
+│  sessions, events, skill_estimates │   │  Author Agent · Judge Agent    │
+│  classes, assignments, definitions │   │  (structured outputs, typed    │
+│                                    │   │   tools, no chemistry math)    │
+└────────────────────────────────────┘   └────────────────────────────────┘
 ```
 
 The important boundaries are deliberately boring:
