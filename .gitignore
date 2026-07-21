@@ -13,6 +13,7 @@
 # local environment files
 .env*
 !.env.example
+prod.env
 
 # logs
 *.log
