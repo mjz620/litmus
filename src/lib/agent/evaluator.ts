@@ -80,7 +80,7 @@ export async function evaluateReport(
   }
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const response = await client.responses.parse({
-    model: process.env.OPENAI_EVALUATOR_MODEL ?? "gpt-5.4-mini",
+    model: process.env.OPENAI_EVALUATOR_MODEL ?? "gpt-5.6-luna",
     input: [
       { role: "system", content: EVALUATOR_SYSTEM_PROMPT },
       {

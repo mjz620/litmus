@@ -337,7 +337,7 @@ describe("Lab Authoring Agent contracts", () => {
   it("pins prompt, tool, model, and no-chain-of-thought policy metadata", () => {
     expect(LAB_AUTHORING_PROMPT_VERSION).toBe("lab-author-v1");
     expect(LAB_AUTHORING_TOOL_CONTRACT_VERSION).toBe("lab-author-tools-v1");
-    expect(LAB_AUTHORING_DEFAULT_MODEL).toBe("gpt-5.4-mini");
+    expect(LAB_AUTHORING_DEFAULT_MODEL).toBe("gpt-5.6-luna");
     expect(LAB_AUTHORING_SYSTEM_PROMPT).toContain(
       "Do not expose chain-of-thought"
     );

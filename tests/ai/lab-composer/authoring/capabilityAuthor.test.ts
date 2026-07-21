@@ -77,7 +77,7 @@ describe("LC2-601 bounded capability author", () => {
     );
     expect(response.result.workflow?.judgeCritique).toBeNull();
     expect(response.metadata).toMatchObject({
-      promptVersion: "lab-author-capability-v1",
+      promptVersion: "lab-author-capability-v2",
       toolContractVersion: "lab-author-capability-tools-v1",
       mode: "mock",
       usage: {

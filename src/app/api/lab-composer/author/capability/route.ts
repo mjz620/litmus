@@ -141,99 +141,120 @@ function streamedGeneration(
   });
 }
 
-export async function POST(request: Request) {
-  /*
-   * Capability authoring is a teacher-facing Composer tool that reaches a paid
-   * model. Authenticate first, then key the existing rate budget to the user
-   * rather than the address — a whole class shares one school NAT, so an
-   * address-keyed budget limits the wrong thing.
-   */
-  let principal: Awaited<ReturnType<typeof authenticateComposerPrincipal>>;
-  try {
-    principal = await authenticateComposerPrincipal();
-  } catch {
-    // Fail closed: an auth backend fault must never admit the caller.
-    return errorResponse(
-      new CapabilityAuthoringError(
-        "authoring.unauthenticated.v2",
-        "Authentication is unavailable.",
-        503,
-        true
-      )
-    );
-  }
-  if (!principal) {
-    return errorResponse(
-      new CapabilityAuthoringError(
-        "authoring.unauthenticated.v2",
-        "Authentication required.",
-        401,
-        false
-      )
-    );
-  }
-  if (principal.role !== "teacher") {
-    return errorResponse(
-      new CapabilityAuthoringError(
-        "authoring.forbidden.v2",
-        "Teacher access required.",
-        403,
-        false
-      )
-    );
-  }
-
-  const rateLimit = checkCapabilityAuthorRateLimit(principal.userId);
-  const rateHeaders = {
-    "X-RateLimit-Limit": String(rateLimit.limit),
-    "X-RateLimit-Remaining": String(rateLimit.remaining)
-  };
-  if (!rateLimit.allowed) {
-    return errorResponse(
-      new CapabilityAuthoringError(
-        "authoring.rate_limited.v2",
-        "Too many capability authoring requests. Try again shortly.",
-        429,
-        true
-      ),
-      {
-        ...rateHeaders,
-        "Retry-After": String(rateLimit.retryAfterSeconds)
-      }
-    );
-  }
-
-  try {
-    const parsed = capabilityAuthorRequestSchema.safeParse(
-      await readBoundedJson(request)
-    );
-    if (!parsed.success) {
-      const fieldPaths = [
-        ...new Set(
-          parsed.error.issues.flatMap((issue) =>
-            issue.code === "unrecognized_keys"
-              ? issue.keys.map((key) => [...issue.path, key].join("."))
-              : [issue.path.join(".") || "$"]
+/**
+ * Capability authoring handler over injected access rules.
+ *
+ * Production is teacher-only and budgets per user: a whole class shares one
+ * school NAT, so an address-keyed budget would limit the wrong thing. The
+ * judge demo mounts this with guests admitted on an address-keyed budget,
+ * since an evaluator has no account and authoring is what the demo exists to
+ * show. Authoring itself, including every registry and safety check, is
+ * unchanged either way.
+ */
+export function createCapabilityAuthorHandler(
+  options: {
+    readonly allowGuests?: boolean;
+    readonly guestKey?: (request: Request) => string;
+  } = {}
+) {
+  return async function capabilityAuthorHandler(request: Request) {
+    let rateKey: string;
+    if (options.allowGuests) {
+      rateKey = `guest:${options.guestKey?.(request) ?? "guest-unknown"}`;
+    } else {
+      let principal: Awaited<ReturnType<typeof authenticateComposerPrincipal>>;
+      try {
+        principal = await authenticateComposerPrincipal();
+      } catch {
+        // Fail closed: an auth backend fault must never admit the caller.
+        return errorResponse(
+          new CapabilityAuthoringError(
+            "authoring.unauthenticated.v2",
+            "Authentication is unavailable.",
+            503,
+            true
           )
-        )
-      ].sort();
-      throw new CapabilityAuthoringError(
-        "authoring.invalid_request.v2",
-        "Capability authoring request failed validation.",
-        400,
-        false,
-        fieldPaths
+        );
+      }
+      if (!principal) {
+        return errorResponse(
+          new CapabilityAuthoringError(
+            "authoring.unauthenticated.v2",
+            "Authentication required.",
+            401,
+            false
+          )
+        );
+      }
+      if (principal.role !== "teacher") {
+        return errorResponse(
+          new CapabilityAuthoringError(
+            "authoring.forbidden.v2",
+            "Teacher access required.",
+            403,
+            false
+          )
+        );
+      }
+      rateKey = principal.userId;
+    }
+
+    const rateLimit = checkCapabilityAuthorRateLimit(rateKey);
+    const rateHeaders = {
+      "X-RateLimit-Limit": String(rateLimit.limit),
+      "X-RateLimit-Remaining": String(rateLimit.remaining)
+    };
+    if (!rateLimit.allowed) {
+      return errorResponse(
+        new CapabilityAuthoringError(
+          "authoring.rate_limited.v2",
+          "Too many capability authoring requests. Try again shortly.",
+          429,
+          true
+        ),
+        {
+          ...rateHeaders,
+          "Retry-After": String(rateLimit.retryAfterSeconds)
+        }
       );
     }
-    if (
-      request.headers.get("accept")?.includes(CAPABILITY_AUTHOR_STREAM_TYPE)
-    ) {
-      return streamedGeneration(parsed.data, rateHeaders);
+
+    try {
+      const parsed = capabilityAuthorRequestSchema.safeParse(
+        await readBoundedJson(request)
+      );
+      if (!parsed.success) {
+        const fieldPaths = [
+          ...new Set(
+            parsed.error.issues.flatMap((issue) =>
+              issue.code === "unrecognized_keys"
+                ? issue.keys.map((key) => [...issue.path, key].join("."))
+                : [issue.path.join(".") || "$"]
+            )
+          )
+        ].sort();
+        throw new CapabilityAuthoringError(
+          "authoring.invalid_request.v2",
+          "Capability authoring request failed validation.",
+          400,
+          false,
+          fieldPaths
+        );
+      }
+      if (
+        request.headers.get("accept")?.includes(CAPABILITY_AUTHOR_STREAM_TYPE)
+      ) {
+        return streamedGeneration(parsed.data, rateHeaders);
+      }
+      return NextResponse.json(await generate(parsed.data), {
+        headers: rateHeaders
+      });
+    } catch (error) {
+      return errorResponse(publicError(error), rateHeaders);
     }
-    return NextResponse.json(await generate(parsed.data), {
-      headers: rateHeaders
-    });
-  } catch (error) {
-    return errorResponse(publicError(error), rateHeaders);
-  }
+  };
+}
+
+export async function POST(request: Request) {
+  return createCapabilityAuthorHandler()(request);
 }

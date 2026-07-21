@@ -110,7 +110,7 @@ function createOpenAiCoachModel(): CoachModel {
     maxRetries: 1,
     timeout: COACH_OPENAI_REQUEST_TIMEOUT_MS
   });
-  const model = process.env.OPENAI_COACH_MODEL ?? "gpt-5.4-mini";
+  const model = process.env.OPENAI_COACH_MODEL ?? "gpt-5.6-luna";
   return {
     model,
     async respond(request) {

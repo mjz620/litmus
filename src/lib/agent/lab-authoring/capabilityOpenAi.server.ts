@@ -72,14 +72,24 @@ const CAPABILITY_AUTHOR_REASONING_EFFORTS = Object.freeze([
 type CapabilityAuthorReasoningEffort =
   (typeof CAPABILITY_AUTHOR_REASONING_EFFORTS)[number];
 
-/** Override with OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT to trade latency for depth. */
+/**
+ * Reasoning effort for authoring. Override with
+ * OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT to trade latency for depth.
+ *
+ * `none` is the default because authoring is a tool-driven loop, not a
+ * reasoning problem: the model discovers registry entries through the
+ * read-only tools and the server validates everything it proposes, so
+ * thinking budget bought latency rather than better drafts. At `low` a
+ * dilution request took ~48s and aborted before returning; at `none` the same
+ * request completes in 17-27s with a runnable draft and all five traces.
+ */
 const CAPABILITY_AUTHOR_REASONING_EFFORT: CapabilityAuthorReasoningEffort =
   (CAPABILITY_AUTHOR_REASONING_EFFORTS as readonly string[]).includes(
     process.env.OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT ?? ""
   )
     ? (process.env
         .OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT as CapabilityAuthorReasoningEffort)
-    : "low";
+    : "none";
 
 export interface CapabilityAuthorOpenAiClient {
   readonly responses: Pick<OpenAI["responses"], "create">;
@@ -259,11 +269,15 @@ export function createOpenAiCapabilityAuthorPlanner(
       let outputTokens = 0;
       let usedOutputValidationRepair = false;
 
-      for (
-        let round = 0;
-        round < Math.min(5, context.modelCallsRemaining);
-        round += 1
-      ) {
+      /*
+       * Bounded by the authoring budget itself rather than a tighter constant.
+       * The old cap of five paired with `low` reasoning, where each round was
+       * slow enough that five filled the request window. With `none` a round
+       * is cheap, and discovery-heavy requests need more of them: capping at
+       * five made those fail as "did not finish within the fixed model-round
+       * budget" while calls six to nine were already authorised and unused.
+       */
+      for (let round = 0; round < context.modelCallsRemaining; round += 1) {
         const response = await client.responses
           .create(
             {
@@ -362,7 +376,7 @@ export function createOpenAiCapabilityAuthorPlanner(
             if (
               error instanceof z.ZodError &&
               !usedOutputValidationRepair &&
-              round + 1 < Math.min(5, context.modelCallsRemaining)
+              round + 1 < context.modelCallsRemaining
             ) {
               usedOutputValidationRepair = true;
               console.warn(

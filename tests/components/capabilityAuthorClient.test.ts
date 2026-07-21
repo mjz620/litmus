@@ -98,7 +98,7 @@ describe("capability author Composer client", () => {
             ok: false,
             metadata: {
               contractVersion: "2.0.0",
-              promptVersion: "lab-author-capability-v1",
+              promptVersion: "lab-author-capability-v2",
               toolContractVersion: "lab-author-capability-tools-v1"
             },
             error: {

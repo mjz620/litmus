@@ -20,7 +20,7 @@ export const AUTHORED_COACH_MAX_OUTPUT_TOKENS = 1_200;
 export function createOpenAiAuthoredCoachModel(): AuthoredCoachModel {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new TypeError("OPENAI_API_KEY is not configured.");
-  const model = process.env.OPENAI_COACH_V2_MODEL ?? "gpt-5.4-mini";
+  const model = process.env.OPENAI_COACH_V2_MODEL ?? "gpt-5.6-luna";
   const client = new OpenAI({ apiKey });
   return Object.freeze({
     model,

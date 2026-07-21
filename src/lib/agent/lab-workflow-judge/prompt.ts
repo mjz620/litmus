@@ -3,7 +3,7 @@ import type { WorkflowJudgeRequest } from "./schemas";
 export const WORKFLOW_JUDGE_VERSION = "lab-workflow-judge-v2" as const;
 export const WORKFLOW_JUDGE_PROMPT_VERSION =
   "lab-workflow-judge-prompt-v2" as const;
-export const WORKFLOW_JUDGE_DEFAULT_MODEL = "gpt-5.4-mini" as const;
+export const WORKFLOW_JUDGE_DEFAULT_MODEL = "gpt-5.6-luna" as const;
 
 export const WORKFLOW_JUDGE_SYSTEM_PROMPT = `You are the independent Litmus Lab Workflow Judge.
 

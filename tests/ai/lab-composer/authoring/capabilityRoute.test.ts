@@ -73,7 +73,7 @@ describe("POST /api/lab-composer/author/capability", () => {
       ok: true,
       metadata: {
         contractVersion: "2.0.0",
-        promptVersion: "lab-author-capability-v1",
+        promptVersion: "lab-author-capability-v2",
         toolContractVersion: "lab-author-capability-tools-v1",
         mode: "mock"
       },

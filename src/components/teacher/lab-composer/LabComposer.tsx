@@ -242,9 +242,10 @@ export function LabComposer() {
    */
   const inDemo = isDemoPathname(pathname ?? "");
   const isTeacher = viewer?.role === "teacher";
-  const agentSignInNotice = isTeacher
-    ? null
-    : "The AI draft proposal needs a teacher sign-in. Drafts, checks, and preview work without an account.";
+  const agentSignInNotice =
+    isTeacher || inDemo
+      ? null
+      : "The AI draft proposal needs a teacher sign-in. Drafts, checks, and preview work without an account.";
   const judgeSignInNotice =
     isTeacher || inDemo
       ? null

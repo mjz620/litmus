@@ -33,7 +33,7 @@ function containsSchemaKeyword(value: unknown, keyword: string): boolean {
 
 describe("LC2-600 capability author tools", () => {
   it("versions the capability contract independently and exposes only fixed strict tools", () => {
-    expect(CAPABILITY_AUTHOR_PROMPT_VERSION).toBe("lab-author-capability-v1");
+    expect(CAPABILITY_AUTHOR_PROMPT_VERSION).toBe("lab-author-capability-v2");
     expect(CAPABILITY_AUTHOR_TOOL_CONTRACT_VERSION).toBe(
       "lab-author-capability-tools-v1"
     );

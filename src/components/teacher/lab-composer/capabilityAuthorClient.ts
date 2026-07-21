@@ -7,6 +7,7 @@ import {
   type CapabilityAuthorRequest,
   type CapabilityAuthorSuccessResponse
 } from "../../../lib/agent/lab-authoring/capabilityAuthorSchemas";
+import { currentApiPath } from "../../../lib/demo/demoEnvironment";
 
 export class CapabilityAuthorClientError extends Error {
   readonly retryable: boolean;
@@ -107,7 +108,9 @@ export async function requestCapabilityAuthorProposal(
 ): Promise<CapabilityAuthorSuccessResponse> {
   let response: Response;
   try {
-    response = await fetcher("/api/lab-composer/author/capability", {
+    response = await fetcher(
+      currentApiPath("/api/lab-composer/author/capability"),
+      {
       method: "POST",
       headers: {
         accept: "application/x-ndjson",

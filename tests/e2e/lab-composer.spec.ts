@@ -103,7 +103,7 @@ function nonRunnableAgentProposal(
     ok: true,
     metadata: {
       contractVersion: "2.0.0",
-      promptVersion: "lab-author-capability-v1",
+      promptVersion: "lab-author-capability-v2",
       toolContractVersion: "lab-author-capability-tools-v1",
       outputSchemaVersion: "2.0.0",
       model: "deterministic-capability-author",
@@ -420,7 +420,7 @@ test("capability-authored proposal loads into the shared editor and becomes stal
   ).toBeVisible();
   await page.getByText("Generation details").click();
   await expect(page.getByText("Deterministic local fallback")).toBeVisible();
-  await expect(page.getByText("lab-author-capability-v1")).toBeVisible();
+  await expect(page.getByText("lab-author-capability-v2")).toBeVisible();
   await expect(page.locator("body")).not.toContainText(
     /chain of thought|draft hash|sha256:/i
   );

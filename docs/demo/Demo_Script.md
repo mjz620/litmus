@@ -91,10 +91,11 @@ the README architecture diagram.
 > feedback, authoring proposals, and advisory review. Deterministic TypeScript
 > owns pH, concentrations, conservation, heat flow, replay, and scoring truth."
 
-> **VO:** "Codex was my engineering collaborator: scoped tickets and hard
-> architecture rules drove TypeScript contracts, browser-flow investigation,
-> tests, and focused commits. It is not in the student runtime or an authority
-> over science."
+> **VO:** "Under my product direction, Codex implemented most of Litmus: Lab
+> Composer; the shared runtime and deterministic models across four chemistry
+> labs; 3D equipment; the Coach, Author, Judge, and Evaluator integrations;
+> Supabase persistence and replay; accessibility; and the test suite. Scoped
+> tickets and hard architecture rules kept that work reviewable."
 
 ## 2:43–2:55 — close on access, not replacement
 
