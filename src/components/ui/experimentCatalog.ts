@@ -39,18 +39,18 @@ const DIFFICULTY_ORDER: Readonly<Record<ExperimentDifficulty, number>> =
 const SETUP_DRIVEN_ENTRIES: readonly ExperimentCatalogEntry[] = Object.freeze([
   {
     key: "calorimetry",
-    title: "Mix hot and cold water",
+    title: "Measure the heat of dissolving a solid",
     description:
-      "Pour measured hot and cold water into a coffee-cup calorimeter, mix, and read the temperature they settle at.",
-    estimatedMinutes: 10,
+      "Tare a balance, weigh out ammonium nitrate, stir it into water, and follow the temperature drop to work out how much energy dissolving it absorbed.",
+    estimatedMinutes: 12,
     difficulty: "intro",
     href: CALORIMETRY_PRACTICE_PATH
   },
   {
     key: "solution-preparation",
-    title: "Prepare a sodium chloride dilution",
+    title: "Prepare a copper(II) nitrate dilution",
     description:
-      "Condition a pipette, transfer a measured aliquot, dilute to the mark, and mix a solution of known concentration.",
+      "Condition a pipette, transfer a measured aliquot, dilute to the mark, and watch the teal fade as the solution reaches known concentration.",
     estimatedMinutes: 12,
     difficulty: "intermediate",
     href: SOLUTION_PREPARATION_PRACTICE_PATH
