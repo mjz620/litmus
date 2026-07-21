@@ -711,6 +711,13 @@ export const COMPONENT_REGISTRY_ENTRIES = [
           description: "Exact distilled-water binding supplied by assembly."
         },
         {
+          key: "capacityML",
+          valueType: "number",
+          nullable: false,
+          runtimeOwned: true,
+          description: "Registered wash-bottle capacity."
+        },
+        {
           key: "availableML",
           valueType: "number",
           nullable: false,

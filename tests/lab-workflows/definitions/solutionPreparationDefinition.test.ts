@@ -220,7 +220,7 @@ describe("LC2-502 serialized solution-preparation definition", () => {
     for (const result of results.slice(0, 3)) {
       expect(
         observable(result!.finalState, "observable.solution_concentration_m.v1")
-      ).toBe(0.05);
+      ).toBe(0.2);
       expect(
         observable(result!.finalState, "observable.solution_volume_ml.v1")
       ).toBe(100);

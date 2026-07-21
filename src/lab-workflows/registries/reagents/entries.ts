@@ -558,6 +558,66 @@ export const REAGENT_REGISTRY_ENTRIES = [
     availability: "verified"
   },
   {
+    /*
+     * Copper(II) nitrate is the dilution stock because the hexaaquacopper(II)
+     * ion absorbs in the red, so the solution carries a visible teal that
+     * scales with concentration. Sodium chloride is colorless at every
+     * concentration, which made the whole point of a dilution invisible.
+     */
+    id: "reagent.copper_nitrate_aqueous.v1",
+    version: "1.0.0",
+    displayName: "Copper(II) nitrate solution",
+    phase: "aqueous_solution",
+    usageModes: ["material_binding"],
+    providedChemistryCapabilityIds: ["chemistry.concentration_dilution.v1"],
+    compatibleContainerCapabilityIds: [
+      "capability.contain_liquid.v1",
+      "capability.dispense_liquid.v1"
+    ],
+    initializationPresetSchemaId:
+      "schema.material_initialization.aqueous_solution.v1",
+    quantityPresetIds: ["quantity-preset.copper_nitrate_solution_50ml.v1"],
+    safetyPolicyIds: SOLUTION_SAFETY,
+    /* Cu(NO3)2, anhydrous basis. */
+    molarMassGPerMol: 187.5558,
+    /*
+     * Transmitted color of the solution at 1.000 mol/L through standard
+     * volumetric-flask path length. The scene scales this by Beer-Lambert, so
+     * this is the only appearance value the reagent needs to publish.
+     */
+    aqueousAppearance: {
+      tintHex: "#1F9BAF",
+      referenceConcentrationM: 1
+    },
+    concentrationAuthoring: {
+      configurationSchemaId:
+        "schema.material_initialization.bounded_concentration.v1",
+      unitId: "unit.mol_per_l.v1",
+      minimumDecimalValue: "0.1",
+      /*
+       * Saturation is near 4.7 mol/L at 20 °C, so a 2.000 mol/L ceiling stays
+       * well inside a solution a technician could actually hand a student
+       * while giving the teal enough depth to survive a tenfold dilution.
+       */
+      maximumDecimalValue: "2",
+      maximumDecimalPlaces: 4,
+      requiredChemistryCapabilityId: "chemistry.concentration_dilution.v1",
+      safetyPolicyIds: SOLUTION_SAFETY
+    },
+    profileKind: "aqueous_solution",
+    concentrationM: null,
+    initialTemperatureC: null,
+    compatibleContainerComponentIds: ["component.reagent_bottle.v1"],
+    compatibleEngineIds: [],
+    compatibleFamilyIds: [],
+    allowedRoleIds: ["stock_solution"],
+    requestedAmountLimits: [
+      { unitId: "unit.ml.v1", minimum: 0.01, maximum: 50 }
+    ],
+    safetyConstraintIds: SOLUTION_SAFETY,
+    availability: "verified"
+  },
+  {
     id: "reagent.silver_nitrate_0_100m.v1",
     version: "1.0.0",
     displayName: "0.100 M silver nitrate solution",

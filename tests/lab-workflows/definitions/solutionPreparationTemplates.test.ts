@@ -59,8 +59,8 @@ describe("LC2-903 solution-prep template expansion", () => {
       SOLUTION_PREPARATION_QUARTER_V2_EXPECTED_HASH,
       SOLUTION_PREPARATION_QUARTER_V2_SOURCE_HASH,
       validateSolutionPreparationQuarterV2,
-      "0.25",
-      0.025
+      "0.5",
+      0.05
     ]
   ] as const)(
     "pins, recreates, and five-trace exercises the %s dilution seed",
@@ -86,7 +86,7 @@ describe("LC2-903 solution-prep template expansion", () => {
         canonicalSpecHash: expectedHash
       });
       expect(workflow.materials[0]).toMatchObject({
-        materialProfileId: "reagent.sodium_chloride_aqueous.v1",
+        materialProfileId: "reagent.copper_nitrate_aqueous.v1",
         initialization: {
           concentration: { decimalValue: stockDecimal }
         }

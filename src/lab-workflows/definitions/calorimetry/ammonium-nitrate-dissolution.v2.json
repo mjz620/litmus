@@ -157,6 +157,14 @@
       "availability": { "allSatisfiedRuleIds": ["rule.boat_removed", "rule.water_added"], "allUnsatisfiedRuleIds": ["rule.solid_added"] }
     },
     {
+      "id": "permission.set_lid",
+      "actionId": "action.set_calorimeter_lid.v1",
+      "sourceEquipmentInstanceId": "calorimeter",
+      "targetEquipmentInstanceIds": [],
+      "maxAttempts": 4,
+      "availability": { "allSatisfiedRuleIds": ["rule.water_added"], "allUnsatisfiedRuleIds": [] }
+    },
+    {
       "id": "permission.mix",
       "actionId": "action.mix_calorimeter.v1",
       "sourceEquipmentInstanceId": "calorimeter",

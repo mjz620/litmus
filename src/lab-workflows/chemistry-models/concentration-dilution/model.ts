@@ -26,7 +26,14 @@ export const CONCENTRATION_DILUTION_MODEL_ID =
 
 export const CONCENTRATION_DILUTION_OBSERVABLE_IDS = Object.freeze({
   concentration: "observable.solution_concentration_m.v1",
-  volume: "observable.solution_volume_ml.v1"
+  volume: "observable.solution_volume_ml.v1",
+  /*
+   * The undiluted stock concentration. It never changes during a run, but the
+   * scene needs it as engine-owned state to tint the stock bottle and the
+   * pipette; without it the view would have to reach into material bindings
+   * and derive concentration itself.
+   */
+  stockConcentration: "observable.stock_concentration_m.v1"
 } as const);
 
 export const CONCENTRATION_DILUTION_ERROR_CODES = Object.freeze({
@@ -352,6 +359,10 @@ function observables(
 ): readonly GenericObservable[] {
   const volumeUnits = numberField(state, FIELD.targetVolumeUnits);
   const soluteProductUnits = numberField(state, FIELD.targetSoluteProductUnits);
+  const stockConcentrationMicromolar = numberField(
+    state,
+    FIELD.stockConcentrationMicromolar
+  );
   const volumeML = integerUnitsToQuantity(volumeUnits, "unit.ml.v1");
   const concentrationM =
     volumeUnits === 0
@@ -370,6 +381,11 @@ function observables(
       observableId: CONCENTRATION_DILUTION_OBSERVABLE_IDS.volume,
       value: volumeML,
       unitId: "unit.ml.v1"
+    },
+    {
+      observableId: CONCENTRATION_DILUTION_OBSERVABLE_IDS.stockConcentration,
+      value: stockConcentrationMicromolar / CONCENTRATION_SCALE,
+      unitId: "unit.mol_per_l.v1"
     }
   ];
 }

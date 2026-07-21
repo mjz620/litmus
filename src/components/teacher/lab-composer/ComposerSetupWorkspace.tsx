@@ -32,7 +32,8 @@ import {
   composerEquipmentConfigurationCatalog,
   composerMaterialCatalog,
   composerPlacementCatalog,
-  placementSupportsEquipment
+  placementSupportsEquipment,
+  quantityPresetsFor
 } from "./catalog";
 
 import styles from "./LabComposer.module.css";
@@ -118,6 +119,10 @@ interface ComposerSetupWorkspaceProps {
     unitId: string
   ) => void;
   readonly onClearMaterialConcentration: (instanceId: string) => void;
+  readonly onSetMaterialQuantity: (
+    instanceId: string,
+    quantityPresetId: string
+  ) => void;
   readonly onConfigure: (instanceId: string, presetId: string) => void;
   readonly onEnableAction: (
     actionId: string,
@@ -231,6 +236,87 @@ function MaterialConcentrationEditor({
         )}
       </div>
     </form>
+  );
+}
+
+/**
+ * Student-facing amount for a registered quantity preset — "2.50 g",
+ * "25 mL", "2 drops". Masses keep two decimals because that is the balance's
+ * readable precision; volumes and drop counts read as whole units.
+ */
+export function quantityPresetLabel(preset: {
+  readonly amount: number;
+  readonly unitId: string;
+}): string {
+  if (preset.unitId === "unit.g.v1") return `${preset.amount.toFixed(2)} g`;
+  if (preset.unitId === "unit.ml.v1") return `${preset.amount} mL`;
+  if (preset.unitId === "unit.drop.v1") {
+    return `${preset.amount} ${preset.amount === 1 ? "drop" : "drops"}`;
+  }
+  return `${preset.amount}`;
+}
+
+/**
+ * How much of this material starts in the container. The composer used to bind
+ * the first registered preset silently, so a teacher placing a solid into a
+ * weighing boat never saw — let alone chose — the mass their students would
+ * weigh out. Amounts stay registry-owned; this only picks among verified ones.
+ */
+function MaterialQuantityEditor({
+  binding,
+  error,
+  onSet
+}: {
+  readonly binding: Readonly<LabWorkflowDraftV2["materials"][number]>;
+  readonly error: string | undefined;
+  readonly onSet: ComposerSetupWorkspaceProps["onSetMaterialQuantity"];
+}) {
+  let presets: ReturnType<typeof quantityPresetsFor> = [];
+  try {
+    presets = quantityPresetsFor(binding.materialProfileId);
+  } catch {
+    // A draft saved against an older registry keeps rendering read-only.
+    presets = [];
+  }
+  const selected = presets.find(({ id }) => id === binding.quantityPresetId);
+  const selectId = `material-quantity-${binding.instanceId}`;
+
+  if (presets.length === 0) return null;
+
+  // One verified amount means there is nothing to choose — state it plainly
+  // rather than rendering a select with a single option.
+  if (presets.length === 1) {
+    return (
+      <p className={styles.quantityStatic}>
+        Amount: <strong>{quantityPresetLabel(presets[0]!)}</strong>
+      </p>
+    );
+  }
+
+  return (
+    <div className={styles.quantityEditor}>
+      <label htmlFor={selectId}>Amount</label>
+      <select
+        id={selectId}
+        value={selected?.id ?? ""}
+        aria-invalid={Boolean(error)}
+        onChange={(event) =>
+          onSet(binding.instanceId, event.currentTarget.value)
+        }
+      >
+        {!selected && <option value="">Choose an amount</option>}
+        {presets.map((preset) => (
+          <option key={preset.id} value={preset.id}>
+            {quantityPresetLabel(preset)}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <small className={styles.inlineError} role="alert">
+          {error}
+        </small>
+      )}
+    </div>
   );
 }
 
@@ -464,6 +550,7 @@ export function ComposerSetupWorkspace({
   onBindMaterial,
   onSetMaterialConcentration,
   onClearMaterialConcentration,
+  onSetMaterialQuantity,
   onConfigure,
   onEnableAction,
   onRequestRemoval,
@@ -793,6 +880,11 @@ export function ComposerSetupWorkspace({
                   >
                     Remove
                   </button>
+                  <MaterialQuantityEditor
+                    binding={binding}
+                    error={errors[`material:${binding.instanceId}:quantity`]}
+                    onSet={onSetMaterialQuantity}
+                  />
                   <MaterialConcentrationEditor
                     key={`${binding.instanceId}:${
                       "initialization" in binding

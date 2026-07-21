@@ -814,6 +814,33 @@
   width: auto;
 }
 
+/*
+ * How much of the material starts in the container. Sits in the same
+ * full-width column as the concentration editor so a bound material reads as
+ * one block: what it is, how much, how concentrated.
+ */
+.quantityEditor {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+}
+
+.quantityEditor label {
+  margin: 0;
+}
+
+.quantityStatic {
+  grid-column: 1 / -1;
+  margin: var(--space-1) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.quantityStatic strong {
+  color: var(--color-ink);
+}
+
 .materialChip {
   min-height: 2.35rem !important;
   border-radius: var(--radius-pill) !important;

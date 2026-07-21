@@ -1,12 +1,12 @@
 {
   "schemaVersion": "2.1.0",
-  "id": "workflow.sodium_chloride_quarter_dilution.native.v2",
+  "id": "workflow.copper_nitrate_half_molar_dilution.native.v2",
   "revision": 2,
-  "sourceRequest": "Create a bounded sodium-chloride solution-preparation lab using a 0.2500 mol/L authored stock concentration.",
+  "sourceRequest": "Create a bounded copper(II) nitrate solution-preparation lab using a 0.5000 mol/L authored stock concentration.",
   "metadata": {
-    "title": "Prepare a 0.0250 mol/L sodium chloride solution",
-    "learningObjective": "Transfer a calibrated aliquot from a teacher-authored 0.2500 mol/L stock, dilute it to the mark, and mix a solution with deterministic concentration evidence.",
-    "studentSummary": "Use a volumetric pipette and flask to prepare 100.00 mL of 0.0250 mol/L sodium chloride from a 0.2500 mol/L stock solution.",
+    "title": "Prepare a 0.0500 mol/L copper(II) nitrate solution",
+    "learningObjective": "Transfer a calibrated aliquot from a teacher-authored 0.5000 mol/L stock, dilute it to the mark, and mix a solution with deterministic concentration evidence.",
+    "studentSummary": "Use a volumetric pipette and flask to prepare 100.00 mL of 0.0500 mol/L copper(II) nitrate from a 0.5000 mol/L stock solution.",
     "gradeBand": "mixed_high_school",
     "estimatedMinutes": 12,
     "difficulty": "intermediate",
@@ -30,7 +30,7 @@
       "instanceId": "stock_bottle",
       "equipmentDefinitionId": "component.reagent_bottle.v1",
       "configurationPresetId": "component_config.reagent_bottle.stock_solution.v1",
-      "label": "0.2500 mol/L sodium chloride stock",
+      "label": "0.5000 mol/L copper(II) nitrate stock",
       "required": true
     },
     {
@@ -164,7 +164,7 @@
         "stateFieldKey": "conditionedMaterialProfileId",
         "expectedValue": {
           "valueType": "text",
-          "value": "reagent.sodium_chloride_aqueous.v1"
+          "value": "reagent.copper_nitrate_aqueous.v1"
         }
       },
       "severity": "procedural",
@@ -269,8 +269,8 @@
       "condition": {
         "kind": "observable_within_tolerance",
         "observableId": "observable.solution_concentration_m.v1",
-        "minimum": 0.02495,
-        "maximum": 0.02505,
+        "minimum": 0.04995,
+        "maximum": 0.05005,
         "minimumInclusive": true,
         "maximumInclusive": true,
         "unitId": "unit.mol_per_l.v1"
@@ -375,11 +375,7 @@
           "rule.flask_filled",
           "rule.solution_mixed",
           "rule.final_volume_tolerance",
-          "rule.final_concentration_tolerance",
-          "rule.condition_before_aspirate",
-          "rule.aspirate_before_deliver",
-          "rule.deliver_before_fill",
-          "rule.fill_before_mix"
+          "rule.final_concentration_tolerance"
         ]
       },
       "severity": "procedural",
@@ -432,9 +428,9 @@
     "adaptiveRetries": []
   },
   "rubric": {
-    "id": "rubric.sodium_chloride_quarter_dilution.v2",
+    "id": "rubric.copper_nitrate_half_molar_dilution.v2",
     "version": "2.0.0",
-    "title": "Sodium chloride quarter-molar dilution rubric",
+    "title": "Copper(II) nitrate half-molar dilution rubric",
     "criteria": [
       {
         "id": "criterion.volumetric_transfer",
@@ -536,14 +532,14 @@
   "materials": [
     {
       "instanceId": "stock_solution",
-      "materialProfileId": "reagent.sodium_chloride_aqueous.v1",
+      "materialProfileId": "reagent.copper_nitrate_aqueous.v1",
       "containerInstanceId": "stock_bottle",
-      "quantityPresetId": "quantity-preset.sodium_chloride_solution_50ml.v1",
+      "quantityPresetId": "quantity-preset.copper_nitrate_solution_50ml.v1",
       "initialization": {
         "kind": "bounded_concentration",
         "configurationSchemaId": "schema.material_initialization.bounded_concentration.v1",
         "concentration": {
-          "decimalValue": "0.25",
+          "decimalValue": "0.5",
           "unitId": "unit.mol_per_l.v1"
         }
       }

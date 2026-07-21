@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import type { LabDraftRemovalTarget } from "../../../lab-workflows/authoring";
 import type {
@@ -60,6 +60,29 @@ export function ComposerAssessWorkspace({
     criteria[0]?.id ?? ""
   );
   const [creatingCriterion, setCreatingCriterion] = useState(false);
+  const descriptionInputRef = useRef<HTMLInputElement>(null);
+  /*
+   * "New grading item" targets the editor at the bottom of this stage. With no
+   * grading items yet that editor is *already* in add mode, so toggling the
+   * flag rendered nothing new and the button read as broken; even with items
+   * present the mode change happened below the fold. Counting the requests
+   * lets every click move focus to the form, including repeat clicks that
+   * leave the flag unchanged.
+   */
+  const [focusRequests, setFocusRequests] = useState(0);
+
+  useEffect(() => {
+    if (focusRequests === 0) return;
+    const input = descriptionInputRef.current;
+    if (!input) return;
+    input.scrollIntoView({
+      block: "center",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth"
+    });
+    input.focus({ preventScroll: true });
+  }, [focusRequests]);
 
   const currentCriterionId =
     !creatingCriterion && criteria.some(({ id }) => id === selectedCriterionId)
@@ -140,7 +163,11 @@ export function ComposerAssessWorkspace({
           <button
             type="button"
             className={styles.primaryButton}
-            onClick={() => setCreatingCriterion(true)}
+            aria-controls="grading-item-editor"
+            onClick={() => {
+              setCreatingCriterion(true);
+              setFocusRequests((count) => count + 1);
+            }}
           >
             New grading item
           </button>
@@ -201,6 +228,7 @@ export function ComposerAssessWorkspace({
         objectiveId={currentObjectiveId}
         criterion={selectedCriterion}
         ruleLabel={ruleLabel}
+        descriptionInputRef={descriptionInputRef}
         onAdd={onAddCriterion}
         onReplace={onReplaceCriterion}
       />
@@ -213,6 +241,7 @@ function CriterionInspector({
   objectiveId,
   criterion,
   ruleLabel,
+  descriptionInputRef,
   onAdd,
   onReplace
 }: {
@@ -220,6 +249,7 @@ function CriterionInspector({
   readonly objectiveId: string;
   readonly criterion?: Readonly<RubricCriterionSpecV2>;
   readonly ruleLabel: (rule: Readonly<WorkflowRule>) => string;
+  readonly descriptionInputRef: RefObject<HTMLInputElement | null>;
   readonly onAdd: ComposerAssessWorkspaceProps["onAddCriterion"];
   readonly onReplace: ComposerAssessWorkspaceProps["onReplaceCriterion"];
 }) {
@@ -278,6 +308,7 @@ function CriterionInspector({
   return (
     <aside
       className={styles.criterionInspector}
+      id="grading-item-editor"
       aria-label="Grading item editor"
     >
       <header>
@@ -291,6 +322,7 @@ function CriterionInspector({
       <label>
         Description
         <input
+          ref={descriptionInputRef}
           value={description}
           maxLength={4000}
           onChange={(event) => setDescription(event.currentTarget.value)}

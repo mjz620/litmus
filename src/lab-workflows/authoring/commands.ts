@@ -64,6 +64,17 @@ const clearMaterialConcentrationCommandSchema = z.strictObject({
   type: z.literal("clear_material_concentration"),
   instanceId: workflowLocalIdSchema
 });
+/**
+ * Re-point a bound material at another registered quantity preset — how much
+ * solid is in the weighing boat, how many drops of indicator, what volume of
+ * stock. The amount itself stays code-owned; only the choice among verified
+ * presets is authored.
+ */
+const setMaterialQuantityCommandSchema = z.strictObject({
+  type: z.literal("set_material_quantity"),
+  instanceId: workflowLocalIdSchema,
+  quantityPresetId: registryIdSchema
+});
 const setLayoutCommandSchema = z.strictObject({
   type: z.literal("set_layout"),
   layout: physicalLayoutSpecV2Schema
@@ -168,6 +179,7 @@ export const labDraftCommandSchema = z.discriminatedUnion("type", [
   removeMaterialBindingCommandSchema,
   setMaterialConcentrationCommandSchema,
   clearMaterialConcentrationCommandSchema,
+  setMaterialQuantityCommandSchema,
   setLayoutCommandSchema,
   permitActionCommandSchema,
   removePermittedActionCommandSchema,

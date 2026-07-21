@@ -25,6 +25,7 @@ export type ReagentRegistryId =
   | "reagent.sodium_hydroxide_aqueous.v1"
   | "reagent.sodium_chloride_aqueous.v1"
   | "reagent.sodium_chloride_1_000m.v1"
+  | "reagent.copper_nitrate_aqueous.v1"
   | "reagent.silver_nitrate_0_100m.v1"
   | "reagent.sodium_chloride_0_100m.v1"
   | "reagent.ammonium_nitrate_solid.v1"
@@ -70,6 +71,21 @@ export interface MaterialProfile {
   readonly molarMassGPerMol?: number | null;
   /** Registered monoprotic behavior at 25 °C; null for non-acid/base materials. */
   readonly acidBaseDissociation?: AcidBaseDissociationProfile | null;
+  /**
+   * Published transmitted color of the solution at a stated concentration.
+   *
+   * Aqueous phases only. The scene projects this through Beer-Lambert falloff
+   * against the engine-reported concentration, so a reagent declares one
+   * measured appearance rather than a color per dilution. Absent or null means
+   * the solution renders as colorless, which is correct for the majority of
+   * registered reagents.
+   */
+  readonly aqueousAppearance?: {
+    /** Transmitted sRGB hex observed at `referenceConcentrationM`. */
+    readonly tintHex: string;
+    /** Concentration in mol/L at which `tintHex` is the observed color. */
+    readonly referenceConcentrationM: number;
+  } | null;
   readonly concentrationAuthoring?: {
     readonly configurationSchemaId: "schema.material_initialization.bounded_concentration.v1";
     readonly unitId: "unit.mol_per_l.v1";

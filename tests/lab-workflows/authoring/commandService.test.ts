@@ -419,6 +419,56 @@ describe("Lab Composer draft command service", () => {
     });
   });
 
+  it("re-points a bound material at another verified quantity preset", () => {
+    // How much solid is in the weighing boat (or titrant in the burette) is a
+    // teaching decision, but the amount itself stays registry-owned: only
+    // presets the material declares may be chosen.
+    const titrant = NATIVE_TITRATION_V2_DRAFT.materials.find(
+      ({ instanceId }) => instanceId === "titrant"
+    );
+    expect(titrant?.quantityPresetId).toBe(
+      "quantity-preset.sodium_hydroxide_0_100m_50ml.v1"
+    );
+
+    const edited = apply(NATIVE_TITRATION_V2_DRAFT, {
+      type: "set_material_quantity",
+      instanceId: "titrant",
+      quantityPresetId: "quantity-preset.sodium_hydroxide_0_100m_25ml.v1"
+    });
+    expect(
+      edited.materials.find(({ instanceId }) => instanceId === "titrant")
+        ?.quantityPresetId
+    ).toBe("quantity-preset.sodium_hydroxide_0_100m_25ml.v1");
+    // Nothing else about the binding moves.
+    expect(
+      edited.materials.find(({ instanceId }) => instanceId === "titrant")
+        ?.containerInstanceId
+    ).toBe(titrant?.containerInstanceId);
+
+    // A preset belonging to a different material is refused.
+    expect(
+      applyLabDraftCommand(NATIVE_TITRATION_V2_DRAFT, {
+        type: "set_material_quantity",
+        instanceId: "titrant",
+        quantityPresetId: "quantity-preset.phenolphthalein_2_drops.v1"
+      })
+    ).toMatchObject({
+      ok: false,
+      error: { code: LAB_DRAFT_COMMAND_ERROR_CODES.incompatible }
+    });
+
+    expect(
+      applyLabDraftCommand(NATIVE_TITRATION_V2_DRAFT, {
+        type: "set_material_quantity",
+        instanceId: "not_a_material",
+        quantityPresetId: "quantity-preset.sodium_hydroxide_0_100m_25ml.v1"
+      })
+    ).toMatchObject({
+      ok: false,
+      error: { code: LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing }
+    });
+  });
+
   it("parses commands strictly and round-trips only strict local draft envelopes", () => {
     const invalid = applyLabDraftCommand(NATIVE_TITRATION_V2_DRAFT, {
       type: "add_objective",

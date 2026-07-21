@@ -2006,6 +2006,49 @@ function mutateDraft(
       });
       return;
     }
+    case "set_material_quantity": {
+      const index = draft.materials.findIndex(
+        ({ instanceId }) => instanceId === command.instanceId
+      );
+      if (index < 0) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.referenceMissing,
+          "command.instanceId",
+          `Unknown material instance: ${command.instanceId}`
+        );
+      }
+      const binding = draft.materials[index]!;
+      const profile = exactEntry(
+        registries.materials,
+        binding.materialProfileId,
+        `materials[${index}].materialProfileId`
+      );
+      const quantity = exactEntry(
+        registries.configurations,
+        command.quantityPresetId,
+        "command.quantityPresetId"
+      );
+      // Same compatibility gate bind_material applies: the amount stays a
+      // verified registry entry, so authoring cannot invent a quantity.
+      if (
+        quantity.category !== "quantity_preset" ||
+        quantity.availability !== "verified" ||
+        !quantity.compatibleMaterialProfileIds.includes(profile.id) ||
+        !profile.quantityPresetIds.includes(quantity.id)
+      ) {
+        fail(
+          LAB_DRAFT_COMMAND_ERROR_CODES.incompatible,
+          "command.quantityPresetId",
+          `${command.quantityPresetId} is not compatible with ${profile.id}.`
+        );
+      }
+      draft.materials = draft.materials.map((material, materialIndex) =>
+        materialIndex === index
+          ? { ...material, quantityPresetId: quantity.id }
+          : material
+      );
+      return;
+    }
     case "set_layout": {
       const schema = exactEntry(
         registries.configurations,

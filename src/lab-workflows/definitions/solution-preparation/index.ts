@@ -69,7 +69,7 @@ export const SOLUTION_PREPARATION_V2_DRAFT = deepFreeze(
   labWorkflowDraftV2Schema.parse(serializedSolutionPreparation)
 );
 export const SOLUTION_PREPARATION_V2_EXPECTED_HASH =
-  "sha256:5c6e6ad964e7738fc11b4184bb98eb9159f4c32601d9376fe0a98e4f2fc4dd1c" as const;
+  "sha256:cf5af9bb59126f440ea71db27a72d17c35cee6afe0d6882d0d6d1c00b2bebe3b" as const;
 export const SOLUTION_PREPARATION_V2_SOURCE_HASH = hashLabWorkflowSpec(
   SOLUTION_PREPARATION_V2_DRAFT
 );
@@ -78,7 +78,7 @@ export const SOLUTION_PREPARATION_STOCK_1M_V2_DRAFT = deepFreeze(
   labWorkflowDraftV2Schema.parse(serializedStock1mDilution)
 );
 export const SOLUTION_PREPARATION_STOCK_1M_V2_EXPECTED_HASH =
-  "sha256:14c3d4074f5b7a2e11ad79900c2d4ca80b17f18f75d818cc702596cbb29d063d" as const;
+  "sha256:2f474b9d266c7c1188b5ec113cf9b6ec8341268124e25c0045a58c45ff312309" as const;
 export const SOLUTION_PREPARATION_STOCK_1M_V2_SOURCE_HASH = hashLabWorkflowSpec(
   SOLUTION_PREPARATION_STOCK_1M_V2_DRAFT
 );
@@ -87,7 +87,7 @@ export const SOLUTION_PREPARATION_QUARTER_V2_DRAFT = deepFreeze(
   labWorkflowDraftV2Schema.parse(serializedQuarterDilution)
 );
 export const SOLUTION_PREPARATION_QUARTER_V2_EXPECTED_HASH =
-  "sha256:f0ec3c1976165551ed88217980e8b546071e2f0b13e6ef479982ff3e87e8c8b0" as const;
+  "sha256:e3cf8ddc5eea659d881be4237e0ecef747c8791f37e98272884c23b575bbe7f4" as const;
 export const SOLUTION_PREPARATION_QUARTER_V2_SOURCE_HASH = hashLabWorkflowSpec(
   SOLUTION_PREPARATION_QUARTER_V2_DRAFT
 );

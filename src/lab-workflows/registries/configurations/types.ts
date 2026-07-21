@@ -93,7 +93,8 @@ export type QuantityPresetId =
   | "quantity-preset.sodium_chloride_1_000m_50ml.v1"
   | "quantity-preset.sodium_chloride_solution_50ml.v1"
   | "quantity-preset.silver_nitrate_0_100m_50ml.v1"
-  | "quantity-preset.sodium_chloride_0_100m_50ml.v1";
+  | "quantity-preset.sodium_chloride_0_100m_50ml.v1"
+  | "quantity-preset.copper_nitrate_solution_50ml.v1";
 
 interface ConfigurationRegistryEntryBase {
   readonly id: string;

@@ -223,11 +223,25 @@ export function initializeLiquidEquipmentState(
         mixCount: 0
       });
     }
-    case "component.wash_bottle.v1":
+    case "component.wash_bottle.v1": {
+      const capacityML = capacity(binding);
+      if (containedVolumeML > capacityML) {
+        fail(
+          `Initial volume exceeds ${binding.instanceId} capacity.`,
+          binding.instanceId
+        );
+      }
+      /*
+       * Registered alongside `availableML` so the scene can scale the fill
+       * level. Without it the bottle rendered at a constant level while
+       * fill-to-mark drained 90 mL out of it.
+       */
       return createState(binding, {
+        capacityML,
         reagentInstanceId: exactMaterialAt(materialLedger, binding.instanceId),
         availableML: containedVolumeML
       });
+    }
     case "component.calorimeter.v1": {
       const capacityML = capacity(binding);
       if (containedVolumeML > capacityML) {

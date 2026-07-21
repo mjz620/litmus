@@ -7,8 +7,15 @@ import {
   labWorkflowDraftV2Schema,
   type LabWorkflowDraftV2
 } from "../../schema/v2";
+import type { MaterialProfileId } from "../../registries/reagents/types";
+import type { QuantityPresetId } from "../../registries/configurations/types";
 
-export interface SodiumChlorideDilutionAuthoringSpec {
+/**
+ * Shape of a tenfold volumetric dilution, independent of which stock is being
+ * diluted. The reagent ids were pinned to sodium chloride here, which meant a
+ * reagent swap was a type error rather than a data change.
+ */
+export interface DilutionAuthoringSpec {
   readonly workflowId: string;
   readonly rubricId: string;
   readonly rubricTitle: string;
@@ -17,16 +24,16 @@ export interface SodiumChlorideDilutionAuthoringSpec {
   readonly studentSummary: string;
   readonly sourceRequest: string;
   readonly stockLabel: string;
-  readonly materialProfileId: "reagent.sodium_chloride_aqueous.v1";
-  readonly quantityPresetId: "quantity-preset.sodium_chloride_solution_50ml.v1";
+  readonly materialProfileId: MaterialProfileId;
+  readonly quantityPresetId: QuantityPresetId;
   /** Authored stock concentration decimal; always required for this builder. */
   readonly stockConcentrationDecimal: string;
   readonly finalConcentrationMinimum: number;
   readonly finalConcentrationMaximum: number;
 }
 
-export function buildSodiumChlorideDilutionCommands(
-  spec: SodiumChlorideDilutionAuthoringSpec
+export function buildDilutionCommands(
+  spec: DilutionAuthoringSpec
 ): readonly LabDraftCommand[] {
   const bindStock: LabDraftCommand = {
     type: "bind_material",
@@ -148,64 +155,6 @@ export function buildSodiumChlorideDilutionCommands(
         materialProfileId: "reagent.distilled_water.v1",
         containerInstanceId: "water_bottle",
         quantityPresetId: "quantity-preset.distilled_water_250ml.v1"
-      }
-    },
-    {
-      type: "permit_action",
-      action: {
-        id: "permission.condition_pipette",
-        actionId: "action.rinse_transfer_device.v1",
-        sourceEquipmentInstanceId: "stock_bottle",
-        targetEquipmentInstanceIds: ["transfer_pipette"],
-        maxAttempts: 2,
-        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
-      }
-    },
-    {
-      type: "permit_action",
-      action: {
-        id: "permission.aspirate_stock",
-        actionId: "action.transfer_liquid.v1",
-        sourceEquipmentInstanceId: "stock_bottle",
-        targetEquipmentInstanceIds: ["transfer_pipette"],
-        authoredLimits: { maxTransferVolumeML: 10 },
-        maxAttempts: 3,
-        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
-      }
-    },
-    {
-      type: "permit_action",
-      action: {
-        id: "permission.deliver_aliquot",
-        actionId: "action.transfer_liquid.v1",
-        sourceEquipmentInstanceId: "transfer_pipette",
-        targetEquipmentInstanceIds: ["preparation_flask"],
-        authoredLimits: { maxTransferVolumeML: 10 },
-        maxAttempts: 3,
-        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
-      }
-    },
-    {
-      type: "permit_action",
-      action: {
-        id: "permission.fill_to_mark",
-        actionId: "action.fill_to_mark.v1",
-        sourceEquipmentInstanceId: "water_bottle",
-        targetEquipmentInstanceIds: ["preparation_flask"],
-        authoredLimits: { minFinalVolumeML: 90, maxFinalVolumeML: 100 },
-        maxAttempts: 2,
-        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
-      }
-    },
-    {
-      type: "permit_action",
-      action: {
-        id: "permission.mix_solution",
-        actionId: "action.mix_solution.v1",
-        sourceEquipmentInstanceId: "preparation_flask",
-        targetEquipmentInstanceIds: [],
-        maxAttempts: 2,
-        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
       }
     },
     {
@@ -425,6 +374,21 @@ export function buildSodiumChlorideDilutionCommands(
         condition: {
           kind: "registered_completion_policy_satisfied",
           completionPolicyId: "completion.all_required_observations.v1",
+          /*
+           * Technique-order rules are deliberately absent here.
+           *
+           * `rule_satisfied_before` latches once violated, so requiring the
+           * ordering rules for completion meant a single out-of-order step
+           * made the lab permanently unwinnable while still reporting
+           * `in_progress` — every control stayed clickable and nothing ever
+           * said why the run would not finish. The violations are still
+           * recorded and still score against `criterion.volumetric_transfer`
+           * and `criterion.solution_dilution`, so a student who works out of
+           * order finishes the preparation and loses the marks for it.
+           *
+           * `rule.deliver_before_fill` remains terminal, so diluting before
+           * the aliquot is in the flask still ends the attempt outright.
+           */
           evidenceRuleIds: [
             "rule.pipette_conditioned",
             "rule.aliquot_aspirated",
@@ -432,17 +396,71 @@ export function buildSodiumChlorideDilutionCommands(
             "rule.flask_filled",
             "rule.solution_mixed",
             "rule.final_volume_tolerance",
-            "rule.final_concentration_tolerance",
-            "rule.condition_before_aspirate",
-            "rule.aspirate_before_deliver",
-            "rule.deliver_before_fill",
-            "rule.fill_before_mix"
+            "rule.final_concentration_tolerance"
           ]
         },
         severity: "procedural",
         recoverable: true,
         terminal: false,
         objectiveIds: ["volumetric_transfer", "solution_dilution"]
+      }
+    },
+    {
+      type: "permit_action",
+      action: {
+        id: "permission.condition_pipette",
+        actionId: "action.rinse_transfer_device.v1",
+        sourceEquipmentInstanceId: "stock_bottle",
+        targetEquipmentInstanceIds: ["transfer_pipette"],
+        maxAttempts: 2,
+        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
+      }
+    },
+    {
+      type: "permit_action",
+      action: {
+        id: "permission.aspirate_stock",
+        actionId: "action.transfer_liquid.v1",
+        sourceEquipmentInstanceId: "stock_bottle",
+        targetEquipmentInstanceIds: ["transfer_pipette"],
+        authoredLimits: { maxTransferVolumeML: 10 },
+        maxAttempts: 3,
+        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
+      }
+    },
+    {
+      type: "permit_action",
+      action: {
+        id: "permission.deliver_aliquot",
+        actionId: "action.transfer_liquid.v1",
+        sourceEquipmentInstanceId: "transfer_pipette",
+        targetEquipmentInstanceIds: ["preparation_flask"],
+        authoredLimits: { maxTransferVolumeML: 10 },
+        maxAttempts: 3,
+        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
+      }
+    },
+    {
+      type: "permit_action",
+      action: {
+        id: "permission.fill_to_mark",
+        actionId: "action.fill_to_mark.v1",
+        sourceEquipmentInstanceId: "water_bottle",
+        targetEquipmentInstanceIds: ["preparation_flask"],
+        authoredLimits: { minFinalVolumeML: 90, maxFinalVolumeML: 100 },
+        maxAttempts: 2,
+        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
+      }
+    },
+    {
+      type: "permit_action",
+      action: {
+        id: "permission.mix_solution",
+        actionId: "action.mix_solution.v1",
+        sourceEquipmentInstanceId: "preparation_flask",
+        targetEquipmentInstanceIds: [],
+        maxAttempts: 2,
+        availability: { allSatisfiedRuleIds: [], allUnsatisfiedRuleIds: [] }
       }
     },
     {
@@ -570,11 +588,9 @@ export function buildSodiumChlorideDilutionCommands(
   ] as const satisfies readonly LabDraftCommand[];
 }
 
-export function createSodiumChlorideDilutionDraft(
-  spec: SodiumChlorideDilutionAuthoringSpec,
-  commands: readonly LabDraftCommand[] = buildSodiumChlorideDilutionCommands(
-    spec
-  )
+export function createDilutionDraft(
+  spec: DilutionAuthoringSpec,
+  commands: readonly LabDraftCommand[] = buildDilutionCommands(spec)
 ): Readonly<LabWorkflowDraftV2> {
   const blank = createBlankLabDraftV2();
   const scaffold = labWorkflowDraftV2Schema.parse({

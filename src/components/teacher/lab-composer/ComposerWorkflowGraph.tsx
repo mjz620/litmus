@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { LabDraftRemovalTarget } from "../../../lab-workflows/authoring";
 import type { WorkflowRule } from "../../../lab-workflows/schema/conditions";
 import type { LabWorkflowDraftV2 } from "../../../lab-workflows/schema/v2";
-import { composerActionCatalog } from "./catalog";
+import { composerPermissionLabel } from "./catalog";
 import {
   LocalComposerViewStateRepository,
   pruneComposerNodePositions,
@@ -704,9 +704,7 @@ function RuleInspector({
           >
             {draft.permittedActions.map((permission) => (
               <option key={permission.id} value={permission.id}>
-                {composerActionCatalog.find(
-                  ({ id }) => id === permission.actionId
-                )?.purpose ?? permission.actionId}
+                {composerPermissionLabel(permission, draft.equipment)}
               </option>
             ))}
           </select>

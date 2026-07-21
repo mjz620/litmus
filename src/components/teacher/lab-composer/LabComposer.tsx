@@ -32,7 +32,9 @@ import {
 import {
   composerActionCatalog,
   composerLabTemplateCatalog,
-  composerObservableCatalog,
+  composerPermissionLabel,
+  composerToleranceObservableCatalog,
+  composerUnitSuffix,
   quantityPresetsFor,
   type ComposerLabTemplateId
 } from "./catalog";
@@ -90,6 +92,7 @@ import {
 } from "../../../lib/persistence/composerDefinitionClient";
 
 import styles from "./LabComposer.module.css";
+import { reconciledSelection } from "./selection";
 
 const COMPOSER_RETURN_DRAFT_KEY = "labbench.composer.return-draft.v1";
 const HISTORY_LIMIT = 50;
@@ -250,6 +253,12 @@ export function LabComposer() {
   >("procedural");
   const [ruleRecoverable, setRuleRecoverable] = useState(true);
   const [ruleTerminal, setRuleTerminal] = useState(false);
+  const [rulePermissionId, setRulePermissionId] = useState(
+    draft.permittedActions[0]?.id ?? ""
+  );
+  const [ruleObservableId, setRuleObservableId] = useState(
+    composerToleranceObservableCatalog[0]?.id ?? ""
+  );
   const [toleranceMinimum, setToleranceMinimum] = useState("24.95");
   const [toleranceMaximum, setToleranceMaximum] = useState("25.05");
   const [instructionTitle, setInstructionTitle] = useState("");
@@ -257,6 +266,34 @@ export function LabComposer() {
   const [instructionRuleId, setInstructionRuleId] = useState(
     draft.rules[0]?.id ?? ""
   );
+  /*
+   * Selections are reconciled against what the draft currently offers.
+   *
+   * These ids were captured once at mount and only refreshed when a draft was
+   * loaded, so adding or removing a rule, objective, or piece of equipment
+   * mid-session left the stored id pointing at something that no longer
+   * existed. A <select> with no matching option displays its first entry, so
+   * the teacher saw a valid-looking choice while the id behind it was stale or
+   * empty — and "Add direction" then failed with "a related item is missing"
+   * against a dropdown that plainly showed an item.
+   */
+  const availableRuleIds = draft.rules.map(({ id }) => id);
+  const availableEquipmentIds = draft.equipment.map(
+    ({ instanceId }) => instanceId
+  );
+  const effectiveInstructionRuleId = reconciledSelection(
+    instructionRuleId,
+    availableRuleIds
+  );
+  const effectiveRuleObjectiveId = reconciledSelection(
+    ruleObjectiveId,
+    draft.objectiveIds
+  );
+  const effectiveEquipmentId = reconciledSelection(
+    selectedEquipmentId,
+    availableEquipmentIds
+  );
+
   const [validationOutcome, setValidationOutcome] =
     useState<LabWorkflowV2ValidationOutcome | null>(null);
   const [draftName, setDraftName] = useState("Endpoint practice");
@@ -1387,9 +1424,24 @@ export function LabComposer() {
     );
   }
 
+  // Set up can remove a permitted action after it was picked here, so resolve
+  // the selection against the current draft rather than trusting the stored id.
+  const selectedRulePermission =
+    draft.permittedActions.find(({ id }) => id === rulePermissionId) ?? null;
+  const selectedRuleObservable =
+    composerToleranceObservableCatalog.find(
+      ({ id }) => id === ruleObservableId
+    ) ?? null;
+  const toleranceUnitSuffix = selectedRuleObservable
+    ? (() => {
+        const suffix = composerUnitSuffix(selectedRuleObservable.unitId);
+        return suffix ? ` (${suffix})` : "";
+      })()
+    : "";
+
   function addActionRule() {
-    const permission = draft.permittedActions[0];
-    if (!permission || !ruleObjectiveId) return;
+    const permission = selectedRulePermission;
+    if (!permission || !effectiveRuleObjectiveId) return;
     run({
       type: "add_rule",
       rule: {
@@ -1408,7 +1460,7 @@ export function LabComposer() {
         severity: ruleSeverity,
         recoverable: ruleTerminal ? false : ruleRecoverable,
         terminal: ruleTerminal,
-        objectiveIds: [ruleObjectiveId]
+        objectiveIds: [effectiveRuleObjectiveId]
       }
     });
   }
@@ -1416,10 +1468,10 @@ export function LabComposer() {
   function addToleranceRule() {
     const minimum = Number(toleranceMinimum);
     const maximum = Number(toleranceMaximum);
-    const observable = composerObservableCatalog[0];
+    const observable = selectedRuleObservable;
     if (
       !observable ||
-      !ruleObjectiveId ||
+      !effectiveRuleObjectiveId ||
       !Number.isFinite(minimum) ||
       !Number.isFinite(maximum) ||
       minimum > maximum ||
@@ -1445,12 +1497,12 @@ export function LabComposer() {
             maximum,
             minimumInclusive: true,
             maximumInclusive: true,
-            unitId: "unit.ml.v1"
+            unitId: observable.unitId
           },
           severity: ruleSeverity,
           recoverable: true,
           terminal: false,
-          objectiveIds: [ruleObjectiveId]
+          objectiveIds: [effectiveRuleObjectiveId]
         }
       },
       "tolerance"
@@ -1461,7 +1513,7 @@ export function LabComposer() {
     if (
       !instructionTitle.trim() ||
       !instructionGuidance.trim() ||
-      !instructionRuleId
+      !effectiveInstructionRuleId
     )
       return;
     if (
@@ -1472,7 +1524,7 @@ export function LabComposer() {
             id: localId("instruction", draft.revision),
             title: instructionTitle.trim(),
             guidance: instructionGuidance.trim(),
-            relatedRuleIds: [instructionRuleId]
+            relatedRuleIds: [effectiveInstructionRuleId]
           }
         },
         "instruction"
@@ -1862,7 +1914,7 @@ export function LabComposer() {
         <div>
           <ComposerSetupWorkspace
             draft={draft}
-            selectedEquipmentId={selectedEquipmentId}
+            selectedEquipmentId={effectiveEquipmentId}
             errors={itemErrors}
             onSelectEquipment={setSelectedEquipmentId}
             onAddToSlot={addEquipmentToSlot}
@@ -1874,6 +1926,12 @@ export function LabComposer() {
               run(
                 { type: "clear_material_concentration", instanceId },
                 `material:${instanceId}:concentration`
+              )
+            }
+            onSetMaterialQuantity={(instanceId, quantityPresetId) =>
+              run(
+                { type: "set_material_quantity", instanceId, quantityPresetId },
+                `material:${instanceId}:quantity`
               )
             }
             onConfigure={(instanceId, presetId) =>
@@ -1964,7 +2022,7 @@ export function LabComposer() {
             <label>
               Objective
               <select
-                value={ruleObjectiveId}
+                value={effectiveRuleObjectiveId}
                 onChange={(event) =>
                   setRuleObjectiveId(event.currentTarget.value)
                 }
@@ -2016,21 +2074,42 @@ export function LabComposer() {
             </label>
             {ruleConditionType === "action" && (
               <>
+                <label>
+                  Which student action?
+                  <select
+                    value={selectedRulePermission?.id ?? ""}
+                    disabled={draft.permittedActions.length === 0}
+                    onChange={(event) =>
+                      setRulePermissionId(event.currentTarget.value)
+                    }
+                  >
+                    {!selectedRulePermission && (
+                      <option value="">Choose a student action…</option>
+                    )}
+                    {draft.permittedActions.map((permission) => (
+                      <option key={permission.id} value={permission.id}>
+                        {composerPermissionLabel(permission, draft.equipment)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <button
                   type="button"
-                  disabled={!draft.permittedActions[0] || !ruleObjectiveId}
+                  disabled={!selectedRulePermission || !effectiveRuleObjectiveId}
                   title={
-                    !draft.permittedActions[0]
+                    draft.permittedActions.length === 0
                       ? "Enable a student action in Set up first."
-                      : !ruleObjectiveId
-                        ? "Choose an objective first."
-                        : undefined
+                      : !selectedRulePermission
+                        ? "Choose which student action to check."
+                        : !effectiveRuleObjectiveId
+                          ? "Choose an objective first."
+                          : undefined
                   }
                   onClick={addActionRule}
                 >
                   Add student action
                 </button>
-                {!draft.permittedActions[0] && (
+                {draft.permittedActions.length === 0 && (
                   <small className={styles.helpText} role="status">
                     Enable a student action on the Set up bench before adding an
                     action check.
@@ -2043,7 +2122,25 @@ export function LabComposer() {
             <div className={styles.toleranceForm}>
               <strong>Accepted result range</strong>
               <label>
-                Lowest value
+                Which measurement?
+                <select
+                  value={selectedRuleObservable?.id ?? ""}
+                  onChange={(event) =>
+                    setRuleObservableId(event.currentTarget.value)
+                  }
+                >
+                  {!selectedRuleObservable && (
+                    <option value="">Choose a measurement…</option>
+                  )}
+                  {composerToleranceObservableCatalog.map((observable) => (
+                    <option key={observable.id} value={observable.id}>
+                      {titleCaseIdentifier(observable.id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Lowest value{toleranceUnitSuffix}
                 <input
                   type="number"
                   step="0.01"
@@ -2054,7 +2151,7 @@ export function LabComposer() {
                 />
               </label>
               <label>
-                Highest value
+                Highest value{toleranceUnitSuffix}
                 <input
                   type="number"
                   step="0.01"
@@ -2067,14 +2164,19 @@ export function LabComposer() {
               <button
                 type="button"
                 disabled={
-                  !ruleObjectiveId ||
+                  !selectedRuleObservable ||
+                  !effectiveRuleObjectiveId ||
                   !Number.isFinite(Number(toleranceMinimum)) ||
                   !Number.isFinite(Number(toleranceMaximum)) ||
                   Number(toleranceMinimum) < 0 ||
                   Number(toleranceMinimum) > Number(toleranceMaximum)
                 }
                 title={
-                  !ruleObjectiveId ? "Choose an objective first." : undefined
+                  !selectedRuleObservable
+                    ? "Choose which measurement to bound."
+                    : !effectiveRuleObjectiveId
+                      ? "Choose an objective first."
+                      : undefined
                 }
                 onClick={addToleranceRule}
               >
@@ -2153,7 +2255,7 @@ export function LabComposer() {
             <label>
               Show with
               <select
-                value={instructionRuleId}
+                value={effectiveInstructionRuleId}
                 onChange={(event) =>
                   setInstructionRuleId(event.currentTarget.value)
                 }
@@ -2170,10 +2272,10 @@ export function LabComposer() {
               disabled={
                 !instructionTitle.trim() ||
                 !instructionGuidance.trim() ||
-                !instructionRuleId
+                !effectiveInstructionRuleId
               }
               title={
-                !instructionRuleId
+                !effectiveInstructionRuleId
                   ? "Add an activity check first so the direction has something to show with."
                   : undefined
               }
@@ -2181,7 +2283,7 @@ export function LabComposer() {
             >
               Add direction
             </button>
-            {!instructionRuleId && (
+            {!effectiveInstructionRuleId && (
               <small className={styles.helpText} role="status">
                 Add an activity check above before writing a student direction.
               </small>

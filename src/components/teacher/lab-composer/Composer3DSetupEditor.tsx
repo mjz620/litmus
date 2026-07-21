@@ -15,6 +15,7 @@ import {
   type ResolvedEquipmentPose,
   type SceneVector3
 } from "../../../lab-workflows/registries/scene-placements";
+import { Beaker } from "../../lab/three/Beaker";
 import { Burette } from "../../lab/three/Burette";
 import { ClassroomEnvironment } from "../../lab/three/ClassroomEnvironment";
 import { ErlenmeyerFlask } from "../../lab/three/ErlenmeyerFlask";
@@ -22,10 +23,12 @@ import { IndicatorShelf } from "../../lab/three/IndicatorShelf";
 import {
   Calorimeter,
   DistilledWaterWashBottle,
+  LaboratoryBalance,
   RegisteredReagentBottle,
   Thermometer,
   VolumetricFlask,
-  VolumetricPipette
+  VolumetricPipette,
+  WeighingBoat
 } from "../../lab/three/SolutionPreparationEquipment";
 import { BURETTE, FLASK, ISLAND, SHELF } from "../../lab/three/benchLayout";
 import {
@@ -139,10 +142,39 @@ function visualForPose(
       return <Calorimeter fillFraction={0.4} />;
     case "visual-adapter.thermometer.v1":
       return <Thermometer />;
+    case "visual-adapter.beaker.v1":
+      return <Beaker fillFraction={0.45} quality="low" />;
+    case "visual-adapter.balance.v1":
+      return <LaboratoryBalance readingG={0} />;
+    case "visual-adapter.weighing_boat.v1":
+      return <WeighingBoat solidFraction={0.5} />;
     default:
       return null;
   }
 }
+
+/**
+ * Adapters this editor draws. An adapter missing from `visualForPose` renders
+ * nothing *and* has no mesh to grab, so the equipment is both invisible and
+ * immovable — which is how the balance, weighing boat, and beaker silently
+ * went missing from the composer bench while rendering fine for students.
+ * `composerRenderableAdapters` test asserts this covers every scene adapter.
+ */
+export const COMPOSER_RENDERABLE_VISUAL_ADAPTER_IDS: readonly string[] =
+  Object.freeze([
+    "visual-adapter.burette.v1",
+    "visual-adapter.erlenmeyer_flask.v1",
+    "visual-adapter.indicator_bottle.v1",
+    "visual-adapter.reagent_bottle.v1",
+    "visual-adapter.volumetric_pipette.v1",
+    "visual-adapter.volumetric_flask.v1",
+    "visual-adapter.wash_bottle.v1",
+    "visual-adapter.calorimeter.v1",
+    "visual-adapter.thermometer.v1",
+    "visual-adapter.beaker.v1",
+    "visual-adapter.balance.v1",
+    "visual-adapter.weighing_boat.v1"
+  ]);
 
 function snapPlan(
   draft: Readonly<LabWorkflowDraftV2>,
@@ -218,12 +250,17 @@ function ArrangementScene({
       }),
     [draft.equipment, draft.layout.placements]
   );
-  const activePose = drag
-    ? placements.find(
-        ({ equipmentInstanceId }) =>
-          equipmentInstanceId === drag.equipmentInstanceId
-      )
-    : undefined;
+  /*
+   * Highlight the legal positions for whatever the teacher is working with:
+   * the dragged item, or — when nothing is being dragged — the current
+   * selection. Keying this on the drag alone meant the slots only appeared
+   * once a drag was already underway, so "drag equipment to a highlighted
+   * safe position" pointed at highlights that did not exist yet.
+   */
+  const activePose = placements.find(
+    ({ equipmentInstanceId }) =>
+      equipmentInstanceId === (drag?.equipmentInstanceId ?? selectedEquipmentId)
+  );
   const candidates = useMemo(
     () =>
       activePose
@@ -231,6 +268,23 @@ function ArrangementScene({
         : [],
     [activePose]
   );
+  /*
+   * Highlights are now on-screen whenever something is selected, not only
+   * mid-drag, so planning each candidate per frame would re-run the layout
+   * planner on every pointer move. The verdicts only change when the draft or
+   * the active equipment does.
+   */
+  const candidatePlans = useMemo(() => {
+    const plans = new Map<string, ReturnType<typeof snapPlan>>();
+    if (!activePose) return plans;
+    for (const candidate of candidates) {
+      plans.set(
+        candidate.id,
+        snapPlan(draft, activePose.equipmentInstanceId, candidate.id)
+      );
+    }
+    return plans;
+  }, [activePose, candidates, draft]);
 
   function beginDrag(
     event: ThreeEvent<PointerEvent>,
@@ -338,9 +392,7 @@ function ArrangementScene({
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       {candidates.map((candidate) => {
-        const plan = activePose
-          ? snapPlan(draft, activePose.equipmentInstanceId, candidate.id)
-          : null;
+        const plan = candidatePlans.get(candidate.id) ?? null;
         return (
           <mesh
             key={candidate.id}
@@ -361,7 +413,9 @@ function ArrangementScene({
             <meshBasicMaterial
               color={plan?.ok ? "#148478" : "#a94a51"}
               transparent
-              opacity={0.48}
+              // Resting highlights sit quieter than drag-time ones: they orient
+              // the teacher without competing with the equipment for attention.
+              opacity={drag ? 0.48 : 0.26}
             />
           </mesh>
         );
@@ -372,9 +426,7 @@ function ArrangementScene({
           false;
         const delta = followsDrag ? (drag?.delta ?? [0, 0, 0]) : [0, 0, 0];
         const base = worldPositionForEquipmentPose(pose);
-        const localOrigin = usesLocalOriginMesh(
-          pose.visualAdapterDefinitionId
-        );
+        const localOrigin = usesLocalOriginMesh(pose.visualAdapterDefinitionId);
         return (
           <group
             key={pose.equipmentInstanceId}
@@ -394,9 +446,7 @@ function ArrangementScene({
                     ? 0
                     : scenePlacementRegistry.get(pose.placementSlotId)
                         .footprintCenterXZ[0] - pose.translation[0],
-                  localOrigin
-                    ? 0.022
-                    : ISLAND.topY + 0.022,
+                  localOrigin ? 0.022 : ISLAND.topY + 0.022,
                   localOrigin
                     ? 0
                     : scenePlacementRegistry.get(pose.placementSlotId)

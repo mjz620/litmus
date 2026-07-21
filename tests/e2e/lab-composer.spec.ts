@@ -182,6 +182,24 @@ test("AI review tab explains an empty bounded loop without internal details (LC2
 test("teacher composes setup and workflow through bounded registered controls", async ({
   page
 }) => {
+  /*
+   * The composer is deliberately usable signed out — local drafts and preview
+   * need no account — so the cloud endpoints answer 401 for a guest. That is
+   * correct behaviour, not a composer fault, and it must not be read as a
+   * browser error by the zero-error assertions below.
+   */
+  for (const cloudRoute of [
+    "**/api/teacher/classes",
+    "**/api/lab-composer/definitions/drafts"
+  ]) {
+    await page.route(cloudRoute, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ items: [] })
+      });
+    });
+  }
   const browserErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
@@ -315,6 +333,42 @@ test("teacher composes setup and workflow through bounded registered controls", 
     page.getByRole("button", { name: "Preview", exact: true })
   ).toBeDisabled();
   expect(browserErrors).toEqual([]);
+});
+
+test("New grading item always lands the teacher on the grading item form", async ({
+  page
+}) => {
+  /*
+   * The editor sits below the three relationship columns, and with no grading
+   * items yet it already renders in add mode — so toggling the flag changed
+   * nothing on screen and the button read as broken. Every click must move
+   * focus to the form, including a repeat click that leaves the flag set.
+   */
+  await page.goto("/teacher/lab-composer");
+  await page.getByRole("button", { name: /^Assess/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Connect goals, grading, and evidence" })
+  ).toBeVisible();
+
+  const editor = page.getByRole("complementary", {
+    name: "Grading item editor"
+  });
+  const description = editor.getByLabel("Description");
+  const newItem = page.getByRole("button", { name: "New grading item" });
+
+  await expect(description).not.toBeFocused();
+
+  await newItem.click();
+  await expect(editor.locator("header p")).toHaveText("Add grading item");
+  await expect(description).toBeFocused();
+  await expect(description).toBeInViewport();
+
+  // Move focus away, then click again: the flag is already set, so this is the
+  // exact case that used to render identically and do nothing.
+  await page.getByRole("button", { name: /^Assess/ }).focus();
+  await expect(description).not.toBeFocused();
+  await newItem.click();
+  await expect(description).toBeFocused();
 });
 
 test("composer remains keyboard reachable without horizontal overflow on a student Chromebook viewport", async ({

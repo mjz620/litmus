@@ -464,7 +464,8 @@ describe("LC2-501 bounded concentration/dilution chemistry", () => {
       })),
       registeredObservableIds: [
         CONCENTRATION_DILUTION_OBSERVABLE_IDS.concentration,
-        CONCENTRATION_DILUTION_OBSERVABLE_IDS.volume
+        CONCENTRATION_DILUTION_OBSERVABLE_IDS.volume,
+        CONCENTRATION_DILUTION_OBSERVABLE_IDS.stockConcentration
       ],
       registeredUnitIds: ["unit.ml.v1", "unit.mol_per_l.v1"]
     };
@@ -486,6 +487,11 @@ describe("LC2-501 bounded concentration/dilution chemistry", () => {
         observableId: CONCENTRATION_DILUTION_OBSERVABLE_IDS.volume,
         value: 0,
         unitId: "unit.ml.v1"
+      },
+      {
+        observableId: CONCENTRATION_DILUTION_OBSERVABLE_IDS.stockConcentration,
+        value: 1,
+        unitId: "unit.mol_per_l.v1"
       }
     ]);
 
@@ -511,7 +517,8 @@ describe("LC2-501 bounded concentration/dilution chemistry", () => {
     });
     expect(next.groundTruth.values).toEqual({
       [CONCENTRATION_DILUTION_OBSERVABLE_IDS.concentration]: 1,
-      [CONCENTRATION_DILUTION_OBSERVABLE_IDS.volume]: 10
+      [CONCENTRATION_DILUTION_OBSERVABLE_IDS.volume]: 10,
+      [CONCENTRATION_DILUTION_OBSERVABLE_IDS.stockConcentration]: 1
     });
   });
 });

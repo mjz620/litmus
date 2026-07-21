@@ -76,6 +76,7 @@ describe("LC2-102 material profiles", () => {
       "reagent.distilled_water_cold_20c.v1",
       "reagent.distilled_water_hot_60c.v1",
       "reagent.sodium_chloride_aqueous.v1",
+      "reagent.copper_nitrate_aqueous.v1",
       "reagent.silver_nitrate_0_100m.v1",
       "reagent.sodium_chloride_0_100m.v1",
       "reagent.sodium_chloride_1_000m.v1"

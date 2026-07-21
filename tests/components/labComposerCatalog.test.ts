@@ -5,11 +5,15 @@ import {
   composerEquipmentCatalog,
   composerEquipmentConfigurationCatalog,
   composerMaterialCatalog,
+  composerObservableUnitId,
+  composerPermissionLabel,
   composerPlacementCatalog,
+  composerToleranceObservableCatalog,
   placementSupportsEquipment,
   quantityPresetsFor
 } from "../../src/components/teacher/lab-composer/catalog";
 import { NATIVE_TITRATION_V2_DRAFT } from "../../src/lab-workflows/definitions/titration/native-endpoint-control";
+import { PRECIPITATION_V2_DRAFT } from "../../src/lab-workflows/definitions/precipitation";
 
 describe("teacher Lab Composer catalog projection", () => {
   it("exposes only verified, executable equipment and binding materials", () => {
@@ -80,5 +84,45 @@ describe("teacher Lab Composer catalog projection", () => {
         "component.burette.v1"
       )
     ).toBe(false);
+  });
+
+  it("names the equipment so permissions sharing an action stay distinguishable", () => {
+    const pours = PRECIPITATION_V2_DRAFT.permittedActions.filter(
+      ({ actionId }) => actionId === "action.pour_liquid.v1"
+    );
+    expect(pours.length).toBeGreaterThan(1);
+
+    const labels = pours.map((permission) =>
+      composerPermissionLabel(permission, PRECIPITATION_V2_DRAFT.equipment)
+    );
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels.some((label) => label.includes("silver nitrate"))).toBe(true);
+    expect(labels.some((label) => label.includes("sodium chloride"))).toBe(true);
+  });
+
+  it("offers only observables carrying a registered unit for tolerance ranges", () => {
+    expect(composerToleranceObservableCatalog.length).toBeGreaterThan(0);
+    expect(
+      composerToleranceObservableCatalog.every(({ unitId }) =>
+        unitId.startsWith("unit.")
+      )
+    ).toBe(true);
+
+    const offered = composerToleranceObservableCatalog.map(({ id }) => id);
+    expect(offered).toContain("observable.solution_concentration_m.v1");
+    // Booleans and colours cannot carry a numeric range.
+    expect(offered).not.toContain("observable.precipitate_observed.v1");
+    expect(offered).not.toContain("observable.precipitate_color.v1");
+
+    // Units must match what the authored labs already record.
+    expect(composerObservableUnitId("observable.solution_volume_ml.v1")).toBe(
+      "unit.ml.v1"
+    );
+    expect(
+      composerObservableUnitId("observable.solution_concentration_m.v1")
+    ).toBe("unit.mol_per_l.v1");
+    expect(
+      composerObservableUnitId("observable.calorimeter_temperature_c.v1")
+    ).toBe("unit.celsius.v1");
   });
 });

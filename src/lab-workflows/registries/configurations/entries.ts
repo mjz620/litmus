@@ -607,6 +607,15 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
     }
   ),
   entry(
+    "observable.stock_concentration_m.v1",
+    "observable",
+    "Authored concentration of the undiluted stock solution, reported to 0.000001 mol/L.",
+    {
+      adapterKey: "stockConcentrationM",
+      compatibleFamilyIds: []
+    }
+  ),
+  entry(
     "observable.solution_volume_ml.v1",
     "observable",
     "Conserved liquid volume in the bounded volumetric flask, reported to 0.000001 mL.",
@@ -1080,5 +1089,11 @@ export const CONFIGURATION_REGISTRY_ENTRIES = [
   ]),
   quantity("quantity-preset.sodium_chloride_0_100m_50ml.v1", 50, "unit.ml.v1", [
     "reagent.sodium_chloride_0_100m.v1"
-  ])
+  ]),
+  quantity(
+    "quantity-preset.copper_nitrate_solution_50ml.v1",
+    50,
+    "unit.ml.v1",
+    ["reagent.copper_nitrate_aqueous.v1"]
+  )
 ] as const satisfies readonly ConfigurationRegistryEntry[];

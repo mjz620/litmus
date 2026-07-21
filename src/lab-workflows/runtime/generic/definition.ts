@@ -929,9 +929,22 @@ function deriveWorkflowStatus(
   ) {
     return "failed";
   }
+  /*
+   * Ordering rules are recorded and scored, but they do not gate completion.
+   *
+   * `rule_satisfied_before` latches once violated, so treating ordering rules
+   * as gating meant a single out-of-order step made a lab permanently
+   * unwinnable while still reporting `in_progress` — every control stayed
+   * enabled and nothing ever explained why the run would not finish. The
+   * violation still stands on the diagnosis record and still costs the
+   * student the matching rubric criterion; it just no longer traps them.
+   *
+   * An ordering mistake serious enough to end the attempt is expressed by
+   * marking the rule `terminal`, which is checked above and still fails the
+   * workflow outright.
+   */
   const gatingRules = rules.filter(
-    ({ kind }) =>
-      kind === "required" || kind === "success" || kind === "ordering"
+    ({ kind }) => kind === "required" || kind === "success"
   );
   const blockingViolation = rules.some(
     (rule) =>
