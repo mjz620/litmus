@@ -1,6 +1,17 @@
 # Three-Minute Demo Script
 
-Target runtime: **2:55**. Word count: ~430 at ~155 wpm — comfortable, not rushed.
+Target runtime: **2:55**. The story leads with the access gap, then proves that
+Litmus is a meaningful rehearsal—not a worksheet wearing a 3D skin.
+
+## Research note (not read aloud)
+
+Avoid quoting an unverified national percentage for high-school lab space. The
+defensible claim is that access to laboratory facilities and resources is
+uneven, and that practical laboratory participation is associated with stronger
+motivation and perceived learning. Background: [NAEP science student
+experiences](https://www.nationsreportcard.gov/science/student-experiences/)
+and [a recent study of practical laboratory
+work](https://www.frontiersin.org/journals/education/articles/10.3389/feduc.2026.1726102/full).
 
 Rules this script satisfies (OpenAI Build Week):
 
@@ -12,105 +23,95 @@ Format below: **VO** = spoken aloud. `SCREEN` = what you do while saying it.
 
 ---
 
-## 0:00–0:12 — hook
+## 0:00–0:28 — the access gap
 
-`SCREEN` `/demo` hub, cursor idle.
+`SCREEN` `/demo` hub, then open the Labs card. Pause on the four lab cards.
 
-> **VO:** "Students walk into chemistry labs having memorized the procedure,
-> but not understanding it. They get one attempt at the real bench, and one
-> chance to ruin it. Litmus is the rehearsal that comes first."
+> **VO:** "Hands-on lab work builds confidence and understanding, but access
+> is uneven. When space, equipment, or time are scarce, students get too few
+> chances to practise before they reach the real bench."
 
-## 0:12–0:50 — the mistake, and the coach that notices
+> **VO:** "Many digital labs are still fixed animations or worksheets. Litmus
+> is a browser rehearsal: students manipulate equipment, make a consequential
+> mistake, ask for help in context, and arrive more ready for the physical lab."
 
-`SCREEN` Open `/demo/student`. Burette at 22.00 mL, equivalence ~25.00 mL.
-Open the stopcock fast, add ~2.0 mL.
+## 0:28–1:03 — a real mistake, not a scripted click-through
 
-> **VO:** "This is a strong acid–strong base titration, already in progress.
-> I'm near the endpoint, and I'm going to make the mistake almost every student
-> makes — open the stopcock too far, too close to the equivalence point."
+`SCREEN` Open **Acid–base titration**, select **Start the lab**, then make an
+endpoint-control mistake by opening the stopcock too far near the endpoint.
 
-`SCREEN` Colour and pH snap past the endpoint. Curve updates.
+> **VO:** "This is an acid–base titration on the same Chromebook-class browser
+> path a student uses. Near the endpoint, I open the stopcock too far. The
+> color change, delivered volume, and endpoint miss are deterministic
+> consequences of that action—not a scripted animation."
 
-> **VO:** "The chemistry here isn't a language model guessing. It's a
-> deterministic engine — the same equilibrium math that runs in our unit tests.
-> The model never invents a number. What it does is notice. The engine emitted
-> two semantic events: flow rate high near endpoint, and endpoint overshoot."
+`SCREEN` Show the endpoint result and open the coach.
 
-`SCREEN` Coach panel surfaces the contextual reflection question.
+> **VO:** "The engine emits semantic evidence about the mistake. GPT-5.6 does
+> not calculate chemistry or change the run; it turns that evidence into a
+> concise question or hint that helps the student reason about what happened."
 
-> **VO:** "And GPT-5.6 turns those events into a question instead of an answer."
+## 1:03–1:28 — feedback and a targeted retry
 
-## 0:50–1:15 — ask it anything, in context
+`SCREEN` Open the report, submit the prepared response, then show the retry or
+the relevant coaching guidance.
 
-`SCREEN` Ask by voice (or text): *"Why does going past the endpoint matter?"*
+> **VO:** "Feedback is tied to recorded actions and evidence, not invented
+> after the fact. The goal is not to make the lab easier; it is to make the
+> hard moment safe to repeat until the technique makes sense."
 
-> **VO:** "I can just ask."
+## 1:28–1:50 — teacher evidence before the real lab
 
-`SCREEN` Let the transcript and answer render. Don't talk over the first
-sentence of the reply — let the judges read it.
+`SCREEN` Demo navigation → **Teacher**. Highlight readiness and the shared
+endpoint-control misconception.
 
-> **VO:** "Notice it isn't reciting a textbook. It knows I'm at twenty-four
-> point one millilitres, it knows I overshot, and it answers *my* run. That
-> context comes from a live student model the engine keeps updated — GPT-5.6
-> reads it through a tool call rather than us pasting state into a prompt."
+> **VO:** "The same evidence gives the teacher a readiness view before the
+> physical lab. Instead of guessing why a class struggled, they can see a
+> shared endpoint-control misconception before reagents are on the table."
 
-## 1:15–1:45 — evidence-linked feedback, then a second chance
+## 1:50–2:20 — adaptable lessons without inventing science
 
-`SCREEN` Submit the short prefilled report (one explanation is deliberately wrong).
+`SCREEN` Demo navigation → **Composer**. Show the verified equipment, actions,
+and validation status; if live authoring is available, submit a short request.
 
-> **VO:** "Now the lab report — with one explanation I got wrong on purpose."
+> **VO:** "Teachers should not have to become simulation developers. In Lab
+> Composer, GPT-5.6 can propose a workflow from a closed catalog of verified
+> equipment and actions—typed commands, never arbitrary code or formulas."
 
-`SCREEN` Rubric feedback appears, each point linked to a recorded action.
+> **VO:** "Litmus validates every reference, safety rule, and assessment
+> mapping, then executes real runtime traces. A separate GPT-5.6 Judge can
+> critique pedagogy, but only the teacher approves a runnable lesson."
 
-> **VO:** "Every piece of feedback points at something I actually did. Nothing
-> here is model-generated evidence."
+## 2:20–2:43 — how GPT-5.6 and Codex were used
 
-`SCREEN` Launch the endpoint-control retry. Add dropwise. Hit it clean.
+`SCREEN` Hold on Composer validation, then show the repository test output or
+the README architecture diagram.
 
-> **VO:** "And it doesn't just mark me wrong — it builds a retry targeting the
-> exact skill I missed, seeded mid-experiment so I practise the hard part.
-> Dropwise, this time."
+> **VO:** "GPT-5.6 handles bounded language tasks: coaching, evidence-linked
+> feedback, authoring proposals, and advisory review. Deterministic TypeScript
+> owns pH, concentrations, conservation, heat flow, replay, and scoring truth."
 
-## 1:45–2:10 — the teacher loop
+> **VO:** "Codex was my engineering collaborator: scoped tickets and hard
+> architecture rules drove TypeScript contracts, browser-flow investigation,
+> tests, and focused commits. It is not in the student runtime or an authority
+> over science."
 
-`SCREEN` Demo bar → Teacher. Seeded class readiness. Highlight "Your demo
-session." Open the endpoint-control misconception panel.
+## 2:43–2:55 — close on access, not replacement
 
-> **VO:** "Teachers get the other half. This is class readiness before anyone
-> touches glassware — and that's your session, live, in the list. Six students
-> share one misconception about endpoint control. That's tomorrow's five-minute
-> lecture, decided by evidence instead of a hunch."
+`SCREEN` Return to `/demo/labs`.
 
-## 2:10–2:45 — how it was built
-
-`SCREEN` Demo bar → Technical. Walk the trace: engine action → semantic event →
-StudentModel → coach tool call → persistence. Then the tests/evals table.
-
-> **VO:** "Under the hood: engine action, semantic event, student model update,
-> tool call, persistence — every step inspectable. GPT-5.6 runs the coach, the
-> evaluator, and the lab-authoring agent, all with structured outputs, so the
-> product never parses free text. And Codex built it — I worked ticket by
-> ticket, handing Codex a scoped contract and guardrails, and it wrote the
-> chemistry engine against these unit tests, the event pipeline, and the
-> Composer. The tests you're looking at are the ones that let me trust it."
-
-## 2:45–2:55 — impact
-
-`SCREEN` Back to `/demo` hub, or hold on the teacher dashboard.
-
-> **VO:** "We're not replacing the physical lab. We're making sure every
-> student arrives ready for it — and every teacher knows what to review before
-> they do."
+> **VO:** "Litmus does not replace a physical chemistry lab. It makes serious
+> rehearsal available before one—and gives students who have less lab access a
+> more confident, evidence-backed way to arrive ready."
 
 ---
 
 ## Recording checklist
 
-- [ ] **Record against prod, not local.** `.env` is pinned to `gpt-5.4-mini`;
-      only `prod.env` sets `gpt-5.6`. The narration claims GPT-5.6 — make it
-      true, or change the words.
-- [ ] `/api/demo/reset` run immediately before the take.
-- [ ] Audio recorded separately or in a quiet room — judges score what they can
+- [ ] **Record against production, not a local mock route.** Confirm the
+      recording environment uses GPT-5.6 before saying it does.
+- [ ] Run `/api/demo/reset` immediately before the take.
+- [ ] Audio recorded separately or in a quiet room—judges score what they can
       hear.
 - [ ] Under 3:00 on the uploaded file, not just in the script.
 - [ ] Uploaded public on YouTube (not unlisted).
@@ -118,9 +119,9 @@ StudentModel → coach tool call → persistence. Then the tests/evals table.
 ## Demo acceptance checklist
 
 - No auth required.
-- Aha moment under 60 seconds.
-- Judge can switch roles in one click.
-- Teacher view includes live judge session.
-- Technical view proves deterministic/event-driven architecture.
-- Reset works.
+- The access case and a working student lab appear in the first minute.
+- A student mistake yields deterministic consequences and contextual coaching.
+- Teacher view connects student evidence to a concrete reteaching decision.
+- Composer shows AI assistance bounded by deterministic validation and teacher
+      approval.
 - Audio names both Codex and GPT-5.6 with specifics.

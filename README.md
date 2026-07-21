@@ -29,7 +29,7 @@ The governing rule is:
 ## Available laboratory experiences
 
 - **Acid–base titration** — condition and fill a burette, read the meniscus, control delivery near the endpoint, and compare strong- and weak-acid behaviour.
-- **Solution preparation** — condition a volumetric pipette, transfer an aliquot, dilute to the mark, and mix a known sodium chloride concentration.
+- **Solution preparation** — condition a volumetric pipette, transfer an aliquot, dilute to the mark, and mix a visibly diluted copper(II) nitrate solution.
 - **Silver chloride precipitation** — mix conserved solution quantities, compare the reaction quotient with Ksp, observe precipitation, and reason from ionic evidence.
 - **Dissolution calorimetry** — tare a centigram balance, weigh ammonium nitrate, transfer the solid, measure the temperature change, and determine molar enthalpy from the mass the student actually measured.
 
@@ -71,6 +71,21 @@ The important boundaries are deliberately boring:
 - OpenAI calls are server-only, bounded, and never block a simulation action;
 - Supabase persistence is separated from chemistry and protected by RLS;
 - mock mode uses the same schemas and application routes as live mode.
+
+## How OpenAI and Codex are used
+
+GPT-5.6 is used only on server-side, bounded language tasks through the OpenAI Responses API. It never runs the chemistry simulation, writes directly to a registry, or becomes the source of a score.
+
+| Surface | GPT-5.6 receives | GPT-5.6 may return | Deterministic or human control that remains authoritative |
+| --- | --- | --- | --- |
+| Composer Author | A teacher request plus read-only, typed capability-tool results | Atomic draft commands over exact registered capabilities | Schema, registry, safety, compatibility, and real-runtime trace validation |
+| Student Coach | Semantic events, diagnoses, available actions, and authored workflow context | A concise, evidence-grounded hint or reflection question | The experiment engine; the coach cannot mutate a session or calculate chemistry |
+| Evaluator | The authored rubric, submitted response, and verified event/evidence context | Structured feedback tied to supplied evidence | Engine-owned observables, event history, and rubric ground truth |
+| Workflow Judge | A validated workflow candidate and its validation/trace evidence | Advisory instructional critique | The validator and explicit teacher approval; Judge approval cannot make a workflow runnable |
+
+Responses are parsed against strict schemas, checked against the supplied IDs and evidence, rate-limited, and safely fall back when a live model response is unavailable or invalid. Simulation actions remain synchronous and never wait for an OpenAI call.
+
+Codex was used during development as an engineering collaborator, not as a runtime dependency. It helped implement scoped TypeScript tickets, convert acceptance criteria into tests, investigate browser-level interaction failures, review diffs into focused commits, and keep architecture and deployment documentation current. The product's authority boundaries, chemistry behavior, and release decisions remain explicit code and human-reviewed decisions.
 
 ## Quick start
 
@@ -116,7 +131,7 @@ Never prefix an OpenAI key or Supabase service-role key with `NEXT_PUBLIC_`.
 - `/lab/silver-chloride` — Ksp precipitation lab.
 - `/lab/solution-preparation` — volumetric dilution lab.
 - `/lab-composer` — shared teacher/student Composer entry point.
-- `/demo` — guided Student, Teacher, Composer, and Technical demo paths.
+- `/demo` — isolated guided Student, Teacher, and Composer demo paths.
 - `/teacher/classes` — authenticated class readiness workspace.
 
 ## Quality gates
