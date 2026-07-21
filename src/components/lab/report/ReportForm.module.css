@@ -154,5 +154,5 @@
   border-radius: var(--radius-pill);
   background: var(--color-primary-soft);
   color: var(--color-primary);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }

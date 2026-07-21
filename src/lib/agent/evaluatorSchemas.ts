@@ -39,11 +39,18 @@ export const rubricResponseSchema = z.object({
   data_analysis: rubricCriterionSchema,
   sig_figs: rubricCriterionSchema,
   overall_summary: z.string().min(1).max(1600),
+  /*
+   * OpenAI structured outputs require every field, so `.optional()` alone
+   * makes the API reject the schema outright and every live evaluation
+   * 503ed. `.nullable()` keeps the schema API-legal; the model returns null
+   * when no retry is recommended, and consumers already check truthiness.
+   */
   recommended_retry: z
     .object({
       skillId: z.enum(["endpoint_control", "burette_conditioning"]),
       reason: z.string().min(1).max(600)
     })
+    .nullable()
     .optional()
 });
 

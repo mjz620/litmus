@@ -12,7 +12,8 @@ import {
 } from "../../../lib/agent/evaluatorSchemas";
 import {
   LLM_ROUTE_LIMITERS,
-  guardLlmRoute
+  guardLlmRoute,
+  guestKeyFromRequest
 } from "../../../lib/api/llmRouteGuard";
 
 export const runtime = "nodejs";
@@ -92,10 +93,12 @@ async function authoredResponse(body: unknown) {
 }
 
 /**
- * Evaluation handler over an injected guard. Production authenticates, because
- * a graded report belongs to a real student. The judge demo mounts this with
- * its own limiter and admits guests, since an evaluator has no account and
- * submitting a report is the end of the lab they came to see.
+ * Evaluation handler over an injected guard. Like the coach, production
+ * admits guests: a student can run a whole practice lab without an account,
+ * and the report evaluation is the end of that lab — a 401 here dead-ends
+ * the promised guest flow. Signed-in students are budgeted per user, guests
+ * per address; nothing is persisted for guests. The judge demo mounts this
+ * with its own limiter on a separate budget.
  */
 export function createEvaluateHandler(
   options: {
@@ -118,7 +121,10 @@ export function createEvaluateHandler(
 }
 
 export async function POST(request: Request) {
-  return createEvaluateHandler()(request);
+  return createEvaluateHandler({
+    allowGuests: true,
+    guestKey: guestKeyFromRequest(request)
+  })(request);
 }
 
 async function handleEvaluateBody(request: Request) {
@@ -137,7 +143,10 @@ async function handleEvaluateBody(request: Request) {
     );
   try {
     return NextResponse.json(await evaluateReport(parsed.data));
-  } catch {
+  } catch (error) {
+    // Surface the cause server-side; the silent catch made every evaluator
+    // failure an indistinguishable 503.
+    console.error("evaluateReport failed:", error);
     return NextResponse.json(
       { error: "Evaluator unavailable." },
       { status: 503 }

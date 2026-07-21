@@ -34,7 +34,12 @@ export function ReportForm() {
   const dispatch = useLabStore((store) => store.dispatch);
   const checkpoint = useLabStore((store) => store.checkpoint);
   const [studentText, setStudentText] = useState(initialText);
-  const [reportedMolarity, setReportedMolarity] = useState("0.100");
+  /*
+   * Starts empty on purpose: the reported molarity is the number the student
+   * is being assessed on, and the default titration's true analyte molarity
+   * is 0.100 M — prefilling it hands over the answer.
+   */
+  const [reportedMolarity, setReportedMolarity] = useState("");
   const [rubric, setRubric] = useState<RubricResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
