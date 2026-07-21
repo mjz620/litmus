@@ -10,20 +10,14 @@
     "gradeBand": "mixed_high_school",
     "estimatedMinutes": 10,
     "difficulty": "intro",
-    "tags": [
-      "calorimetry",
-      "heat transfer",
-      "thermal energy"
-    ],
+    "tags": ["calorimetry", "heat transfer", "thermal energy"],
     "accessibilityNotes": [
       "Every apparatus action has a keyboard control and a text state summary.",
       "Temperature evidence is numeric and does not rely on color alone."
     ],
     "deviceProfileId": "device.chromebook_core.v1"
   },
-  "objectiveIds": [
-    "heat_transfer"
-  ],
+  "objectiveIds": ["heat_transfer"],
   "equipment": [
     {
       "instanceId": "cold_bottle",
@@ -75,17 +69,13 @@
       }
     ]
   },
-  "requiredChemistryCapabilityIds": [
-    "chemistry.thermal_energy.v1"
-  ],
+  "requiredChemistryCapabilityIds": ["chemistry.thermal_energy.v1"],
   "permittedActions": [
     {
       "id": "permission.pour_cold",
       "actionId": "action.pour_liquid.v1",
       "sourceEquipmentInstanceId": "cold_bottle",
-      "targetEquipmentInstanceIds": [
-        "calorimeter"
-      ],
+      "targetEquipmentInstanceIds": ["calorimeter"],
       "authoredLimits": {
         "maxPourVolumeML": 50
       },
@@ -99,9 +89,7 @@
       "id": "permission.pour_hot",
       "actionId": "action.pour_liquid.v1",
       "sourceEquipmentInstanceId": "hot_bottle",
-      "targetEquipmentInstanceIds": [
-        "calorimeter"
-      ],
+      "targetEquipmentInstanceIds": ["calorimeter"],
       "authoredLimits": {
         "maxPourVolumeML": 50
       },
@@ -137,9 +125,7 @@
       "id": "permission.place_probe",
       "actionId": "action.place_thermometer.v1",
       "sourceEquipmentInstanceId": "thermometer",
-      "targetEquipmentInstanceIds": [
-        "calorimeter"
-      ],
+      "targetEquipmentInstanceIds": ["calorimeter"],
       "maxAttempts": 2,
       "availability": {
         "allSatisfiedRuleIds": [],
@@ -166,16 +152,12 @@
         "kind": "action_observed",
         "actionId": "action.pour_liquid.v1",
         "sourceEquipmentInstanceId": "cold_bottle",
-        "targetEquipmentInstanceIds": [
-          "calorimeter"
-        ]
+        "targetEquipmentInstanceIds": ["calorimeter"]
       },
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.hot_poured",
@@ -184,16 +166,12 @@
         "kind": "action_observed",
         "actionId": "action.pour_liquid.v1",
         "sourceEquipmentInstanceId": "hot_bottle",
-        "targetEquipmentInstanceIds": [
-          "calorimeter"
-        ]
+        "targetEquipmentInstanceIds": ["calorimeter"]
       },
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.calorimeter_mixed",
@@ -207,9 +185,7 @@
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.probe_placed",
@@ -218,16 +194,12 @@
         "kind": "action_observed",
         "actionId": "action.place_thermometer.v1",
         "sourceEquipmentInstanceId": "thermometer",
-        "targetEquipmentInstanceIds": [
-          "calorimeter"
-        ]
+        "targetEquipmentInstanceIds": ["calorimeter"]
       },
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.temperature_read",
@@ -241,9 +213,7 @@
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.final_volume_tolerance",
@@ -260,9 +230,7 @@
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.final_temperature_tolerance",
@@ -270,8 +238,8 @@
       "condition": {
         "kind": "observable_within_tolerance",
         "observableId": "observable.calorimeter_temperature_c.v1",
-        "minimum": 39.9,
-        "maximum": 40.1,
+        "minimum": 39.2,
+        "maximum": 39.3,
         "minimumInclusive": true,
         "maximumInclusive": true,
         "unitId": "unit.celsius.v1"
@@ -279,9 +247,7 @@
       "severity": "conceptual",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.mix_count_best_practice",
@@ -298,9 +264,7 @@
       "severity": "best-practice",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.pours_before_mix",
@@ -313,9 +277,7 @@
       "severity": "procedural",
       "recoverable": false,
       "terminal": true,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.hot_before_mix",
@@ -328,9 +290,7 @@
       "severity": "conceptual",
       "recoverable": false,
       "terminal": true,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.mix_before_probe",
@@ -343,9 +303,7 @@
       "severity": "procedural",
       "recoverable": false,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.probe_before_read",
@@ -358,9 +316,7 @@
       "severity": "procedural",
       "recoverable": false,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     },
     {
       "id": "rule.workflow_complete",
@@ -385,9 +341,7 @@
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "heat_transfer"
-      ]
+      "objectiveIds": ["heat_transfer"]
     }
   ],
   "instructions": [
@@ -418,7 +372,7 @@
     {
       "id": "instruction.check_result",
       "title": "Check the thermal result",
-      "guidance": "Confirm that the calorimeter volume is near 100 mL and the equilibrium temperature is near 40.0 °C from conserved heat.",
+      "guidance": "Confirm that the calorimeter volume is near 100 mL and the equilibrium temperature is near 39.3 °C after including the registered cup heat capacity.",
       "relatedRuleIds": [
         "rule.final_volume_tolerance",
         "rule.final_temperature_tolerance",
@@ -437,9 +391,7 @@
     "criteria": [
       {
         "id": "criterion.heat_transfer",
-        "objectiveIds": [
-          "heat_transfer"
-        ],
+        "objectiveIds": ["heat_transfer"],
         "ruleIds": [
           "rule.cold_poured",
           "rule.hot_poured",
@@ -500,20 +452,12 @@
   "safetyBindings": [
     {
       "safetyPolicyId": "safety.virtual_calorimetry_ppe_notice.v1",
-      "equipmentInstanceIds": [
-        "calorimeter",
-        "thermometer"
-      ],
-      "materialInstanceIds": [
-        "cold_water",
-        "hot_water"
-      ]
+      "equipmentInstanceIds": ["calorimeter", "thermometer"],
+      "materialInstanceIds": ["cold_water", "hot_water"]
     },
     {
       "safetyPolicyId": "safety.virtual_solution_preparation_ppe_notice.v1",
-      "equipmentInstanceIds": [
-        "cold_bottle"
-      ],
+      "equipmentInstanceIds": ["cold_bottle"],
       "materialInstanceIds": []
     }
   ],

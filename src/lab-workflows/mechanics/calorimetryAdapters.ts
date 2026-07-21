@@ -151,11 +151,9 @@ function pourLiquid(
     );
   }
   if (booleanStateField(target, "lidClosed")) {
-    fail(
-      ERROR.invalidEquipment,
-      "Open the calorimeter lid before pouring.",
-      { equipmentInstanceId: target.instanceId }
-    );
+    fail(ERROR.invalidEquipment, "Open the calorimeter lid before pouring.", {
+      equipmentInstanceId: target.instanceId
+    });
   }
   const amount = numberParameter(context.action.parameters, "volumeML");
   if (amount <= 0) {
@@ -259,11 +257,7 @@ function mixCalorimeter(
     });
   }
   const inversions = numberParameter(context.action.parameters, "inversions");
-  if (
-    !Number.isInteger(inversions) ||
-    inversions < 1 ||
-    inversions > 20
-  ) {
+  if (!Number.isInteger(inversions) || inversions < 1 || inversions > 20) {
     fail(
       ERROR.invalidParameter,
       "inversions must be an integer between 1 and 20.",
@@ -463,7 +457,10 @@ function readTemperature(
   const reportedC = numberParameter(context.action.parameters, "reportedC");
   const increment = numericStateField(source, "reportIncrementC");
   const scaled = Math.round(reportedC / increment) * increment;
-  if (Math.abs(scaled - reportedC) > Number.EPSILON * 16) {
+  // Decimal reporting increments such as 0.1 are not exactly representable in
+  // binary floating point. Compare at a tiny fraction of the registered
+  // increment so valid display values such as 39.3 are accepted consistently.
+  if (Math.abs(scaled - reportedC) > increment * 1e-9) {
     fail(
       ERROR.invalidParameter,
       `reportedC must align to the registered ${increment} °C increment.`,
@@ -519,9 +516,7 @@ function checkCalorimeterPreconditions(
 }
 
 function initializeThermometerState(
-  context: Parameters<
-    GenericMechanicalAdapterPort["initializeEquipment"]
-  >[0]
+  context: Parameters<GenericMechanicalAdapterPort["initializeEquipment"]>[0]
 ): GenericEquipmentState {
   const { binding } = context;
   if (binding.equipmentDefinitionId !== "component.thermometer.v1") {

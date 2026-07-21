@@ -51,10 +51,13 @@ const mix = (inversions = 10) =>
     [{ key: "inversions", valueType: "number", value: inversions }]
   );
 const placeProbe = () =>
-  action("permission.place_probe", "action.place_thermometer.v1", "thermometer", [
-    "calorimeter"
-  ]);
-const readTemperature = (reportedC = 40) =>
+  action(
+    "permission.place_probe",
+    "action.place_thermometer.v1",
+    "thermometer",
+    ["calorimeter"]
+  );
+const readTemperature = (reportedC = 39.3) =>
   action(
     "permission.read_temperature",
     "action.read_temperature.v1",

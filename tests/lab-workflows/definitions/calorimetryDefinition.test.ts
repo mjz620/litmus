@@ -111,11 +111,8 @@ describe("LC2-912 serialized calorimetry definition", () => {
       ({ finalState }) => finalState.workflowStatus === "completed"
     )) {
       expect(
-        observable(
-          result.finalState,
-          "observable.calorimeter_temperature_c.v1"
-        )
-      ).toBe(40);
+        observable(result.finalState, "observable.calorimeter_temperature_c.v1")
+      ).toBe(39.268);
       expect(
         observable(result.finalState, "observable.calorimeter_volume_ml.v1")
       ).toBe(100);

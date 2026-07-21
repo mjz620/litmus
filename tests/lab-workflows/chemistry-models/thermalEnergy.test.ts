@@ -93,6 +93,8 @@ function materialBinding(
     materialPhase: profile.phase,
     initialConcentrationM: profile.concentrationM,
     initialTemperatureC: profile.initialTemperatureC,
+    acidBaseDissociation: profile.acidBaseDissociation ?? null,
+    molarMassGPerMol: profile.molarMassGPerMol ?? null,
     initializationPresetSchemaId: profile.initializationPresetSchemaId,
     providedChemistryCapabilityIds: [...profile.providedChemistryCapabilityIds],
     requiredContainerCapabilityIds: [
@@ -253,7 +255,10 @@ describe("LC2-911 thermal energy chemistry module", () => {
       50
     );
     ledger = coldPour.ledger;
-    let next = THERMAL_ENERGY_MODULE.applyMaterialAction(coldPour.action, state);
+    let next = THERMAL_ENERGY_MODULE.applyMaterialAction(
+      coldPour.action,
+      state
+    );
     expect(THERMAL_ENERGY_MODULE.deriveObservables(next.state)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -266,7 +271,7 @@ describe("LC2-911 thermal energy chemistry module", () => {
         }),
         expect.objectContaining({
           observableId: THERMAL_ENERGY_OBSERVABLE_IDS.heatContent,
-          value: 50 * WATER_SPECIFIC_HEAT_J_PER_G_C * 20
+          value: 50 * WATER_SPECIFIC_HEAT_J_PER_G_C * 20 + 15.9 * 20
         })
       ])
     );
@@ -278,13 +283,16 @@ describe("LC2-911 thermal energy chemistry module", () => {
       HOT,
       50
     );
-    next = THERMAL_ENERGY_MODULE.applyMaterialAction(hotPour.action, next.state);
+    next = THERMAL_ENERGY_MODULE.applyMaterialAction(
+      hotPour.action,
+      next.state
+    );
     const observables = THERMAL_ENERGY_MODULE.deriveObservables(next.state);
     expect(observables).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           observableId: THERMAL_ENERGY_OBSERVABLE_IDS.temperature,
-          value: 40
+          value: 39.268
         }),
         expect.objectContaining({
           observableId: THERMAL_ENERGY_OBSERVABLE_IDS.volume,
@@ -363,7 +371,13 @@ describe("LC2-911 thermal energy chemistry module", () => {
         equipment: equipmentBindings,
         materials: materialBindings,
         registeredObservableIds: Object.values(THERMAL_ENERGY_OBSERVABLE_IDS),
-        registeredUnitIds: ["unit.celsius.v1", "unit.joule.v1", "unit.ml.v1"]
+        registeredUnitIds: [
+          "unit.celsius.v1",
+          "unit.joule.v1",
+          "unit.ml.v1",
+          "unit.mol.v1",
+          "unit.kj_per_mol.v1"
+        ]
       } as never,
       equipment,
       materialLedger

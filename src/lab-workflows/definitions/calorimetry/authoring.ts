@@ -58,8 +58,7 @@ export const CALORIMETRY_AUTHORING_COMMANDS = Object.freeze([
     equipment: {
       instanceId: "calorimeter",
       equipmentDefinitionId: "component.calorimeter.v1",
-      configurationPresetId:
-        "component_config.calorimeter.coffee_cup_100ml.v1",
+      configurationPresetId: "component_config.calorimeter.coffee_cup_100ml.v1",
       label: "Coffee-cup calorimeter",
       required: true
     }
@@ -77,8 +76,7 @@ export const CALORIMETRY_AUTHORING_COMMANDS = Object.freeze([
   {
     type: "set_layout",
     layout: {
-      configurationSchemaId:
-        "schema.layout_configuration.calorimetry_bench.v1",
+      configurationSchemaId: "schema.layout_configuration.calorimetry_bench.v1",
       placements: [
         {
           equipmentInstanceId: "calorimeter",
@@ -298,8 +296,8 @@ export const CALORIMETRY_AUTHORING_COMMANDS = Object.freeze([
       condition: {
         kind: "observable_within_tolerance",
         observableId: "observable.calorimeter_temperature_c.v1",
-        minimum: 39.9,
-        maximum: 40.1,
+        minimum: 39.2,
+        maximum: 39.3,
         minimumInclusive: true,
         maximumInclusive: true,
         unitId: "unit.celsius.v1"
@@ -457,7 +455,7 @@ export const CALORIMETRY_AUTHORING_COMMANDS = Object.freeze([
       id: "instruction.check_result",
       title: "Check the thermal result",
       guidance:
-        "Confirm that the calorimeter volume is near 100 mL and the equilibrium temperature is near 40.0 °C from conserved heat.",
+        "Confirm that the calorimeter volume is near 100 mL and the equilibrium temperature is near 39.3 °C after including the registered cup heat capacity.",
       relatedRuleIds: [
         "rule.final_volume_tolerance",
         "rule.final_temperature_tolerance",
