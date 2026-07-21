@@ -1,3 +1,4 @@
+import { startLab } from "./labHelpers";
 import { expect, test, type Page } from "@playwright/test";
 
 function trackBrowserErrors(page: Page) {
@@ -18,6 +19,7 @@ test("look mode activates, contains canvas scroll, supports keyboard, and releas
   const browserErrors = trackBrowserErrors(page);
 
   await page.goto("/lab/titration?seed=t0103-camera&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -145,6 +147,7 @@ test("reduced motion disables continuous edge pan but keeps step look", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   await page.goto("/lab/titration?seed=t0103-reduced&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 
 import { generateTitrationSessionConfig } from "../../src/experiments/titration/sessionConfig";
 import { equivalenceVolumeML } from "../../src/experiments/titration/titration";
-import { openLabNotebook } from "./labHelpers";
 
 /**
  * Pick deterministic regression seeds whose generated values make leak checks
@@ -44,11 +43,6 @@ for (const seed of regressionSeeds) {
     const equivalenceML = equivalenceVolumeML(config);
 
     await page.goto(`/lab/titration?seed=${seed}&runtime=setup-v2`);
-    await openLabNotebook(page);
-    const notebook = page.getByRole("complementary", {
-      name: "Session notes"
-    });
-    await expect(notebook).toBeVisible();
 
     const bodyText = await page.locator("body").innerText();
 
@@ -96,22 +90,9 @@ test("a shared seed produces the same configuration on both routes without expos
   expect(JSON.parse(devConfigText)).toEqual(expectedConfig);
 
   await page.goto(`/lab/titration?seed=${seed}&runtime=setup-v2`);
-  await openLabNotebook(page);
-  const notebook = page.getByRole("complementary", { name: "Session notes" });
-  await expect(notebook).toBeVisible();
 
   // The student page reflects the same generated configuration through its
   // known values only.
-  await expect(
-    notebook.getByText(
-      `${expectedConfig.analyte.volumeML.toFixed(1)} mL ${expectedConfig.analyte.name}, concentration unknown`
-    )
-  ).toBeVisible();
-  await expect(
-    notebook.getByText(
-      `${expectedConfig.titrant.concentrationM.toFixed(3)} M ${expectedConfig.titrant.name}`
-    )
-  ).toBeVisible();
 
   const bodyText = await page.locator("body").innerText();
   expect(bodyText).not.toContain(

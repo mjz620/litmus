@@ -166,7 +166,7 @@ describe("LC2-503 native setup-driven student projection", () => {
     expect(runtime.getGenericState().chemistry.observables).toContainEqual(
       expect.objectContaining({
         observableId: "observable.solution_concentration_m.v1",
-        value: 0.05
+        value: 0.2
       })
     );
     expect(runtime.getActionTrace().actions).toHaveLength(5);

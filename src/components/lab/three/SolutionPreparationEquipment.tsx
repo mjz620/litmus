@@ -1,18 +1,93 @@
+import { CanvasTexture, DoubleSide } from "three";
+
 import { GlassMaterial, type GlassQuality } from "./glassMaterials";
 import { LAB_PALETTE } from "./labPalette";
+
+/** Dry reagent shown in the boat, the stock jar, and before it dissolves. */
+const SOLID_REAGENT_COLOR = LAB_PALETTE.solidReagent;
 import {
   WASH_SQUEEZE_BOTTLE_HIT,
   WashSqueezeBottle
 } from "./WashSqueezeBottle";
 
+/**
+ * Default liquid tint for a vessel whose contents publish no appearance —
+ * distilled water, and every colourless solute. Previously every vessel in
+ * this file hard-coded this value, so a dilution looked identical at every
+ * concentration.
+ */
+const DEFAULT_LIQUID_COLOR = "#8FC9DF";
+
 interface LiquidFillProps {
   readonly fillFraction?: number;
   /** Shared laboratory-glass tier; matches the titration flask. */
   readonly quality?: GlassQuality;
+  /**
+   * Engine-projected liquid colour. Resolved from the reagent's published
+   * appearance and its current concentration, so the same vessel darkens or
+   * pales as the solution is made up.
+   */
+  readonly liquidColor?: string;
 }
 
-/** Registered balance projection. Chemistry and mass stay in the engine. */
-export function LaboratoryBalance() {
+/*
+ * Balance readouts are drawn once per distinct displayed string and reused.
+ * The scene renders on demand and a reading only changes when the engine
+ * reports a new mass, so the working set stays small; the cap is a backstop
+ * against a long session accumulating textures.
+ */
+const balanceReadoutTextures = new Map<string, CanvasTexture>();
+const MAX_BALANCE_READOUT_TEXTURES = 48;
+
+function getBalanceReadoutTexture(text: string): CanvasTexture | null {
+  const cached = balanceReadoutTextures.get(text);
+  if (cached) return cached;
+  if (typeof document === "undefined") return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 74;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  context.fillStyle = "#0d2b26";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#7ef2d6";
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+  context.font = "600 44px ui-monospace, SFMono-Regular, Menlo, monospace";
+  context.fillText(text, canvas.width - 14, canvas.height / 2 + 2);
+
+  const texture = new CanvasTexture(canvas);
+  texture.anisotropy = 1;
+  if (balanceReadoutTextures.size >= MAX_BALANCE_READOUT_TEXTURES) {
+    const oldest = balanceReadoutTextures.keys().next().value;
+    if (oldest !== undefined) {
+      balanceReadoutTextures.get(oldest)?.dispose();
+      balanceReadoutTextures.delete(oldest);
+    }
+  }
+  balanceReadoutTextures.set(text, texture);
+  return texture;
+}
+
+/**
+ * Registered balance projection. Chemistry and mass stay in the engine.
+ *
+ * `readingG` is the engine-owned mass already quantised to the balance's
+ * resolution — this only prints it. The tare pad is a real hit target so the
+ * technique can be performed on the instrument rather than only in the side
+ * panel, which is where a student would reach for it.
+ */
+export function LaboratoryBalance({
+  readingG = null,
+  tareHighlighted = false
+}: {
+  readonly readingG?: number | null;
+  readonly tareHighlighted?: boolean;
+}) {
+  const display = readingG === null ? "—— g" : `${readingG.toFixed(2)} g`;
+  const readout = getBalanceReadoutTexture(display);
   return (
     <group>
       <mesh position={[0, 0.035, 0]}>
@@ -35,6 +110,22 @@ export function LaboratoryBalance() {
           emissiveIntensity={0.2}
         />
       </mesh>
+      {readout && (
+        <mesh position={[0, 0.052, 0.1085]}>
+          <planeGeometry args={[0.112, 0.03]} />
+          <meshBasicMaterial map={readout} toneMapped={false} />
+        </mesh>
+      )}
+      {/* Tare pad, front-left of the display. */}
+      <mesh position={[-0.082, 0.0715, 0.075]}>
+        <boxGeometry args={[0.038, 0.008, 0.024]} />
+        <meshStandardMaterial
+          color={tareHighlighted ? LAB_PALETTE.hoverMint : "#8d9995"}
+          emissive={tareHighlighted ? LAB_PALETTE.hoverMint : "#000000"}
+          emissiveIntensity={tareHighlighted ? 0.35 : 0}
+          roughness={0.5}
+        />
+      </mesh>
     </group>
   );
 }
@@ -46,18 +137,56 @@ export const LABORATORY_BALANCE_HIT = {
   labelY: 0.18
 } as const;
 
-/** Low-mass weighing vessel used for tare and transfer technique. */
-export function WeighingBoat() {
+/**
+ * Low-mass weighing vessel used for tare and transfer technique.
+ *
+ * A weighing boat is a shallow dish that holds a sample, so it has to read as
+ * concave. This previously capped a flat base with an upward hemisphere, which
+ * rendered as a solid dome — the boat looked inverted and nothing could
+ * visibly sit in it. It is now a square flared frustum with an open top: a
+ * flat base, walls splaying outward, and a visible well.
+ *
+ * `solidFraction` is the engine-owned amount of solid resting in the well.
+ */
+export function WeighingBoat({
+  solidFraction = 0,
+  solidColor = SOLID_REAGENT_COLOR
+}: {
+  readonly solidFraction?: number;
+  readonly solidColor?: string;
+}) {
+  const heaped = Math.max(0, Math.min(1, solidFraction));
   return (
     <group>
-      <mesh position={[0, 0.018, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <boxGeometry args={[0.14, 0.025, 0.14]} />
+      <mesh position={[0, 0.003, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <cylinderGeometry args={[0.052, 0.052, 0.006, 4]} />
         <meshStandardMaterial color="#f5f1df" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 0.034, 0]}>
-        <sphereGeometry args={[0.045, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#f0efe9" roughness={0.9} />
+      {/* Open-ended so the inside of the dish is visible from the bench camera. */}
+      <mesh position={[0, 0.018, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <cylinderGeometry args={[0.078, 0.052, 0.024, 4, 1, true]} />
+        <meshStandardMaterial
+          color="#f5f1df"
+          roughness={0.85}
+          side={DoubleSide}
+        />
       </mesh>
+      {heaped > 0 && (
+        /*
+         * A cone that rises past the 0.024 m rim.
+         *
+         * A low, flat bed sat entirely inside the well and the flared walls
+         * occluded it at bench camera height — the sample was present in the
+         * engine and invisible on screen. Weighed solid mounds up anyway, so
+         * the pile peaks above the rim and reads from any angle.
+         */
+        <mesh position={[0, 0.006 + (0.018 + heaped * 0.022) / 2, 0]}>
+          <cylinderGeometry
+            args={[0, 0.026 + heaped * 0.016, 0.018 + heaped * 0.022, 14]}
+          />
+          <meshStandardMaterial color={solidColor} roughness={0.95} />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -72,7 +201,8 @@ export const WEIGHING_BOAT_HIT = {
 /** Local-origin verified visual for the registered 10 mL volumetric pipette. */
 export function VolumetricPipette({
   fillFraction = 0,
-  quality = "high"
+  quality = "high",
+  liquidColor = DEFAULT_LIQUID_COLOR
 }: LiquidFillProps) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
   return (
@@ -96,7 +226,11 @@ export function VolumetricPipette({
       {clamped > 0 && (
         <mesh position={[0, 0.1 + clamped * 0.29, 0]}>
           <cylinderGeometry args={[0.009, 0.009, clamped * 0.58, 12]} />
-          <meshStandardMaterial color="#8fc9df" transparent opacity={0.78} />
+          <meshStandardMaterial
+            color={liquidColor}
+            transparent
+            opacity={0.78}
+          />
         </mesh>
       )}
       <mesh position={[0, 0.63, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -119,7 +253,8 @@ export const VOLUMETRIC_PIPETTE_HIT = {
 /** Local-origin verified visual for the registered 100 mL volumetric flask. */
 export function VolumetricFlask({
   fillFraction = 0,
-  quality = "high"
+  quality = "high",
+  liquidColor = DEFAULT_LIQUID_COLOR
 }: LiquidFillProps) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
   return (
@@ -131,7 +266,11 @@ export function VolumetricFlask({
       {clamped > 0 && (
         <mesh position={[0, 0.015 + clamped * 0.035, 0]} scale={[1, 0.7, 1]}>
           <sphereGeometry args={[0.092 * Math.max(0.38, clamped), 20, 12]} />
-          <meshStandardMaterial color="#8fc9df" transparent opacity={0.72} />
+          <meshStandardMaterial
+            color={liquidColor}
+            transparent
+            opacity={0.72}
+          />
         </mesh>
       )}
       <mesh position={[0, 0.23, 0]}>
@@ -179,9 +318,20 @@ export const DISTILLED_WASH_BOTTLE_HIT = WASH_SQUEEZE_BOTTLE_HIT;
 /** Local-origin stock-solution / aqueous reagent bottle. */
 export function RegisteredReagentBottle({
   fillFraction = 0.7,
-  quality = "high"
-}: LiquidFillProps) {
+  quality = "high",
+  contents = "liquid",
+  liquidColor = DEFAULT_LIQUID_COLOR
+}: LiquidFillProps & {
+  /**
+   * Phase of the registered material inside. A solid stock jar previously
+   * rendered the same translucent blue column as an aqueous reagent, so
+   * ammonium nitrate crystals read as a bottle of clear liquid. Solids get an
+   * opaque, flat-topped granular bed instead.
+   */
+  readonly contents?: "liquid" | "solid";
+}) {
   const clamped = Math.max(0, Math.min(1, fillFraction));
+  const solid = contents === "solid";
   return (
     <group>
       <mesh position={[0, 0.1, 0]}>
@@ -191,7 +341,18 @@ export function RegisteredReagentBottle({
       {clamped > 0 && (
         <mesh position={[0, 0.005 + clamped * 0.085, 0]}>
           <cylinderGeometry args={[0.057, 0.062, clamped * 0.18, 18]} />
-          <meshStandardMaterial color="#9ecbd4" transparent opacity={0.76} />
+          {solid ? (
+            <meshStandardMaterial
+              color={SOLID_REAGENT_COLOR}
+              roughness={0.95}
+            />
+          ) : (
+            <meshStandardMaterial
+              color={liquidColor}
+              transparent
+              opacity={0.76}
+            />
+          )}
         </mesh>
       )}
       <mesh position={[0, 0.245, 0]}>

@@ -38,6 +38,8 @@ export const LAB_PALETTE = {
    * Suspended precipitates. These read as opaque solids rather than tinted
    * solutions, so they sit apart from the indicator liquids above.
    */
+  /* Dry crystalline reagent (ammonium nitrate and similar white solids). */
+  solidReagent: "#F1EEE2",
   whitePrecipitate: "#F2F5F3",
   /* Lightened from a truer iron oxide so graduation ink stays legible over it. */
   rustBrownPrecipitate: "#C0834A",

@@ -1,3 +1,4 @@
+import { startLab } from "./labHelpers";
 import { expect, type Page, test } from "@playwright/test";
 
 /**
@@ -62,6 +63,7 @@ test("equipment on the setup-driven bench responds to canvas hover", async ({
 }) => {
   test.setTimeout(180_000);
   await page.goto("/lab/calorimetry");
+  await startLab(page);
 
   expect(
     await canvasHoverPoints(page),
@@ -74,6 +76,7 @@ test("equipment on the titration bench responds to canvas hover", async ({
 }) => {
   test.setTimeout(180_000);
   await page.goto("/lab/titration?seed=hover-guard-1&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -86,6 +89,7 @@ test("the precipitation bench lists only its own equipment", async ({
 }) => {
   test.setTimeout(120_000);
   await page.goto("/lab/silver-chloride");
+  await startLab(page);
   const bar = page.getByRole("group", { name: "Selectable equipment" });
   await expect(bar).toBeVisible({ timeout: 30_000 });
 

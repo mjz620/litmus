@@ -1,0 +1,147 @@
+/*
+ * Pre-lab briefing. Uses the documented type ramp and lab colour aliases so it
+ * reads as part of the bench rather than as a separate marketing surface.
+ */
+.overview {
+  display: grid;
+  gap: 1.5rem;
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: 1.5rem 1.25rem 2.5rem;
+}
+
+.header {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.eyebrow {
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  font-size: var(--text-2xl);
+  margin: 0;
+}
+
+.summary {
+  color: var(--color-ink-muted);
+  font-size: var(--text-lg);
+  margin: 0;
+  max-width: 46rem;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 0.35rem 0 0;
+}
+
+.facts div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.facts dt {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.facts dd {
+  font-size: var(--text-md);
+  font-weight: 600;
+  margin: 0;
+}
+
+.panels {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+}
+
+.panels section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.1rem 1.15rem;
+}
+
+.panels h2 {
+  font-size: var(--text-md);
+  margin: 0;
+}
+
+.panels p {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.procedure {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.procedure li {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.procedure strong {
+  font-size: var(--text-sm);
+}
+
+.procedure span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.equipment,
+.criteria {
+  display: grid;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.equipment li,
+.criteria li {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  padding-left: 0.9rem;
+  position: relative;
+}
+
+.equipment li::before,
+.criteria li::before {
+  color: var(--color-primary);
+  content: "•";
+  left: 0;
+  position: absolute;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.reassurance {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}

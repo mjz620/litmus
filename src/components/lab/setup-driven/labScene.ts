@@ -1,4 +1,6 @@
 import type { SetupDrivenLabProjection } from "../../../stores/setupDrivenLabSession";
+import { reagentRegistry } from "../../../lab-workflows/registries/reagents";
+import { getAqueousSolutionColor } from "../three/solutionColor";
 import {
   resolveEquipmentPose,
   type ResolvedEquipmentPose
@@ -97,6 +99,19 @@ export const LAB_VISUAL_ADAPTERS: Readonly<
   })
 });
 
+function selectableEquipmentIdsForAdapter(
+  adapter: LabVisualAdapterRegistration,
+  hasBuretteAdapter: boolean
+): readonly EquipmentId[] {
+  if (adapter.kind !== "reagent_bottle") {
+    return adapter.selectableEquipmentIds;
+  }
+
+  // The same registered bottle adapter is presented as titration's wash
+  // station when a burette is on the bench, and as a stock bottle elsewhere.
+  return hasBuretteAdapter ? ["washStation"] : ["reagentBottle"];
+}
+
 const ACTION_CONTROL_GROUP: Readonly<Record<string, ControlGroupId>> =
   Object.freeze({
     "action.rinse.v1": "prepare",
@@ -163,6 +178,12 @@ export interface LabSceneConfiguration {
   readonly maxDispenseVolumeML: number | null;
   /** Fill fraction 0–1 keyed by visual adapter definition id. */
   readonly equipmentFillFractions: Readonly<Record<string, number>>;
+  /**
+   * Liquid colour per visual adapter, for vessels holding an aqueous reagent
+   * that publishes an appearance. Adapters are absent from this map when the
+   * contents are colourless, so the scene keeps its own default.
+   */
+  readonly equipmentLiquidColors: Readonly<Record<string, string>>;
   readonly projectedState: {
     readonly burette: {
       readonly availableML: number;
@@ -177,7 +198,164 @@ export interface LabSceneConfiguration {
     readonly beaker: {
       readonly observableColor: string;
     } | null;
+    readonly balance: {
+      readonly readingG: number;
+      readonly resolutionG: number;
+    } | null;
+    readonly weighingBoat: {
+      /** Fraction of a nominal full boat, for the heap visual only. */
+      readonly solidFraction: number;
+    } | null;
+    readonly reagentBottleContents: "liquid" | "solid";
   } | null;
+}
+
+/** Nominal full boat for the heap visual only; never a chemistry quantity. */
+const WEIGHING_BOAT_VISUAL_FULL_G = 5;
+
+function isSolidProfile(materialProfileId: string): boolean {
+  return reagentRegistry.has(materialProfileId)
+    ? reagentRegistry.get(materialProfileId).phase === "solid"
+    : false;
+}
+
+/**
+ * How full the boat looks, from the ledger's solid mass at that instance.
+ * Purely presentational: the engine owns the mass, this only sizes a heap.
+ */
+function solidGramsAt(
+  projection: Readonly<SetupDrivenLabProjection>,
+  equipmentInstanceId: string
+): number {
+  return projection.materials.reduce((total, material) => {
+    if (!isSolidProfile(material.materialProfileId)) return total;
+    const here = material.locations.find(
+      (location) => location.equipmentInstanceId === equipmentInstanceId
+    );
+    return total + (here?.amount ?? 0);
+  }, 0);
+}
+
+/**
+ * Millilitres of liquid the ledger places at a vessel.
+ *
+ * The reagent bottle's registered state is only `{reagentInstanceId,
+ * selected}` — it has no `capacityML`, `availableML`, or `totalVolumeML` — so
+ * a volume-field lookup returns 0 and the bottle renders as empty glass while
+ * the student is told to pipette from it. The ledger is the engine's own
+ * record of what is in there, so read that instead.
+ */
+function liquidMLAt(
+  projection: Readonly<SetupDrivenLabProjection>,
+  equipmentInstanceId: string
+): number {
+  return projection.materials.reduce((total, material) => {
+    if (isSolidProfile(material.materialProfileId)) return total;
+    const here = material.locations.find(
+      (location) => location.equipmentInstanceId === equipmentInstanceId
+    );
+    return total + (here?.amount ?? 0);
+  }, 0);
+}
+
+const SOLUTION_CONCENTRATION_OBSERVABLE_ID =
+  "observable.solution_concentration_m.v1";
+const STOCK_CONCENTRATION_OBSERVABLE_ID = "observable.stock_concentration_m.v1";
+
+function observableNumber(
+  projection: Readonly<SetupDrivenLabProjection>,
+  observableId: string
+): number | null {
+  const value = projection.observables[observableId];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Colour of the liquid in a vessel, from the reagent's published appearance
+ * and the concentration the engine reports.
+ *
+ * Only aqueous reagents that publish an appearance tint anything; everything
+ * else stays the solvent colour, which is what distilled water and a
+ * colourless solute both look like. The vessel that is being diluted reads
+ * the flask concentration; every other vessel holds undiluted stock, so it
+ * reads the stock concentration. Both numbers come from the chemistry model —
+ * the scene converts a concentration to a colour and computes no chemistry.
+ */
+function liquidColorFor(
+  projection: Readonly<SetupDrivenLabProjection>,
+  equipment: SetupDrivenLabProjection["equipment"][number],
+  isDilutionTarget: boolean
+): string | null {
+  let appearance: NonNullable<
+    ReturnType<typeof reagentRegistry.get>["aqueousAppearance"]
+  > | null = null;
+  let dominantAmount = 0;
+
+  for (const material of projection.materials) {
+    const here = material.locations.find(
+      (location) => location.equipmentInstanceId === equipment.instanceId
+    );
+    if (!here || here.amount <= 0) continue;
+    if (!reagentRegistry.has(material.materialProfileId)) continue;
+    const entry = reagentRegistry.get(material.materialProfileId);
+    if (entry.phase !== "aqueous_solution" || !entry.aqueousAppearance)
+      continue;
+    /*
+     * Diluent water outweighs the aliquot in the flask, so the tint is chosen
+     * among reagents that actually absorb rather than by raw volume.
+     */
+    if (here.amount > dominantAmount) {
+      dominantAmount = here.amount;
+      appearance = entry.aqueousAppearance;
+    }
+  }
+
+  if (!appearance) return null;
+
+  const concentrationM = observableNumber(
+    projection,
+    isDilutionTarget
+      ? SOLUTION_CONCENTRATION_OBSERVABLE_ID
+      : STOCK_CONCENTRATION_OBSERVABLE_ID
+  );
+  return getAqueousSolutionColor(appearance, concentrationM);
+}
+
+function solidFractionAt(
+  projection: Readonly<SetupDrivenLabProjection>,
+  equipmentInstanceId: string
+): number {
+  return Math.max(
+    0,
+    Math.min(1, solidGramsAt(projection, equipmentInstanceId) / WEIGHING_BOAT_VISUAL_FULL_G)
+  );
+}
+
+/**
+ * A clear stock bottle must not render a solid as a column of liquid, so the
+ * bottle asks the reagent registry what phase it is actually holding.
+ */
+function reagentBottlePhase(
+  projection: Readonly<SetupDrivenLabProjection>
+): "liquid" | "solid" {
+  const bottles = new Set(
+    projection.equipment
+      .filter(
+        ({ visualAdapterDefinitionId }) =>
+          visualAdapterDefinitionId === "visual-adapter.reagent_bottle.v1"
+      )
+      .map(({ instanceId }) => instanceId)
+  );
+  if (bottles.size === 0) return "liquid";
+  const holdsSolid = projection.materials.some(
+    (material) =>
+      isSolidProfile(material.materialProfileId) &&
+      material.locations.some(
+        (location) =>
+          bottles.has(location.equipmentInstanceId) && location.amount > 0
+      )
+  );
+  return holdsSolid ? "solid" : "liquid";
 }
 
 /** Registered chemistry observable carrying the precipitate appearance. */
@@ -213,6 +391,7 @@ const LEGACY_SCENE_CONFIGURATION: LabSceneConfiguration = Object.freeze({
   minDispenseVolumeML: null,
   maxDispenseVolumeML: null,
   equipmentFillFractions: Object.freeze({}),
+  equipmentLiquidColors: Object.freeze({}),
   projectedState: null
 });
 
@@ -270,7 +449,27 @@ function booleanField(
   return value;
 }
 
+/** Nominal full solid stock jar, for the visible bed only. */
+const SOLID_STOCK_VISUAL_FULL_G = 25;
+/** Floor so a small classroom sample is still visibly present in the jar. */
+const SOLID_STOCK_VISUAL_MIN_FRACTION = 0.18;
+
+/** Nominal full stock bottle for vessels that register no capacity. */
+const LIQUID_STOCK_VISUAL_FULL_ML = 50;
+/** Floor so a nearly-drained stock bottle still reads as holding liquid. */
+const LIQUID_STOCK_VISUAL_MIN_FRACTION = 0.2;
+
+/**
+ * How full a vessel looks.
+ *
+ * Solids carry no volume — a stock jar of ammonium nitrate has no
+ * `capacityML`, `availableML`, or `totalVolumeML` — so this returned 0 for
+ * them and the contents mesh was never rendered at all. The jar read as empty
+ * glass, which is why colouring it as a solid changed nothing. Fall back to
+ * the ledger's solid mass at that vessel.
+ */
 function fillFractionFor(
+  projection: Readonly<SetupDrivenLabProjection>,
   equipment: SetupDrivenLabProjection["equipment"][number]
 ): number {
   const capacity = optionalNumberField(equipment, "capacityML", 0);
@@ -279,7 +478,27 @@ function fillFractionFor(
     "availableML",
     optionalNumberField(equipment, "totalVolumeML", 0)
   );
-  return capacity > 0 ? available / capacity : available > 0 ? 0.7 : 0;
+  if (capacity > 0) return Math.max(0, Math.min(1, available / capacity));
+  if (available > 0) return 0.7;
+
+  /*
+   * Vessels with no volume state at all — the reagent bottle — still have a
+   * ledger entry. Without this the stock bottle renders empty.
+   */
+  const liquidML = liquidMLAt(projection, equipment.instanceId);
+  if (liquidML > 0) {
+    return Math.max(
+      LIQUID_STOCK_VISUAL_MIN_FRACTION,
+      Math.min(1, liquidML / LIQUID_STOCK_VISUAL_FULL_ML)
+    );
+  }
+
+  const grams = solidGramsAt(projection, equipment.instanceId);
+  if (grams <= 0) return 0;
+  return Math.max(
+    SOLID_STOCK_VISUAL_MIN_FRACTION,
+    Math.min(1, grams / SOLID_STOCK_VISUAL_FULL_G)
+  );
 }
 
 /**
@@ -295,6 +514,7 @@ export function resolveLabSceneConfiguration(
   const selectableEquipmentIds: EquipmentId[] = [];
   const equipmentPoses: ResolvedEquipmentPose[] = [];
   const equipmentFillFractions: Record<string, number> = {};
+  const equipmentLiquidColors: Record<string, string> = {};
   let buretteState: NonNullable<
     NonNullable<LabSceneConfiguration["projectedState"]>["burette"]
   > | null = null;
@@ -304,6 +524,10 @@ export function resolveLabSceneConfiguration(
   let beakerState: NonNullable<
     NonNullable<LabSceneConfiguration["projectedState"]>["beaker"]
   > | null = null;
+  let balanceState: NonNullable<
+    NonNullable<LabSceneConfiguration["projectedState"]>["balance"]
+  > | null = null;
+  let weighingBoatInstanceId: string | null = null;
   let hasBuretteAdapter = false;
   let hasFlaskAdapter = false;
   const equipmentIds = new Set(
@@ -335,7 +559,15 @@ export function resolveLabSceneConfiguration(
       );
     }
     equipmentFillFractions[equipment.visualAdapterDefinitionId] =
-      fillFractionFor(equipment);
+      fillFractionFor(projection, equipment);
+    const liquidColor = liquidColorFor(
+      projection,
+      equipment,
+      adapter.kind === "volumetric_flask"
+    );
+    if (liquidColor) {
+      equipmentLiquidColors[equipment.visualAdapterDefinitionId] = liquidColor;
+    }
     for (const equipmentId of adapter.selectableEquipmentIds) {
       if (!selectableEquipmentIds.includes(equipmentId)) {
         selectableEquipmentIds.push(equipmentId);
@@ -356,6 +588,15 @@ export function resolveLabSceneConfiguration(
         observableColor: stringField(equipment, "observableColor"),
         indicatorAdded: booleanField(equipment, "indicatorAdded")
       });
+    }
+    if (adapter.kind === "balance") {
+      balanceState = Object.freeze({
+        readingG: numberField(equipment, "currentReadingG"),
+        resolutionG: numberField(equipment, "resolutionG")
+      });
+    }
+    if (adapter.kind === "weighing_boat") {
+      weighingBoatInstanceId = equipment.instanceId;
     }
     if (adapter.kind === "beaker") {
       /*
@@ -389,11 +630,13 @@ export function resolveLabSceneConfiguration(
      * station (which has bespoke hotspots and no Interactable) in place of the
      * bottles, and the precipitation bench listed equipment it does not have.
      */
-    const selectableId: EquipmentId = hasBuretteAdapter
-      ? "washStation"
-      : "reagentBottle";
-    if (!selectableEquipmentIds.includes(selectableId)) {
-      selectableEquipmentIds.push(selectableId);
+    for (const selectableId of selectableEquipmentIdsForAdapter(
+      LAB_VISUAL_ADAPTERS[equipment.visualAdapterDefinitionId]!,
+      hasBuretteAdapter
+    )) {
+      if (!selectableEquipmentIds.includes(selectableId)) {
+        selectableEquipmentIds.push(selectableId);
+      }
     }
   }
   if (
@@ -490,10 +733,18 @@ export function resolveLabSceneConfiguration(
     minDispenseVolumeML,
     maxDispenseVolumeML,
     equipmentFillFractions: Object.freeze(equipmentFillFractions),
+    equipmentLiquidColors: Object.freeze(equipmentLiquidColors),
     projectedState: Object.freeze({
       burette: buretteState,
       flask: flaskState,
-      beaker: beakerState
+      beaker: beakerState,
+      balance: balanceState,
+      weighingBoat: weighingBoatInstanceId
+        ? Object.freeze({
+            solidFraction: solidFractionAt(projection, weighingBoatInstanceId)
+          })
+        : null,
+      reagentBottleContents: reagentBottlePhase(projection)
     })
   });
 }
@@ -512,16 +763,147 @@ export function visibleControlGroupsForConfiguration(
  * Native-lab actions whose source or target equipment maps to the focused
  * visual selection. Empty focus returns every currently projected action.
  */
+/**
+ * Instance ids the given focus selects, shared by action filtering and the
+ * contents readout below.
+ */
+function instanceIdsForFocus(
+  projection: Readonly<SetupDrivenLabProjection>,
+  focused: EquipmentId
+): ReadonlySet<string> {
+  const instanceIds = new Set<string>();
+  const hasBuretteAdapter = projection.equipment.some(
+    ({ visualAdapterDefinitionId }) =>
+      visualAdapterDefinitionId === "visual-adapter.burette.v1"
+  );
+  for (const equipment of projection.equipment) {
+    const adapter = LAB_VISUAL_ADAPTERS[equipment.visualAdapterDefinitionId];
+    if (!adapter) continue;
+    if (
+      selectableEquipmentIdsForAdapter(adapter, hasBuretteAdapter).includes(
+        focused
+      )
+    ) {
+      instanceIds.add(equipment.instanceId);
+    }
+  }
+  return instanceIds;
+}
+
+/**
+ * Vessels the procedure delivers into — the reaction mixture.
+ *
+ * Anything a permitted action targets is where the chemistry happens, which is
+ * derived from the workflow itself rather than from instance naming.
+ */
+function reactionVesselIds(
+  projection: Readonly<SetupDrivenLabProjection>
+): ReadonlySet<string> {
+  const targets = new Set<string>();
+  for (const action of projection.actions) {
+    for (const instanceId of action.targetEquipmentInstanceIds) {
+      targets.add(instanceId);
+    }
+  }
+  return targets;
+}
+
+/**
+ * Display name without a leading concentration.
+ *
+ * Registered names embed the standard's strength ("0.100 M hydrochloric
+ * acid"), which is exactly the quantity a titration asks the student to
+ * determine.
+ */
+function nameWithoutConcentration(displayName: string): string {
+  const stripped = displayName.replace(/^\s*[\d.]+\s*M\s+/i, "").trim();
+  if (!stripped) return displayName;
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}
+
+/**
+ * What the focused apparatus is holding, as engine-owned text.
+ *
+ * Students asked the coach questions like "what is the molarity of the
+ * titrant?" and could not be answered, because the coach is deliberately never
+ * given the numbers. The number belongs to the engine, so the bench shows it —
+ * reading it here is projection, not a second source of truth.
+ *
+ * But a reaction vessel must not give the experiment away. In a titration the
+ * analyte's concentration is the unknown the student is there to determine, so
+ * anything sitting in a vessel the procedure delivers into reports volume
+ * only, with the strength stripped from its name. Source containers — the
+ * burette, the stock bottle — still report concentration, because a standard
+ * the student is told to use is not a spoiler.
+ */
+export function equipmentContentsForFocus(
+  projection: Readonly<SetupDrivenLabProjection>,
+  focused: EquipmentId | null
+): readonly string[] {
+  if (!focused) return [];
+  const instanceIds = instanceIdsForFocus(projection, focused);
+  if (instanceIds.size === 0) return [];
+
+  const vessels = reactionVesselIds(projection);
+  const isReactionVessel = [...instanceIds].some((id) => vessels.has(id));
+
+  const lines: string[] = [];
+  for (const material of projection.materials) {
+    const amount = material.locations
+      .filter(({ equipmentInstanceId }) => instanceIds.has(equipmentInstanceId))
+      .reduce((total, location) => total + location.amount, 0);
+    if (amount <= 0) continue;
+
+    const entry = reagentRegistry.has(material.materialProfileId)
+      ? reagentRegistry.get(material.materialProfileId)
+      : null;
+    const solidPhase = entry?.phase === "solid";
+    const quantity = solidPhase
+      ? `${amount.toFixed(2)} g`
+      : `${amount.toFixed(2)} mL`;
+    const rawName = entry?.displayName ?? material.materialProfileId;
+
+    if (isReactionVessel) {
+      lines.push(`${nameWithoutConcentration(rawName)} — ${quantity}`);
+      continue;
+    }
+
+    /*
+     * Registered names usually already carry the strength, so appending it
+     * again produced "0.100 M hydrochloric acid — 0.100 M · 25.00 mL".
+     */
+    const concentration =
+      typeof entry?.concentrationM === "number" &&
+      !/^\s*[\d.]+\s*M\s+/i.test(rawName)
+        ? `${entry.concentrationM.toFixed(3)} M`
+        : null;
+    lines.push(
+      concentration
+        ? `${rawName} — ${concentration} · ${quantity}`
+        : `${rawName} — ${quantity}`
+    );
+  }
+  return Object.freeze(lines.sort());
+}
+
 export function projectionActionsForEquipmentFocus(
   projection: Readonly<SetupDrivenLabProjection>,
   focused: EquipmentId | null
 ): SetupDrivenLabProjection["actions"] {
   if (!focused) return projection.actions;
   const instanceIds = new Set<string>();
+  const hasBuretteAdapter = projection.equipment.some(
+    ({ visualAdapterDefinitionId }) =>
+      visualAdapterDefinitionId === "visual-adapter.burette.v1"
+  );
   for (const equipment of projection.equipment) {
     const adapter = LAB_VISUAL_ADAPTERS[equipment.visualAdapterDefinitionId];
     if (!adapter) continue;
-    if (adapter.selectableEquipmentIds.includes(focused)) {
+    if (
+      selectableEquipmentIdsForAdapter(adapter, hasBuretteAdapter).includes(
+        focused
+      )
+    ) {
       instanceIds.add(equipment.instanceId);
     }
   }

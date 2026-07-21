@@ -62,11 +62,22 @@ interface LabSceneProps {
   enabledEquipmentIds: readonly EquipmentId[];
   equipmentPoses?: readonly ResolvedEquipmentPose[];
   equipmentFillFractions?: Readonly<Record<string, number>>;
+  /**
+   * Engine-projected liquid colour per visual adapter. Adapters holding
+   * colourless contents are absent, so each vessel keeps its own default.
+   */
+  equipmentLiquidColors?: Readonly<Record<string, string>>;
   calorimeterLidClosed?: boolean;
   /** Engine-owned appearance projected into the beaker contents. */
   beakerContentsColor?: string;
   thermometerPlaced?: boolean;
   weighingBoatOnBalance?: boolean;
+  /** Engine-owned balance reading in grams, already quantised. Null = blank. */
+  balanceReadingG?: number | null;
+  /** Fraction of the boat's capacity currently holding solid, 0-1. */
+  weighingBoatSolidFraction?: number;
+  /** Phase of the registered material in the reagent bottle. */
+  reagentBottleContents?: "liquid" | "solid";
   hideCalorimeterLid?: boolean;
   hideThermometer?: boolean;
   hideWashBottle?: boolean;
@@ -143,10 +154,14 @@ export function LabScene({
   enabledEquipmentIds,
   equipmentPoses = [],
   equipmentFillFractions = {},
+  equipmentLiquidColors = {},
   calorimeterLidClosed = true,
   beakerContentsColor = "clear",
   thermometerPlaced = false,
   weighingBoatOnBalance = false,
+  balanceReadingG = null,
+  weighingBoatSolidFraction = 0,
+  reagentBottleContents = "liquid",
   hideCalorimeterLid = false,
   hideThermometer = false,
   hideWashBottle = false,
@@ -269,6 +284,8 @@ export function LabScene({
     enabledEquipmentIds.includes("reagentBottle") && washPose != null;
   const fillOf = (adapterId: string, fallback = 0.55) =>
     equipmentFillFractions[adapterId] ?? fallback;
+  const liquidColorOf = (adapterId: string) =>
+    equipmentLiquidColors[adapterId];
   const buretteTranslation = burettePose?.translation ?? ([0, 0, 0] as const);
   const flaskTranslation = flaskPose?.translation ?? ([0, 0, 0] as const);
   const shelfTranslation = shelfPose?.translation ?? ([0, 0, 0] as const);
@@ -702,6 +719,9 @@ export function LabScene({
           >
             <VolumetricPipette
               fillFraction={fillOf("visual-adapter.volumetric_pipette.v1")}
+              liquidColor={liquidColorOf(
+                "visual-adapter.volumetric_pipette.v1"
+              )}
               quality={quality}
             />
           </Interactable>
@@ -741,6 +761,9 @@ export function LabScene({
             >
               <VolumetricFlask
                 fillFraction={fillOf("visual-adapter.volumetric_flask.v1")}
+                liquidColor={liquidColorOf(
+                  "visual-adapter.volumetric_flask.v1"
+                )}
                 quality={quality}
               />
             </Interactable>
@@ -820,7 +843,9 @@ export function LabScene({
             onSelect={onSelect}
           >
             <RegisteredReagentBottle
+              contents={reagentBottleContents}
               fillFraction={fillOf("visual-adapter.reagent_bottle.v1", 0.7)}
+              liquidColor={liquidColorOf("visual-adapter.reagent_bottle.v1")}
               quality={quality}
             />
           </Interactable>
@@ -896,7 +921,7 @@ export function LabScene({
             onHover={onHover}
             onSelect={onSelect}
           >
-            <LaboratoryBalance />
+            <LaboratoryBalance readingG={balanceReadingG} />
           </Interactable>
         </group>
       )}
@@ -939,7 +964,7 @@ export function LabScene({
               onHover={onHover}
               onSelect={onSelect}
             >
-              <WeighingBoat />
+              <WeighingBoat solidFraction={weighingBoatSolidFraction} />
             </Interactable>
           </group>
         )}

@@ -12,6 +12,7 @@ import {
 import type { SetupDrivenLabProjection } from "../../../stores/setupDrivenLabSession";
 import { useLabUiStore } from "../../../stores/labUiStore";
 import { CoachPanelView } from "../../coach/CoachPanel";
+import { useCoachAutoOpen } from "../../coach/useCoachAutoOpen";
 import type { CoachMessage, CoachStatus } from "../../../stores/labStore";
 import {
   LOOK_RECENTER_EVENT,
@@ -24,13 +25,15 @@ import { CAMERA_POSES } from "../three/benchLayout";
 import type { GlassQuality } from "../three/glassMaterials";
 import { getLabSounds } from "../three/labSounds";
 import { getFlaskLiquidColor } from "../three/sceneProjection";
+import { LitmusMark } from "../../ui/LitmusMark";
 import type { LabVisualGesture } from "../three/gestures/LabVisualGestures";
 import type { IndicatorId } from "../../../experiments/titration/titration";
 import { EQUIPMENT, type EquipmentId } from "./equipment";
 import {
   projectionActionsForEquipmentFocus,
   resolveLabSceneConfiguration,
-  type LabSceneConfiguration
+  type LabSceneConfiguration,
+  equipmentContentsForFocus
 } from "./labScene";
 import { FocusedEquipmentActionPanel } from "./FocusedEquipmentActionPanel";
 import {
@@ -130,6 +133,8 @@ export function ImmersiveSetupDrivenBench({
   const [autoQuality, setAutoQuality] = useState<GlassQuality>("high");
   const [reducedGraphics, setReducedGraphics] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  // A flagged mistake reaches the student only if the dock is open to show it.
+  useCoachAutoOpen(coachMessages, setCoachOpen);
   const focused = useLabUiStore((store) => store.focused);
   const hovered = useLabUiStore((store) => store.hovered);
   const lookActive = useLabUiStore((store) => store.lookActive);
@@ -250,6 +255,8 @@ export function ImmersiveSetupDrivenBench({
   const burette = configuration.projectedState?.burette;
   const flask = configuration.projectedState?.flask;
   const beaker = configuration.projectedState?.beaker;
+  const balance = configuration.projectedState?.balance;
+  const weighingBoat = configuration.projectedState?.weighingBoat;
   const indicatorSelectionEnabled = Boolean(
     onIndicatorShelfSelect &&
     flask &&
@@ -378,9 +385,7 @@ export function ImmersiveSetupDrivenBench({
         <div className={sceneStyles.sceneHud}>
           <div className={sceneStyles.headingRow}>
             <div className={sceneStyles.identityPlaque}>
-              <span className={sceneStyles.labMark} aria-hidden="true">
-                ⚗
-              </span>
+              <LitmusMark className={sceneStyles.labMark} />
               <div>
                 <p className={sceneStyles.eyebrow}>Chemistry classroom</p>
                 <h2 id="native-scene-heading">Interactive lab bench</h2>
@@ -518,6 +523,7 @@ export function ImmersiveSetupDrivenBench({
               enabledEquipmentIds={enabled}
               equipmentPoses={configuration.equipmentPoses}
               equipmentFillFractions={configuration.equipmentFillFractions}
+              equipmentLiquidColors={configuration.equipmentLiquidColors}
               calorimeterLidClosed={calorimeterLidClosed}
               thermometerPlaced={thermometerPlaced}
               weighingBoatOnBalance={weighingBoatOnBalance}
@@ -533,6 +539,11 @@ export function ImmersiveSetupDrivenBench({
               buretteCapacityML={burette?.capacityML ?? 50}
               flaskLiquidColor={getFlaskLiquidColor(flask?.observableColor)}
               beakerContentsColor={getFlaskLiquidColor(beaker?.observableColor)}
+              balanceReadingG={balance?.readingG ?? null}
+              weighingBoatSolidFraction={weighingBoat?.solidFraction ?? 0}
+              reagentBottleContents={
+                configuration.projectedState?.reagentBottleContents ?? "liquid"
+              }
               selectedIndicator={null}
               indicatorSelectionEnabled={indicatorSelectionEnabled}
               indicatorAddition={null}
@@ -577,6 +588,7 @@ export function ImmersiveSetupDrivenBench({
             onParameterChange={onParameterChange}
             onDispatch={onDispatch}
             onClearFocus={clearFocus}
+            contents={equipmentContentsForFocus(projection, selected)}
             dispense={
               dispatchDispenseCommit
                 ? { controller: dispense, enabled: dispenseEnabled }

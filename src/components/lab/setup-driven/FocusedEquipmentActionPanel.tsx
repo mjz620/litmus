@@ -52,6 +52,8 @@ export interface FocusedEquipmentActionPanelProps {
    * delivery; the typed volume + Apply below remains the precise entry path.
    */
   readonly dispense?: FocusedDispenseControl | null;
+  /** Engine-owned contents of the focused apparatus, already formatted. */
+  readonly contents?: readonly string[];
 }
 
 /**
@@ -69,7 +71,8 @@ export function FocusedEquipmentActionPanel({
   onParameterChange,
   onDispatch,
   onClearFocus,
-  dispense = null
+  dispense = null,
+  contents = []
 }: FocusedEquipmentActionPanelProps) {
   const equipment = EQUIPMENT[focused];
   const isDispensing = dispense?.controller.state.isHolding ?? false;
@@ -115,6 +118,16 @@ export function FocusedEquipmentActionPanel({
       <p className={sceneStyles.washEyebrow}>Selected equipment</p>
       <h3 id="focused-equipment-actions-heading">{equipment.name}</h3>
       <p>{equipment.purpose}</p>
+      {contents.length > 0 && (
+        <div className={styles.focusedContents}>
+          <h4>Contents</h4>
+          <ul>
+            {contents.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {actions.length === 0 ? (
         <p>
           No actions are available for this apparatus in the current attempt.

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-import { addIndicator, openPrecisionControls } from "./labHelpers";
+import {
+  addIndicator,
+  openPrecisionControls,
+  startLab
+} from "./labHelpers";
 
 test("keyboard controls complete preparation, delivery, refill, and reading", async ({
   page
@@ -90,6 +94,7 @@ test("skip navigation and reduced-motion controls remain operable", async ({
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/lab/titration?runtime=setup-v2");
+  await startLab(page);
 
   await page.keyboard.press("Tab");
   const skipLink = page.getByRole("link", { name: "Skip to main content" });

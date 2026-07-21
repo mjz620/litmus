@@ -68,6 +68,7 @@ describe("setup-driven titration scene projection", () => {
       minDispenseVolumeML: 0.01,
       maxDispenseVolumeML: 0.5,
       equipmentFillFractions: expect.any(Object),
+      equipmentLiquidColors: expect.any(Object),
       projectedState: {
         burette: {
           availableML: 28,
@@ -80,7 +81,11 @@ describe("setup-driven titration scene projection", () => {
           indicatorAdded: true
         },
         // The titration bench seats no beaker.
-        beaker: null
+        beaker: null,
+        // Nor a balance or weighing boat; its stock bottle holds a liquid.
+        balance: null,
+        weighingBoat: null,
+        reagentBottleContents: "liquid"
       }
     });
     expect(visibleControlGroupsForConfiguration(configuration, null)).toEqual([
@@ -247,6 +252,10 @@ describe("setup-driven titration scene projection", () => {
       projection,
       "volumetricFlask"
     );
+    const reagentBottleActions = projectionActionsForEquipmentFocus(
+      projection,
+      "reagentBottle"
+    );
 
     expect(pipetteActions.length).toBeGreaterThan(0);
     expect(
@@ -263,6 +272,17 @@ describe("setup-driven titration scene projection", () => {
           action.targetEquipmentInstanceIds.includes("preparation_flask")
       )
     ).toBe(true);
+    expect(reagentBottleActions.length).toBeGreaterThan(0);
+    expect(
+      reagentBottleActions.every(
+        (action) =>
+          action.sourceEquipmentInstanceId === "stock_bottle" ||
+          action.targetEquipmentInstanceIds.includes("stock_bottle")
+      )
+    ).toBe(true);
+    expect(
+      projectionActionsForEquipmentFocus(projection, "washStation")
+    ).toEqual([]);
     expect(projectionActionsForEquipmentFocus(projection, null)).toEqual(
       projection.actions
     );

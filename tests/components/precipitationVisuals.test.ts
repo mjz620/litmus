@@ -4,6 +4,7 @@ import { getFlaskLiquidColor } from "../../src/components/lab/three/sceneProject
 import { LAB_PALETTE } from "../../src/components/lab/three/labPalette";
 import { resolveLabSceneConfiguration } from "../../src/components/lab/setup-driven/labScene";
 import { validatePrecipitationV2 } from "../../src/lab-workflows/definitions/precipitation";
+import { validateDissolutionCalorimetryV2 } from "../../src/lab-workflows/definitions/calorimetry";
 import { GENERIC_LAB_RUNTIME_SCHEMA_VERSION } from "../../src/lab-workflows/runtime";
 import { createSetupDrivenNativeSession } from "../../src/stores/setupDrivenLabSession";
 
@@ -93,5 +94,51 @@ describe("liquid colour vocabulary covers every engine label", () => {
       expect(getFlaskLiquidColor(label)).not.toBe(LAB_PALETTE.colorlessLiquid);
     }
     expect(getFlaskLiquidColor("clear")).toBe(LAB_PALETTE.colorlessLiquid);
+  });
+});
+
+/*
+ * Solids carry no volume, so the fill computation — which only knew about
+ * capacityML/availableML/totalVolumeML — returned 0 for a stock jar of
+ * ammonium nitrate. No contents mesh was rendered at all, so the jar read as
+ * empty glass and colouring it as a solid changed nothing on screen.
+ */
+describe("solid stock is visible in its jar", () => {
+  function dissolutionScene() {
+    const workflow = validateDissolutionCalorimetryV2(CHECKED_AT);
+    const session = createSetupDrivenNativeSession({
+      sessionId: "solid-stock-visual-test",
+      sessionSeed: "solid-stock-visual-seed",
+      selection: {
+        workflowId: workflow.id,
+        workflowHash: workflow.validation.canonicalSpecHash
+      },
+      workflow
+    });
+    return resolveLabSceneConfiguration(session.getProjection());
+  }
+
+  it("gives the solid stock jar a visible fill fraction", () => {
+    const fill =
+      dissolutionScene().equipmentFillFractions[
+        "visual-adapter.reagent_bottle.v1"
+      ];
+    expect(fill).toBeGreaterThan(0);
+    expect(fill).toBeLessThanOrEqual(1);
+  });
+
+  it("reports the jar contents as solid, not liquid", () => {
+    expect(dissolutionScene().projectedState?.reagentBottleContents).toBe(
+      "solid"
+    );
+  });
+
+  it("keeps a liquid bench reporting liquid contents", () => {
+    // Precipitation's reagent bottles hold solutions and must not render as
+    // a solid bed just because the solid path now exists.
+    const configuration = resolveLabSceneConfiguration(
+      startSession().getProjection()
+    );
+    expect(configuration.projectedState?.reagentBottleContents).toBe("liquid");
   });
 });

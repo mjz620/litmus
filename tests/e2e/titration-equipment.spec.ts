@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 import {
   addIndicator,
   openLabCoach,
-  openLabNotebook,
   openPrecisionControls,
-  prepareBuretteWithTitrant
+  prepareBuretteWithTitrant,
+  startLab
 } from "./labHelpers";
 
 test("equipment selection shows contextual controls and completes the titration", async ({
@@ -20,6 +20,7 @@ test("equipment selection shows contextual controls and completes the titration"
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
   await page.goto("/lab/titration?runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -32,7 +33,6 @@ test("equipment selection shows contextual controls and completes the titration"
     page.getByRole("complementary", { name: "Lab controls" })
   ).toHaveCount(0);
   await openPrecisionControls(page);
-  await openLabNotebook(page);
 
   const scene = page.getByRole("region", { name: "Interactive lab bench" });
   const camera = page.getByRole("application", {
@@ -110,12 +110,6 @@ test("equipment selection shows contextual controls and completes the titration"
   await page.getByRole("button", { name: "Use displayed reading" }).click();
   await page.getByRole("button", { name: "Record meniscus reading" }).click();
 
-  const notebook = page.getByRole("complementary", { name: "Session notes" });
-  await expect(
-    notebook
-      .getByRole("region", { name: "Recorded burette readings" })
-      .getByText("0.10 mL")
-  ).toBeVisible();
 
   // Recenter always exits a focused subview and restores the full bench.
   await page.getByRole("button", { name: "Close precision controls" }).click();
@@ -133,6 +127,7 @@ test("reduced graphics toggle keeps the scene and controls usable", async ({
   page
 }) => {
   await page.goto("/lab/titration?runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -159,6 +154,7 @@ test("compact screens keep immersive utilities reachable without overflow", asyn
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/lab/titration?seed=compact-immersive&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

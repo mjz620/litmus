@@ -1,3 +1,4 @@
+import { startLab } from "./labHelpers";
 import { expect, test } from "@playwright/test";
 
 test("typography tokens cover student, coach, controls, and teacher surfaces", async ({
@@ -19,21 +20,12 @@ test("typography tokens cover student, coach, controls, and teacher surfaces", a
   });
 
   await page.goto("/lab/titration?seed=typography-review&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
   await page.screenshot({
     path: "/tmp/typography-in-lab-hud.png",
-    fullPage: true
-  });
-
-  const notebook = page.locator("summary").filter({ hasText: "Lab notebook" });
-  await notebook.click();
-  await expect(
-    page.getByRole("complementary", { name: "Session notes" })
-  ).toBeVisible();
-  await page.screenshot({
-    path: "/tmp/typography-procedure-panel.png",
     fullPage: true
   });
 

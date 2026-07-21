@@ -1,5 +1,21 @@
 import { expect, type Page } from "@playwright/test";
 
+/**
+ * Clear the pre-lab briefing.
+ *
+ * Every student-facing lab now opens on an overview of the objective,
+ * procedure, and bench before the 3D workspace mounts. Specs that navigate
+ * straight to a lab must pass through it to reach the bench. Teacher preview
+ * skips the briefing, so calling this there is a no-op.
+ */
+export async function startLab(page: Page) {
+  const start = page.getByRole("button", { name: "Start the lab" });
+  if (await start.isVisible().catch(() => false)) {
+    await start.click();
+  }
+  await expect(start).toBeHidden();
+}
+
 export async function openPrecisionControls(page: Page) {
   const toggle = page.getByRole("button", {
     name: "Precision controls",
@@ -12,22 +28,6 @@ export async function openPrecisionControls(page: Page) {
   await expect(
     page.getByRole("complementary", { name: "Lab controls" })
   ).toBeVisible();
-}
-
-export async function openLabNotebook(page: Page) {
-  const summary = page.locator("summary").filter({ hasText: "Lab notebook" });
-  await expect(summary).toBeVisible({ timeout: 30_000 });
-  await summary.click();
-  await expect(
-    page.getByRole("complementary", { name: "Session notes" })
-  ).toBeVisible();
-}
-
-export async function openPHGraph(page: Page) {
-  const summary = page.locator("summary").filter({ hasText: "Live pH graph" });
-  await expect(summary).toBeVisible({ timeout: 30_000 });
-  await summary.click();
-  await expect(page.getByRole("heading", { name: "pH curve" })).toBeVisible();
 }
 
 export async function openLabCoach(page: Page) {

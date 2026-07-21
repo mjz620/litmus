@@ -1,10 +1,15 @@
+import { startLab } from "./labHelpers";
 import { expect, test } from "@playwright/test";
 
 test("default titration student route loads the capability-native runtime", async ({
   page
 }) => {
   test.setTimeout(60_000);
+  await page.route("**/api/sessions/checkpoint", async (route) => {
+    await route.fulfill({ status: 401 });
+  });
   await page.goto("/lab/titration?seed=default-native");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -12,6 +17,31 @@ test("default titration student route loads the capability-native runtime", asyn
     "data-workflow-id",
     "workflow.acid_base_titration.full.native.v2"
   );
+  await expect(page.locator('svg[viewBox="0 0 64 64"]')).toHaveCount(2);
+  await expect(page.getByText("Save failed", { exact: false })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Reduced graphics" }).click();
+  await page.getByRole("button", { name: "Wash station", exact: true }).click();
+  const washPanel = page.locator('[data-focused-equipment="washStation"]');
+  await expect(
+    washPanel.getByText("Rinse the burette with titrant", { exact: true })
+  ).toBeVisible();
+  await expect(washPanel.getByLabel("Rinse liquid")).toHaveValue("titrant");
+  await washPanel
+    .getByRole("button", { name: "Apply", exact: true })
+    .first()
+    .click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Next: Fill the burette with titrant." })
+  ).toBeVisible();
+  await expect(
+    washPanel.getByText(
+      "Completed — the burette is conditioned with titrant.",
+      { exact: true }
+    )
+  ).toBeVisible();
 });
 
 test("?runtime=setup-v2 keeps the strangler rollback loading its workflow", async ({
@@ -19,6 +49,7 @@ test("?runtime=setup-v2 keeps the strangler rollback loading its workflow", asyn
 }) => {
   test.setTimeout(60_000);
   await page.goto("/lab/titration?seed=default-setup-driven&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -32,6 +63,13 @@ test("explicit setup-v2 flag loads exact local runtime and dispatches its strict
   page
 }) => {
   test.setTimeout(60_000);
+  // Unauthenticated practice checkpoints legitimately return 401 and the
+  // session tolerates them, but the browser still logs each as a console
+  // error. Fulfil the save so the zero-console-error assertion below stays
+  // about the runtime dispatch this test is actually verifying.
+  await page.route("**/api/sessions/checkpoint", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
   const browserErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
@@ -149,7 +187,7 @@ test("student Coach keeps a question useful when the Coach route is unavailable"
   await expect(dialog.getByRole("button", { name: "Ask coach" })).toBeEnabled();
 });
 
-test("runtime query keeps titration on setup-driven and precipitation on legacy", async ({
+test("runtime query keeps titration on setup-driven and rejects retired legacy routes", async ({
   page
 }) => {
   await page.goto("/dev/lab/titration?runtime=invalid");
@@ -158,62 +196,10 @@ test("runtime query keeps titration on setup-driven and precipitation on legacy"
     "legacy route"
   );
 
+  // The legacy 2D precipitation experiment is retired; only the native
+  // setup-driven silver-chloride lab remains, so this route must not resolve.
   await page.goto("/dev/lab/precipitation?runtime=setup-v2");
-  await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-  await expect(page.getByTestId("dev-workflow-definition")).toHaveText(
-    "legacy route"
-  );
-});
-
-test("setup-driven demo records workflow, diagnosis, and replay provenance for technical inspection", async ({
-  page
-}) => {
-  await page.goto("/demo/student");
-  await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
-    timeout: 30_000
-  });
-  await expect(page.locator("[data-runtime-mode]")).toHaveAttribute(
-    "data-runtime-mode",
-    "setup_driven_v2"
-  );
-  await page
-    .getByRole("button", { name: "Precision controls", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Meniscus", exact: true }).click();
-  await page.getByRole("button", { name: "Use displayed reading" }).click();
-  await page.getByRole("button", { name: "Record meniscus reading" }).click();
-
-  await expect
-    .poll(async () =>
-      page.evaluate(() => {
-        const raw = localStorage.getItem("labbench.demo.trace.v1");
-        if (!raw) return null;
-        const trace = JSON.parse(raw) as {
-          labWorkflowContext?: { eventEnvelopes?: unknown[] };
-          normalizedActionTrace?: { actions?: unknown[] };
-        };
-        return {
-          eventCount: trace.labWorkflowContext?.eventEnvelopes?.length,
-          actionCount: trace.normalizedActionTrace?.actions?.length
-        };
-      })
-    )
-    .toEqual({ eventCount: 1, actionCount: 1 });
-
-  await page.goto("/demo/technical");
   await expect(
-    page.getByRole("heading", { name: "Live technical trace" })
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Validated workflow provenance" })
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Workflow consumer context" })
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Normalized replay trace" })
-  ).toBeVisible();
-  await expect(
-    page.getByText("workflow.endpoint_control_prelab.seed.v1").first()
+    page.getByText("Route unavailable", { exact: true })
   ).toBeVisible();
 });

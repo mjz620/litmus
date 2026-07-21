@@ -16,22 +16,28 @@ import {
 
 const FOCUS_DURATION_S = 0.65;
 const KEYBOARD_STEP_RAD = (5 * Math.PI) / 180;
-const LOOK_DISTANCE = Math.hypot(
-  BENCH_VIEW.target[0] - BENCH_VIEW.position[0],
-  BENCH_VIEW.target[1] - BENCH_VIEW.position[1],
-  BENCH_VIEW.target[2] - BENCH_VIEW.position[2]
-);
-const NEUTRAL_YAW = Math.atan2(
-  BENCH_VIEW.target[0] - BENCH_VIEW.position[0],
-  BENCH_VIEW.position[2] - BENCH_VIEW.target[2]
-);
-const NEUTRAL_PITCH = Math.atan2(
-  BENCH_VIEW.target[1] - BENCH_VIEW.position[1],
-  Math.hypot(
-    BENCH_VIEW.target[0] - BENCH_VIEW.position[0],
-    BENCH_VIEW.target[2] - BENCH_VIEW.position[2]
-  )
-);
+/**
+ * Neutral look angles for a given overview pose.
+ *
+ * These were once constants derived from the fixed BENCH_VIEW, but the
+ * overview is now framed from what the bench actually holds
+ * (`overviewPoseForBenchContents`). That left two disagreeing sources of
+ * truth: returning from a focused piece of equipment tweened the camera to the
+ * derived pose, and then the very next frame's `applyBenchLook` re-seated it at
+ * the BENCH_VIEW constant — the camera visibly snapped to a different angle the
+ * instant the return finished. Deriving the neutral frame from the live pose
+ * keeps the tween's destination and the look system's origin identical.
+ */
+function neutralLookFrame(pose: CameraPose) {
+  const dx = pose.target[0] - pose.position[0];
+  const dy = pose.target[1] - pose.position[1];
+  const dz = pose.target[2] - pose.position[2];
+  return {
+    distance: Math.hypot(dx, dy, dz),
+    yaw: Math.atan2(dx, -dz),
+    pitch: Math.atan2(dy, Math.hypot(dx, dz))
+  };
+}
 const ZERO_INPUT: LookInput = { yaw: 0, pitch: 0 };
 const EDGE_PAN_CONFIG = {
   deadZoneRadius: 0.25,
@@ -84,16 +90,21 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function applyBenchLook(camera: Camera, state: LookState) {
+function applyBenchLook(
+  camera: Camera,
+  state: LookState,
+  overview: CameraPose
+) {
+  const neutral = neutralLookFrame(overview);
   const target = lookToTarget(
-    BENCH_VIEW.position,
-    NEUTRAL_YAW + state.yaw,
-    NEUTRAL_PITCH + state.pitch,
-    LOOK_DISTANCE
+    overview.position,
+    neutral.yaw + state.yaw,
+    neutral.pitch + state.pitch,
+    neutral.distance
   );
 
   BENCH_LOOK_TARGET.set(...target);
-  camera.position.set(...BENCH_VIEW.position);
+  camera.position.set(...overview.position);
   camera.up.set(0, 1, 0);
   camera.lookAt(BENCH_LOOK_TARGET);
 }
@@ -136,6 +147,8 @@ export function BenchCameraControls({
   const tweenRef = useRef<ActiveTween | null>(null);
   const pointerNdcRef = useRef({ x: 0, y: 0 });
   const lookStateRef = useRef<LookState>(createInitialLookState());
+  /* The overview the look system orbits around; the tween lands on this too. */
+  const overviewPoseRef = useRef<CameraPose>(BENCH_VIEW);
   const isFirstPose = useRef(true);
   const reducedMotionRef = useRef(false);
 
@@ -188,7 +201,7 @@ export function BenchCameraControls({
         yawVelocity: 0,
         pitchVelocity: 0
       };
-      applyBenchLook(camera, lookStateRef.current);
+      applyBenchLook(camera, lookStateRef.current, overviewPoseRef.current);
       invalidate();
     };
     const handleRecenter = () => {
@@ -196,7 +209,7 @@ export function BenchCameraControls({
 
       pointerNdcRef.current = { x: 0, y: 0 };
       lookStateRef.current = createInitialLookState();
-      applyBenchLook(camera, lookStateRef.current);
+      applyBenchLook(camera, lookStateRef.current, overviewPoseRef.current);
       invalidate();
     };
 
@@ -223,6 +236,7 @@ export function BenchCameraControls({
   const stablePose = useMemo(() => pose, [poseKey]);
 
   useEffect(() => {
+    if (isOverview) overviewPoseRef.current = stablePose;
     const toPosition = new Vector3(...stablePose.position);
     const toTarget = new Vector3(...stablePose.target);
     pointerNdcRef.current = { x: 0, y: 0 };
@@ -247,7 +261,7 @@ export function BenchCameraControls({
       elapsedS: 0
     };
     invalidate();
-  }, [camera, invalidate, stablePose]);
+  }, [camera, invalidate, isOverview, stablePose]);
 
   useFrame((_, deltaS) => {
     recordOptionalPerformanceFrame();
@@ -290,7 +304,7 @@ export function BenchCameraControls({
         );
 
     lookStateRef.current = nextState;
-    applyBenchLook(camera, nextState);
+    applyBenchLook(camera, nextState, overviewPoseRef.current);
 
     if (!isSettled(nextState, input)) invalidate();
   });

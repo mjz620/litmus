@@ -8,11 +8,17 @@ import { expect, test } from "@playwright/test";
  * through to "continue titrating" while the valve refused, and the burette
  * hint blamed unfinished earlier steps — so a finished lab looked broken.
  */
-test("the demo bench reports completion and points at the report", async ({
+test("the endpoint drill reports completion and points at the report", async ({
   page
 }) => {
   test.setTimeout(180_000);
-  await page.goto("/demo/student");
+  /*
+   * This guarantee belongs to the endpoint drill on the setup-driven runtime.
+   * It used to be reached through /demo/student, which pinned that runtime;
+   * the judge demo now runs the capability-native bench students actually use,
+   * so the drill is exercised at its own route instead.
+   */
+  await page.goto("/lab/titration?runtime=setup-v2&drill");
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -23,7 +29,9 @@ test("the demo bench reports completion and points at the report", async ({
   await page.waitForTimeout(800);
 
   for (let step = 0; step < 30; step += 1) {
-    const add = page.getByRole("button", { name: /Add titrant|Dispense/ }).first();
+    const add = page
+      .getByRole("button", { name: /Add titrant|Dispense/ })
+      .first();
     if ((await add.count()) === 0) break;
     await add.click();
     await page.waitForTimeout(200);

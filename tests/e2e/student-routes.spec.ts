@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { openLabNotebook } from "./labHelpers";
 
-test("guest can open the experiment catalog and student lab notebook", async ({
+test("guest can open the experiment catalog and enter a lab", async ({
   page
 }) => {
   const browserErrors: string[] = [];
@@ -26,14 +25,7 @@ test("guest can open the experiment catalog and student lab notebook", async ({
     .getByRole("link", { name: "Start practice" })
     .click();
   await expect(page).toHaveURL(/\/lab\/titration$/);
-  await openLabNotebook(page);
 
-  const notebook = page.getByRole("complementary", { name: "Session notes" });
-  await expect(
-    notebook.getByRole("heading", { level: 2, name: "Session notes" })
-  ).toBeVisible();
-  await expect(notebook.getByText("concentration unknown")).toBeVisible();
-  await expect(notebook.getByText("Prepare the burette")).toBeVisible();
   await expect(
     page.getByText(/Practice mode — ready|Progress saved/)
   ).toBeVisible();

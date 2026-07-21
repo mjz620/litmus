@@ -1,3 +1,4 @@
+import { startLab } from "./labHelpers";
 import { expect, test } from "@playwright/test";
 
 test("procedural sound mute is accessible and persists for the session", async ({
@@ -10,6 +11,7 @@ test("procedural sound mute is accessible and persists for the session", async (
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
   await page.goto("/lab/titration?runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

@@ -1,3 +1,4 @@
+import { startLab } from "./labHelpers";
 import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
 
@@ -60,6 +61,7 @@ test("a focused item does not keep its highlight shell drawn", async ({
 }) => {
   test.setTimeout(120_000);
   await page.goto("/lab/calorimetry");
+  await startLab(page);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(2_000);
 

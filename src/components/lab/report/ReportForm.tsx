@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 
+import { currentApiPath } from "../../../lib/demo/demoEnvironment";
 import type {
   ReportText,
   RubricResponse
@@ -62,7 +63,7 @@ export function ReportForm() {
     });
     const current = useLabStore.getState();
     try {
-      const response = await fetch("/api/evaluate", {
+      const response = await fetch(currentApiPath("/api/evaluate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

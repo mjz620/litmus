@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { LitmusMark } from "../ui/LitmusMark";
+import { DEMO_LABS_PATH, labsIndexHref } from "../../lib/demo/demoEnvironment";
 import { isTitrationState, useLabStore } from "../../stores/labStore";
 import { getExperimentPath } from "../../components/ui/experimentRoutes";
 import {
@@ -26,6 +28,7 @@ export function LabSessionBar({ title }: LabSessionBarProps) {
   const saveError = useLabStore((store) => store.saveError);
   const retryCheckpoint = useLabStore((store) => store.retryCheckpoint);
   const experimentId = useLabStore((store) => store.experimentId);
+  const backHref = labsIndexHref(usePathname());
 
   const stageLabel = state
     ? getProcedureStageLabel(getProcedureStage(state, eventQueue))
@@ -36,8 +39,8 @@ export function LabSessionBar({ title }: LabSessionBarProps) {
       <div className={styles.identity}>
         <LitmusMark className={styles.mark} />
         <div>
-          <Link className={styles.backLink} href="/experiments">
-            ← Experiments
+          <Link className={styles.backLink} href={backHref}>
+            {backHref === DEMO_LABS_PATH ? "← Demo labs" : "← Experiments"}
           </Link>
           <div className={styles.titleRow}>
             <h1>{title}</h1>

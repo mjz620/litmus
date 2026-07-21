@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { openLabCoach, openPrecisionControls } from "./labHelpers";
+import {
+  openLabCoach,
+  openPrecisionControls,
+  startLab
+} from "./labHelpers";
 
 const eventually = expect.configure({ timeout: 20_000 });
 
@@ -150,6 +154,7 @@ test("hold-to-ask makes a transcript editable and sends it through the coach rou
     });
   });
   await page.goto("/lab/titration?seed=voice-transcript-e2e&runtime=setup-v2");
+  await startLab(page);
   await openLabCoach(page);
 
   const holdButton = page.getByRole("button", { name: "Hold to Ask" });
@@ -199,6 +204,7 @@ test("microphone denial leaves the canonical text fallback operable", async ({
     });
   });
   await page.goto("/lab/titration?seed=voice-denial-e2e&runtime=setup-v2");
+  await startLab(page);
   await openLabCoach(page);
 
   const holdButton = page.getByRole("button", { name: "Hold to Ask" });

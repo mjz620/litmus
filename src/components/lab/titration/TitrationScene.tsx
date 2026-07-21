@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { CoachPanel } from "../../coach/CoachPanel";
+import { useCoachAutoOpen } from "../../coach/useCoachAutoOpen";
 import type { SemanticEvent } from "../../../experiments/shared";
 import { formatBuretteVolume } from "../../../experiments/titration/display";
 import type { TitrationState } from "../../../experiments/titration/titration";
@@ -42,6 +43,7 @@ import {
 import { DISPENSE_RESIDUE_ML, useDispenseGesture } from "./useDispenseGesture";
 import { useTitrationIntents } from "./useTitrationIntents";
 import type { LabSceneConfiguration } from "./setupDrivenScene";
+import { LitmusMark } from "../../ui/LitmusMark";
 
 import styles from "./TitrationScene.module.css";
 
@@ -135,7 +137,6 @@ export function TitrationScene({
   const [autoQuality, setAutoQuality] = useState<GlassQuality>("high");
   const [reducedGraphics, setReducedGraphics] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
-  const latestCoachMessageRef = useRef<string | null>(null);
   const [pendingIndicator, setPendingIndicator] = useState<
     TitrationState["config"]["indicator"] | null
   >(null);
@@ -154,6 +155,8 @@ export function TitrationScene({
   );
   const eventQueue = useLabStore((store) => store.eventQueue);
   const coachMessages = useLabStore((store) => store.coachMessages);
+  // A flagged mistake reaches the student only if the dock is open to show it.
+  useCoachAutoOpen(coachMessages, setCoachOpen);
   const sessionId = useLabStore((store) => store.sessionId);
   const focused = useLabUiStore((store) => store.focused);
   const hovered = useLabUiStore((store) => store.hovered);
@@ -213,17 +216,6 @@ export function TitrationScene({
   useEffect(() => {
     if (focused) setLookActive(false);
   }, [focused, setLookActive]);
-
-  useEffect(() => {
-    const latestCoachMessage = coachMessages.findLast(
-      (message) => message.role === "coach"
-    );
-    if (!latestCoachMessage) return;
-    if (latestCoachMessageRef.current === latestCoachMessage.id) return;
-
-    latestCoachMessageRef.current = latestCoachMessage.id;
-    setCoachOpen(true);
-  }, [coachMessages]);
 
   useEffect(() => {
     if (!indicatorActivity) return;
@@ -335,12 +327,32 @@ export function TitrationScene({
   const workflowActionsExhausted =
     configuration.mode === "setup_driven_v2" &&
     configuration.availableControlGroups.length === 0;
+  /*
+   * The reading permission stays available for the whole attempt (re-reading
+   * the meniscus is legitimate technique), and the same reading is reachable
+   * from the meniscus focus and the precision controls. So availability alone
+   * cannot drive this prompt — it froze on "record the reading" for the rest
+   * of the lab once the burette was filled. The recorded events say whether
+   * the reading the workflow asked for has actually happened yet.
+   */
+  const lastReadingEventIndex = eventQueue.findLastIndex(
+    ({ type }) => type === "read_meniscus"
+  );
+  const lastAdditionEventIndex = eventQueue.findLastIndex(
+    ({ type }) => type === "add_titrant"
+  );
+  const readingAwaitingDelivery =
+    lastReadingEventIndex !== -1 &&
+    lastReadingEventIndex > lastAdditionEventIndex;
   const contextualPrompt = workflowActionsExhausted
     ? "Endpoint reached — no more titrant is needed. Open the report from the session bar to submit your result."
     : configuration.mode === "setup_driven_v2" &&
-        configuration.availableControlGroups.includes("reading")
+        configuration.availableControlGroups.includes("reading") &&
+        lastReadingEventIndex === -1
       ? "Next: focus the meniscus and record the displayed burette reading before dispensing."
-      : configuration.mode === "setup_driven_v2" && deliveryAvailable
+      : configuration.mode === "setup_driven_v2" &&
+          deliveryAvailable &&
+          readingAwaitingDelivery
         ? "Reading recorded. Focus the burette and add titrant within the workflow limit."
         : getContextualPrompt(
             procedureStage,
@@ -477,9 +489,7 @@ export function TitrationScene({
         <div className={styles.sceneHud}>
           <div className={styles.headingRow}>
             <div className={styles.identityPlaque}>
-              <span className={styles.labMark} aria-hidden="true">
-                ⚗
-              </span>
+              <LitmusMark className={styles.labMark} />
               <div>
                 <p className={styles.eyebrow}>Chemistry classroom</p>
                 <h2 id="three-scene-heading">Interactive lab bench</h2>

@@ -23,7 +23,13 @@
    */
   --simulation-canvas-height: clamp(20rem, calc(100svh - var(--lab-chrome-allowance, 11rem)), 60rem);
 
-  min-height: 100vh;
+  /*
+   * Routes that mount the bench under their own chrome (the judge demo's role
+   * bar) shrink the height the bench claims as well as its canvas allowance.
+   * Without this the page still demanded a full viewport, so the extra bar
+   * pushed the lab into a scroll and its own sticky header slid underneath.
+   */
+  min-height: var(--lab-viewport-height, 100vh);
   overflow: hidden;
   padding: clamp(0.55rem, 1.25vw, 1.2rem);
   background: var(--lab-page);
@@ -358,6 +364,39 @@
   font-size: var(--text-sm);
 }
 
+/*
+ * Engine-owned contents of the focused apparatus. Uses the documented type
+ * ramp and muted ink so it reads as instrument state, not as an action.
+ */
+.focusedContents {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.35rem 0 0.6rem;
+}
+
+.focusedContents h4 {
+  color: var(--lab-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.focusedContents ul {
+  display: grid;
+  gap: 0.2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.focusedContents li {
+  color: var(--lab-ink);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
 .focusedActionList {
   display: grid;
   gap: 0.55rem;
@@ -550,4 +589,14 @@
   .accessoryTray {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* In-place lab report view; keeps the live session rather than navigating. */
+.reportView {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  margin: 0 auto;
+  max-width: 52rem;
+  padding: 1.5rem 1.25rem 2.5rem;
 }

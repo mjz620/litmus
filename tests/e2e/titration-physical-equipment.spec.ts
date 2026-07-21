@@ -1,6 +1,9 @@
 import { expect, type Locator, test } from "@playwright/test";
 
-import { openPrecisionControls } from "./labHelpers";
+import {
+  openPrecisionControls,
+  startLab
+} from "./labHelpers";
 
 async function clickProjectedHotspot(hotspot: Locator) {
   await expect(hotspot).toBeVisible();
@@ -20,6 +23,7 @@ test("physical shelf and wash-station gestures complete a titration", async ({
 
   // This deterministic session has a 20.00 mL equivalence point.
   await page.goto("/lab/titration?seed=t0112-physical-3&runtime=setup-v2");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

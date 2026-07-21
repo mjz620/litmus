@@ -1,3 +1,4 @@
+import { startLab } from "./labHelpers";
 import { expect, test } from "@playwright/test";
 
 /**
@@ -12,6 +13,7 @@ import { expect, test } from "@playwright/test";
 test("titration opens on a ground-state bench", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/lab/titration");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });
@@ -33,6 +35,7 @@ test("the endpoint drill is still reachable, and still starts mid-procedure", as
   // ?runtime=endpoint-drill now selects the capability-native drill, seeded
   // at 22 mL by its registered initialization preset.
   await page.goto("/lab/titration?runtime=endpoint-drill");
+  await startLab(page);
   await expect(page.getByText("3D bench ready", { exact: true })).toBeVisible({
     timeout: 30_000
   });

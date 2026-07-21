@@ -18,7 +18,9 @@
   --lab-card-shadow: var(--shadow-card);
   --lab-floating-shadow: var(--shadow-floating);
 
-  min-height: 100vh;
+  /* Routes mounting this under their own chrome shrink it; see
+     SetupDrivenWorkspace.module.css for the same hook. */
+  min-height: var(--lab-viewport-height, 100vh);
   overflow: hidden;
   padding: clamp(0.55rem, 1.25vw, 1.2rem);
   background: var(--lab-page);
