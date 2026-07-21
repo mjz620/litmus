@@ -152,6 +152,12 @@ export interface LabAssignmentRepository {
     versionId: string
   ): Promise<Readonly<PersistedLabDefinitionVersion> | null>;
   assertClassTeacher(classId: string, teacherId: string): Promise<void>;
+  /**
+   * Authorize reading a class's assignments: the owning teacher or an enrolled
+   * student. Reads run through a service-role client that bypasses RLS, so
+   * without this any authenticated user could enumerate any class by id.
+   */
+  assertClassAccess(classId: string, userId: string): Promise<void>;
   findByIdempotency(
     classId: string,
     teacherId: string,
@@ -193,6 +199,8 @@ export class InMemoryLabAssignmentRepository implements LabAssignmentRepository 
     return version ? cloneFreeze(version) : null;
   }
 
+  readonly classMembers = new Map<string, Set<string>>();
+
   async assertClassTeacher(classId: string, teacherId: string): Promise<void> {
     if (this.classTeachers.get(classId) !== teacherId) {
       assignmentError(
@@ -200,6 +208,15 @@ export class InMemoryLabAssignmentRepository implements LabAssignmentRepository 
         "Only the class teacher can create assignments."
       );
     }
+  }
+
+  async assertClassAccess(classId: string, userId: string): Promise<void> {
+    if (this.classTeachers.get(classId) === userId) return;
+    if (this.classMembers.get(classId)?.has(userId)) return;
+    assignmentError(
+      LAB_ASSIGNMENT_ERROR_CODES.unauthorized,
+      "You do not have access to this class."
+    );
   }
 
   async findByIdempotency(
@@ -300,6 +317,36 @@ export class SupabaseLabAssignmentRepository implements LabAssignmentRepository 
       assignmentError(
         LAB_ASSIGNMENT_ERROR_CODES.unauthorized,
         "Only the class teacher can create assignments."
+      );
+    }
+  }
+
+  async assertClassAccess(classId: string, userId: string): Promise<void> {
+    const [{ data: owned, error: classError }, { data: enrolled, error: memberError }] =
+      await Promise.all([
+        this.client
+          .from("classes")
+          .select("id")
+          .eq("id", classId)
+          .eq("teacher_id", userId)
+          .maybeSingle(),
+        this.client
+          .from("class_members")
+          .select("class_id")
+          .eq("class_id", classId)
+          .eq("student_id", userId)
+          .maybeSingle()
+      ]);
+    if (classError || memberError) {
+      assignmentError(
+        LAB_ASSIGNMENT_ERROR_CODES.unavailable,
+        "Class authorization is unavailable."
+      );
+    }
+    if (!owned && !enrolled) {
+      assignmentError(
+        LAB_ASSIGNMENT_ERROR_CODES.unauthorized,
+        "You do not have access to this class."
       );
     }
   }
@@ -476,8 +523,21 @@ export class LabAssignmentService {
     });
   }
 
-  listForClass(classId: string): Promise<readonly PersistedLabAssignment[]> {
-    return this.repository.listForClass(uuidSchema.parse(classId));
+  /**
+   * List a class's assignments for one requester. The caller must be the
+   * owning teacher or an enrolled student; membership is checked before any
+   * assignment row is read.
+   */
+  async listForClass(
+    classId: string,
+    requesterId: string
+  ): Promise<readonly PersistedLabAssignment[]> {
+    const parsedClassId = uuidSchema.parse(classId);
+    await this.repository.assertClassAccess(
+      parsedClassId,
+      uuidSchema.parse(requesterId)
+    );
+    return this.repository.listForClass(parsedClassId);
   }
 
   getAssignment(

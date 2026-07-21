@@ -41,8 +41,19 @@ const eventSchema = z.object({
 export async function loadClassAnalyticsInput(
   classId: string
 ): Promise<ClassAnalyticsInput> {
-  if (classId === DEMO_CLASS_ID || !hasPublicSupabaseEnvironment()) {
-    return demoAnalyticsFixture;
+  // The demo class is explicitly fixture-backed and labelled as such in the UI.
+  if (classId === DEMO_CLASS_ID) return demoAnalyticsFixture;
+
+  /*
+   * A real class must never fall back to the demo fixture. This function feeds
+   * the authenticated teacher dashboards, so a misconfigured deploy would have
+   * rendered invented mastery scores as though they were a student's recorded
+   * work — the one thing "evidence over assertion" forbids. Fail instead.
+   */
+  if (!hasPublicSupabaseEnvironment()) {
+    throw new Error(
+      `Class analytics are unavailable for ${classId}: Supabase environment is missing.`
+    );
   }
 
   const client = await createServerSupabaseClient();

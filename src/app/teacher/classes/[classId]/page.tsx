@@ -38,11 +38,18 @@ export default async function ClassDashboardPage({
         ? student.completedSessions > 0
         : true
   );
-  const assignments = hasPublicSupabaseEnvironment()
-    ? await createLabAssignmentService()
-        .listForClass(classId)
-        .catch(() => [])
-    : [];
+  /*
+   * Assignments are listed for the signed-in teacher, who must own the class.
+   * A failure here means unavailable or unauthorized, not "none assigned", so
+   * it is no longer swallowed into an empty list that reads as a real result.
+   */
+  const viewer = hasPublicSupabaseEnvironment()
+    ? (await (await createServerSupabaseClient()).auth.getUser()).data.user
+    : null;
+  const assignments =
+    hasPublicSupabaseEnvironment() && viewer
+      ? await createLabAssignmentService().listForClass(classId, viewer.id)
+      : [];
   const classMeta = hasPublicSupabaseEnvironment()
     ? await loadClassMeta(classId)
     : null;

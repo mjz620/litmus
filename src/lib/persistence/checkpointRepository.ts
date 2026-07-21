@@ -8,22 +8,51 @@ export interface CheckpointWriteResult {
   acceptedEvents: number;
 }
 
+/**
+ * The authenticated student a checkpoint is recorded for. Always resolved
+ * server-side from the request session, never read from the request body.
+ */
+export interface CheckpointOwner {
+  readonly userId: string;
+}
+
+/** Raised when a checkpoint targets a session owned by a different student. */
+export class CheckpointOwnershipError extends Error {
+  constructor(sessionId: string) {
+    super(`Session ${sessionId} belongs to another user.`);
+    this.name = "CheckpointOwnershipError";
+  }
+}
+
 export interface CheckpointRepository {
-  persist(checkpoint: CheckpointRequest): Promise<CheckpointWriteResult>;
+  persist(
+    checkpoint: CheckpointRequest,
+    owner: CheckpointOwner
+  ): Promise<CheckpointWriteResult>;
 }
 
 export class InMemoryCheckpointRepository implements CheckpointRepository {
-  readonly sessions = new Map<string, CheckpointRequest>();
+  readonly sessions = new Map<
+    string,
+    CheckpointRequest & { readonly userId: string }
+  >();
   readonly events = new Map<
     string,
     NonNullable<CheckpointRequest["events"]>[number]
   >();
 
-  async persist(checkpoint: CheckpointRequest): Promise<CheckpointWriteResult> {
+  async persist(
+    checkpoint: CheckpointRequest,
+    owner: CheckpointOwner
+  ): Promise<CheckpointWriteResult> {
     const previous = this.sessions.get(checkpoint.sessionId);
+    if (previous && previous.userId !== owner.userId) {
+      throw new CheckpointOwnershipError(checkpoint.sessionId);
+    }
     this.sessions.set(checkpoint.sessionId, {
       ...previous,
       ...checkpoint,
+      userId: owner.userId,
       events: undefined,
       skillEstimates: checkpoint.skillEstimates ?? previous?.skillEstimates
     });
@@ -43,11 +72,48 @@ export class InMemoryCheckpointRepository implements CheckpointRepository {
 export class SupabaseCheckpointRepository implements CheckpointRepository {
   constructor(private readonly client: SupabaseClient) {}
 
-  async persist(checkpoint: CheckpointRequest): Promise<CheckpointWriteResult> {
+  async persist(
+    checkpoint: CheckpointRequest,
+    owner: CheckpointOwner
+  ): Promise<CheckpointWriteResult> {
+    /*
+     * This repository holds a service-role client, so RLS does not guard these
+     * writes. Ownership is therefore checked here: without it, a caller who
+     * knows any session UUID could overwrite another student's final state.
+     */
+    const { data: existing, error: existingError } = await this.client
+      .from("sessions")
+      .select("user_id")
+      .eq("id", checkpoint.sessionId)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    if (existing && existing.user_id && existing.user_id !== owner.userId) {
+      throw new CheckpointOwnershipError(checkpoint.sessionId);
+    }
+
+    /*
+     * Attribution. These were previously left unset, so every real session was
+     * an orphan row: RLS reads keyed on user_id/class_id matched nothing, and
+     * class analytics filtering on class_id always returned zero rows.
+     */
+    let classId: string | null = null;
+    if (checkpoint.assignmentId) {
+      const { data: assignment, error: assignmentError } = await this.client
+        .from("assignments")
+        .select("class_id")
+        .eq("id", checkpoint.assignmentId)
+        .maybeSingle();
+      if (assignmentError) throw new Error(assignmentError.message);
+      classId = assignment?.class_id ?? null;
+    }
+
     // Omit LC2-801 pin columns unless set so checkpoints still work against
     // databases that have not applied the assignment-pin migration yet.
     const sessionRow: Record<string, unknown> = {
       id: checkpoint.sessionId,
+      user_id: owner.userId,
+      assignment_id: checkpoint.assignmentId ?? null,
+      class_id: classId,
       experiment_id: checkpoint.experimentId,
       experiment_version: checkpoint.experimentVersion,
       workflow_version_id: checkpoint.workflowVersionId ?? null,
@@ -110,7 +176,19 @@ export class SupabaseCheckpointRepository implements CheckpointRepository {
 const fallbackRepository = new InMemoryCheckpointRepository();
 
 export function getCheckpointRepository(): CheckpointRepository {
-  return hasServerSupabaseEnvironment()
-    ? new SupabaseCheckpointRepository(createServiceRoleSupabaseClient())
-    : fallbackRepository;
+  if (hasServerSupabaseEnvironment()) {
+    return new SupabaseCheckpointRepository(createServiceRoleSupabaseClient());
+  }
+  /*
+   * The in-memory repository is a development convenience. Falling back to it
+   * in production would silently drop every student's work while the route
+   * still answered { ok: true }, so a misconfigured deploy fails loudly here
+   * instead of losing sessions quietly.
+   */
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Checkpoint persistence is unconfigured: server Supabase environment is missing."
+    );
+  }
+  return fallbackRepository;
 }

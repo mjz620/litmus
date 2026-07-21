@@ -37,6 +37,8 @@ export interface CheckpointRequest {
   mode: SessionMode;
   sessionSeed?: string;
   parentSessionId?: string;
+  /** Set for assignment-mode sessions; the owning class is derived server-side. */
+  assignmentId?: string;
   workflowVersionId?: string;
   /** Exact approved definition pin when the session runs a Composer assignment. */
   labDefinitionVersionId?: string;
@@ -75,6 +77,12 @@ export const checkpointRequestSchema = z.object({
   mode: z.enum(["practice", "assignment", "demo", "preview"]),
   sessionSeed: z.string().max(256).optional(),
   parentSessionId: z.string().uuid().optional(),
+  /*
+   * Set for assignment-mode sessions. The owning class is never taken from
+   * the client: the server reads it from this assignment row so a session
+   * cannot be attributed to a class the student does not belong to.
+   */
+  assignmentId: z.string().uuid().optional(),
   workflowVersionId: z.string().max(160).optional(),
   labDefinitionVersionId: z.string().uuid().optional(),
   labDefinitionCanonicalHash: z

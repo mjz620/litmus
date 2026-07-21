@@ -56,7 +56,11 @@ export function createAssignmentsHandler({
       if (request.method === "GET") {
         const classId = new URL(request.url).searchParams.get("classId");
         if (!classId) return failure(400, "classId is required.");
-        const assignments = await service.listForClass(classId);
+        // classId is caller-supplied, so access is checked against the principal.
+        const assignments = await service.listForClass(
+          classId,
+          principal.userId
+        );
         return NextResponse.json({ ok: true, assignments });
       }
       if (request.method !== "POST") return failure(405, "Method not allowed.");
@@ -88,8 +92,8 @@ function defaultHandler(request: Request) {
     service: {
       createAssignment: (teacherId, body) =>
         createLabAssignmentService().createAssignment(teacherId, body),
-      listForClass: (classId) =>
-        createLabAssignmentService().listForClass(classId)
+      listForClass: (classId, requesterId) =>
+        createLabAssignmentService().listForClass(classId, requesterId)
     }
   })(request);
 }

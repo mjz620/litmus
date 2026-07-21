@@ -90,3 +90,57 @@ describe("GET/POST /api/lab-composer/assignments", () => {
     expect(createAssignment).not.toHaveBeenCalled();
   });
 });
+
+/*
+ * The GET branch takes classId straight from the query string and the service
+ * behind it uses a service-role client that bypasses RLS. Without the
+ * requester passed through to an access check, any authenticated user could
+ * enumerate any class's assignments by guessing its id.
+ */
+describe("assignment listing is scoped to the requester", () => {
+  it("passes the authenticated principal to the access check", async () => {
+    const listForClass = vi.fn().mockResolvedValue([assignmentRecord]);
+    const handler = createAssignmentsHandler({
+      authenticate: vi.fn().mockResolvedValue(student),
+      service: { createAssignment: vi.fn(), listForClass }
+    });
+
+    const response = await handler(
+      new Request(
+        `http://localhost/api/lab-composer/assignments?classId=${CLASS_ID}`,
+        { method: "GET" }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(listForClass).toHaveBeenCalledWith(CLASS_ID, STUDENT_ID);
+  });
+
+  it("surfaces an unauthorized class read as 403 and returns no rows", async () => {
+    const { LabAssignmentError, LAB_ASSIGNMENT_ERROR_CODES } = await import(
+      "../../src/lib/persistence/labAssignmentRepository"
+    );
+    const listForClass = vi
+      .fn()
+      .mockRejectedValue(
+        new LabAssignmentError(
+          LAB_ASSIGNMENT_ERROR_CODES.unauthorized,
+          "You do not have access to this class."
+        )
+      );
+    const handler = createAssignmentsHandler({
+      authenticate: vi.fn().mockResolvedValue(student),
+      service: { createAssignment: vi.fn(), listForClass }
+    });
+
+    const response = await handler(
+      new Request(
+        `http://localhost/api/lab-composer/assignments?classId=${CLASS_ID}`,
+        { method: "GET" }
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).not.toHaveProperty("assignments");
+  });
+});
