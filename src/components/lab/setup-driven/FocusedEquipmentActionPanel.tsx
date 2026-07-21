@@ -222,7 +222,9 @@ export function FocusedEquipmentActionPanel({
                       {bounds.unitId === "unit.ml.v1"
                         ? " mL"
                         : bounds.unitId === "unit.celsius.v1"
-                          ? " °C"
+                        ? " °C"
+                        : bounds.unitId === "unit.g.v1"
+                          ? " g"
                           : ""}
                     </span>
                   </label>

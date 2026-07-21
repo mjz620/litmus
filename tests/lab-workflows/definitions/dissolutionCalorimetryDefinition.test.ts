@@ -14,6 +14,7 @@ import {
   type GenericLabState,
   type NormalizedLabAction
 } from "../../../src/lab-workflows/runtime";
+import { createSetupDrivenNativeSession } from "../../../src/stores/setupDrivenLabSession";
 
 const CHECKED_AT = "2026-07-20T12:00:00.000Z";
 
@@ -149,6 +150,42 @@ describe("LC2-913 dissolution calorimetry definition", () => {
     expect(
       workflow.materials.map(({ materialProfileId }) => materialProfileId)
     ).toContain("reagent.ammonium_nitrate_solid.v1");
+  });
+
+  it("does not expose solid transfer until the weighing boat is placed", () => {
+    const workflow = validateDissolutionCalorimetryV2(CHECKED_AT);
+    const session = createSetupDrivenNativeSession({
+      sessionId: "dissolution-permission-sequence",
+      sessionSeed: "dissolution-permission-sequence",
+      selection: {
+        workflowId: workflow.id,
+        workflowHash: workflow.validation.canonicalSpecHash
+      },
+      workflow
+    });
+    const available = (permissionId: string) =>
+      session
+        .getProjection()
+        .actions.find((candidate) => candidate.permissionId === permissionId)
+        ?.available;
+
+    expect(available("permission.place_boat")).toBe(true);
+    expect(available("permission.weigh_solid")).toBe(false);
+    expect(available("permission.add_solid")).toBe(false);
+
+    session.dispatch(
+      action(
+        "permission.place_boat",
+        "action.place_on_balance.v1",
+        "weighing_boat",
+        ["balance"]
+      )
+    );
+
+    expect(available("permission.place_boat")).toBe(false);
+    expect(available("permission.tare")).toBe(true);
+    // Deliberately still available: skipping tare is a visible technique error.
+    expect(available("permission.weigh_solid")).toBe(true);
   });
 
   it("executes a complete tared weighing and mass-derived endothermic dissolution", () => {

@@ -136,6 +136,11 @@ function initialParameterValue(
   );
   if (key === "inversions") return "10";
   if (key === "durationS") return "4";
+  // A mass-transfer control must not default to the registry safety ceiling
+  // (100 g). The shipped measured labs use a 2.50 g classroom sample; users
+  // can still enter another in-range mass when a workflow explicitly teaches
+  // that comparison.
+  if (key === "massG") return "2.5";
   if (
     bounds?.effectiveMaximum !== null &&
     bounds?.effectiveMaximum !== undefined
@@ -373,6 +378,14 @@ function actionErrorMessage(error: unknown): string {
       return "That step is not possible with the equipment in its current state.";
     if (error.code === "generic-runtime.workflow_terminal.v1")
       return "This attempt has ended. Restart the preview to try another approach.";
+    if (error.code === "generic-runtime.permission_unavailable.v1")
+      return "That step is not available yet. Follow the highlighted next step.";
+    if (error.code === "generic-runtime.permission_mismatch.v1")
+      return "This control is no longer connected to the current lab setup. Restart the attempt and try again.";
+    if (error.code === "generic-runtime.capability_mismatch.v1")
+      return "Those two pieces of equipment cannot be used together for this step.";
+    if (error.code === "generic-runtime.transition_rejected.v1")
+      return error.message;
   }
   return "That step was not applied. The lab remains at its last valid state.";
 }
@@ -1091,7 +1104,9 @@ export function NativeSetupDrivenWorkspace({
                             {bounds.unitId === "unit.ml.v1"
                               ? " mL"
                               : bounds.unitId === "unit.celsius.v1"
-                                ? " °C"
+                              ? " °C"
+                              : bounds.unitId === "unit.g.v1"
+                                ? " g"
                                 : ""}
                           </span>
                         </label>

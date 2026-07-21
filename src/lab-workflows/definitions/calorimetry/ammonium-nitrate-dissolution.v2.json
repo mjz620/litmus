@@ -105,7 +105,7 @@
       "sourceEquipmentInstanceId": "weighing_boat",
       "targetEquipmentInstanceIds": ["balance"],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": ["rule.boat_placed"] }
     },
     {
       "id": "permission.tare",
@@ -113,7 +113,7 @@
       "sourceEquipmentInstanceId": "balance",
       "targetEquipmentInstanceIds": [],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.boat_placed"], "allUnsatisfiedRuleIds": ["rule.balance_tared"] }
     },
     {
       "id": "permission.weigh_solid",
@@ -121,7 +121,7 @@
       "sourceEquipmentInstanceId": "solid_stock",
       "targetEquipmentInstanceIds": ["weighing_boat"],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.boat_placed"], "allUnsatisfiedRuleIds": ["rule.solid_weighed"] }
     },
     {
       "id": "permission.read_mass",
@@ -129,7 +129,7 @@
       "sourceEquipmentInstanceId": "balance",
       "targetEquipmentInstanceIds": [],
       "maxAttempts": 3,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.solid_weighed"], "allUnsatisfiedRuleIds": ["rule.mass_read"] }
     },
     {
       "id": "permission.remove_boat",
@@ -137,7 +137,7 @@
       "sourceEquipmentInstanceId": "balance",
       "targetEquipmentInstanceIds": [],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.mass_read"], "allUnsatisfiedRuleIds": ["rule.boat_removed"] }
     },
     {
       "id": "permission.pour_water",
@@ -146,7 +146,7 @@
       "targetEquipmentInstanceIds": ["calorimeter"],
       "authoredLimits": { "maxPourVolumeML": 100 },
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.boat_removed"], "allUnsatisfiedRuleIds": ["rule.water_added"] }
     },
     {
       "id": "permission.add_solid",
@@ -154,7 +154,7 @@
       "sourceEquipmentInstanceId": "weighing_boat",
       "targetEquipmentInstanceIds": ["calorimeter"],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.boat_removed", "rule.water_added"], "allUnsatisfiedRuleIds": ["rule.solid_added"] }
     },
     {
       "id": "permission.mix",
@@ -162,7 +162,7 @@
       "sourceEquipmentInstanceId": "calorimeter",
       "targetEquipmentInstanceIds": [],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.solid_added"], "allUnsatisfiedRuleIds": ["rule.mixed"] }
     },
     {
       "id": "permission.place_probe",
@@ -170,7 +170,7 @@
       "sourceEquipmentInstanceId": "thermometer",
       "targetEquipmentInstanceIds": ["calorimeter"],
       "maxAttempts": 2,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.mixed"], "allUnsatisfiedRuleIds": ["rule.probe_placed"] }
     },
     {
       "id": "permission.read_temperature",
@@ -178,7 +178,7 @@
       "sourceEquipmentInstanceId": "thermometer",
       "targetEquipmentInstanceIds": [],
       "maxAttempts": 3,
-      "availability": { "allSatisfiedRuleIds": [], "allUnsatisfiedRuleIds": [] }
+      "availability": { "allSatisfiedRuleIds": ["rule.mixed", "rule.probe_placed"], "allUnsatisfiedRuleIds": ["rule.temperature_read"] }
     }
   ],
   "rules": [
@@ -239,6 +239,20 @@
       "objectiveIds": ["measure_mass"]
     },
     {
+      "id": "rule.boat_removed",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.remove_from_balance.v1",
+        "sourceEquipmentInstanceId": "balance",
+        "targetEquipmentInstanceIds": []
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["measure_mass"]
+    },
+    {
       "id": "rule.water_added",
       "kind": "required",
       "condition": {
@@ -274,6 +288,20 @@
         "actionId": "action.mix_calorimeter.v1",
         "sourceEquipmentInstanceId": "calorimeter",
         "targetEquipmentInstanceIds": []
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["measure_dissolution_enthalpy"]
+    },
+    {
+      "id": "rule.probe_placed",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.place_thermometer.v1",
+        "sourceEquipmentInstanceId": "thermometer",
+        "targetEquipmentInstanceIds": ["calorimeter"]
       },
       "severity": "procedural",
       "recoverable": true,
@@ -365,9 +393,11 @@
           "rule.balance_tared",
           "rule.solid_weighed",
           "rule.mass_read",
+          "rule.boat_removed",
           "rule.water_added",
           "rule.solid_added",
           "rule.mixed",
+          "rule.probe_placed",
           "rule.temperature_read",
           "rule.temperature_drop",
           "rule.enthalpy_result",
