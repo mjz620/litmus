@@ -18,10 +18,9 @@ function gone() {
   );
 }
 
-export async function GET(_request?: Request) {
-  return gone();
-}
+/** Callers still pass a Request; the retired route never reads one. */
+type RetiredHandler = (request?: Request) => NextResponse;
 
-export async function POST(_request?: Request) {
-  return gone();
-}
+export const GET: RetiredHandler = () => gone();
+
+export const POST: RetiredHandler = () => gone();

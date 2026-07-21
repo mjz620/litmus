@@ -7,7 +7,8 @@ import { getExperimentManifest } from "../../../experiments/registry";
 import { hasPublicSupabaseEnvironment } from "../../../lib/env";
 import {
   resolveStudentAssignmentLaunch,
-  StudentAssignmentLaunchError
+  StudentAssignmentLaunchError,
+  type StudentAssignmentLaunch
 } from "../../../lib/persistence/studentAssignmentLaunch";
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
@@ -15,6 +16,10 @@ import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
 interface AssignmentPageProps {
   params: Promise<{ assignmentId: string }>;
 }
+
+type AssignmentLaunchOutcome =
+  | { status: "ready"; launch: StudentAssignmentLaunch }
+  | { status: "failed"; message: string; forbidden: boolean };
 
 export default async function StudentAssignmentPage({
   params
@@ -48,6 +53,8 @@ export default async function StudentAssignmentPage({
     );
   }
 
+  // JSX is built after the try/catch so no element is constructed inside it.
+  let outcome: AssignmentLaunchOutcome;
   try {
     const launch = await resolveStudentAssignmentLaunch({
       assignmentId,
@@ -64,76 +71,32 @@ export default async function StudentAssignmentPage({
         }
       }
     });
-
-    if (launch.kind === "setup_driven_native_v2") {
-      const title = launch.assignment.title || launch.resolution.spec.metadata.title;
-      return (
-        <main>
-          <NativeSetupDrivenWorkspace
-            workflow={launch.resolution.spec}
-            replaySeed={`assignment:${assignmentId}:${launch.resolution.canonicalHash}`}
-            mode="assignment"
-            title={title}
-            sessionIdPrefix={`assignment-${assignmentId.slice(0, 8)}`}
-          />
-        </main>
-      );
-    }
-
-    const title =
-      launch.assignment.title || getExperimentManifest(launch.experimentId).title;
-    const shortHash =
-      launch.assignment.labDefinitionCanonicalHash?.slice(0, 18) ?? null;
-
-    if (launch.kind === "setup_driven_v2") {
-      return (
-        <LabRouteShell
-          experimentId={launch.experimentId}
-          title={title}
-          mode="assignment"
-          runtimeMode="setup_driven_v2"
-          setupDrivenSelection={{
-            workflowId: launch.resolution.spec.id,
-            workflowHash: launch.resolution.canonicalHash
-          }}
-          setupDrivenWorkflow={launch.resolution.spec}
-          labDefinitionVersionId={launch.resolution.versionId}
-          labDefinitionCanonicalHash={launch.resolution.canonicalHash}
-          assignmentLabel={
-            shortHash ? `${title} · pinned ${shortHash}…` : title
-          }
-        />
-      );
-    }
-
-    return (
-      <LabRouteShell
-        experimentId={launch.experimentId}
-        title={title}
-        mode="assignment"
-        runtimeMode="legacy"
-        assignmentLabel={title}
-      />
-    );
+    outcome = { status: "ready", launch };
   } catch (error) {
-    const message =
-      error instanceof StudentAssignmentLaunchError
-        ? error.message
-        : "That assignment could not be opened.";
-    const forbidden =
-      error instanceof StudentAssignmentLaunchError &&
-      error.code === "assignment.forbidden.v1";
+    outcome = {
+      status: "failed",
+      message:
+        error instanceof StudentAssignmentLaunchError
+          ? error.message
+          : "That assignment could not be opened.",
+      forbidden:
+        error instanceof StudentAssignmentLaunchError &&
+        error.code === "assignment.forbidden.v1"
+    };
+  }
+
+  if (outcome.status === "failed") {
     return (
       <ProductShell>
         <PageHeader
           eyebrow="Assigned lab"
           title="Could not open assignment"
-          description={message}
+          description={outcome.message}
           backHref="/assignments"
           backLabel="Assignments"
         />
         <p>
-          {forbidden ? (
+          {outcome.forbidden ? (
             <Link className="ui-button" href="/join">
               Join a class
             </Link>
@@ -146,4 +109,56 @@ export default async function StudentAssignmentPage({
       </ProductShell>
     );
   }
+
+  const { launch } = outcome;
+
+  if (launch.kind === "setup_driven_native_v2") {
+    const nativeTitle =
+      launch.assignment.title || launch.resolution.spec.metadata.title;
+    return (
+      <main>
+        <NativeSetupDrivenWorkspace
+          workflow={launch.resolution.spec}
+          replaySeed={`assignment:${assignmentId}:${launch.resolution.canonicalHash}`}
+          mode="assignment"
+          title={nativeTitle}
+          sessionIdPrefix={`assignment-${assignmentId.slice(0, 8)}`}
+        />
+      </main>
+    );
+  }
+
+  const title =
+    launch.assignment.title || getExperimentManifest(launch.experimentId).title;
+  const shortHash =
+    launch.assignment.labDefinitionCanonicalHash?.slice(0, 18) ?? null;
+
+  if (launch.kind === "setup_driven_v2") {
+    return (
+      <LabRouteShell
+        experimentId={launch.experimentId}
+        title={title}
+        mode="assignment"
+        runtimeMode="setup_driven_v2"
+        setupDrivenSelection={{
+          workflowId: launch.resolution.spec.id,
+          workflowHash: launch.resolution.canonicalHash
+        }}
+        setupDrivenWorkflow={launch.resolution.spec}
+        labDefinitionVersionId={launch.resolution.versionId}
+        labDefinitionCanonicalHash={launch.resolution.canonicalHash}
+        assignmentLabel={shortHash ? `${title} · pinned ${shortHash}…` : title}
+      />
+    );
+  }
+
+  return (
+    <LabRouteShell
+      experimentId={launch.experimentId}
+      title={title}
+      mode="assignment"
+      runtimeMode="legacy"
+      assignmentLabel={title}
+    />
+  );
 }
