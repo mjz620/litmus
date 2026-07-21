@@ -360,6 +360,7 @@ function reagentBottlePhase(
 
 /** Registered chemistry observable carrying the precipitate appearance. */
 const PRECIPITATE_COLOR_OBSERVABLE_ID = "observable.precipitate_color.v1";
+const OBSERVED_COLOR_OBSERVABLE_ID = "observable.observed_color.v1";
 
 const LEGACY_SCENE_CONFIGURATION: LabSceneConfiguration = Object.freeze({
   mode: "legacy",
@@ -584,9 +585,24 @@ export function resolveLabSceneConfiguration(
     }
     if (adapter.kind === "flask") {
       hasFlaskAdapter = true;
+      /*
+       * Solution colour is owned by the chemistry model and arrives as a
+       * registered observable; the native flask field never advances past its
+       * initial placeholder, so projecting the observable is what makes the
+       * endpoint colour change visible on the bench at all. The field remains
+       * the fallback for runtimes that write it directly.
+       */
+      const indicatorAdded = booleanField(equipment, "indicatorAdded");
+      const observedColor =
+        projection.observables[OBSERVED_COLOR_OBSERVABLE_ID];
       flaskState = Object.freeze({
-        observableColor: stringField(equipment, "observableColor"),
-        indicatorAdded: booleanField(equipment, "indicatorAdded")
+        observableColor:
+          indicatorAdded &&
+          typeof observedColor === "string" &&
+          observedColor.length > 0
+            ? observedColor
+            : stringField(equipment, "observableColor"),
+        indicatorAdded
       });
     }
     if (adapter.kind === "balance") {

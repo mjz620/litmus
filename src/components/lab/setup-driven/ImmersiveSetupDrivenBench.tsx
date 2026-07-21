@@ -25,6 +25,8 @@ import { CAMERA_POSES } from "../three/benchLayout";
 import type { GlassQuality } from "../three/glassMaterials";
 import { getLabSounds } from "../three/labSounds";
 import { getFlaskLiquidColor } from "../three/sceneProjection";
+import { WebGLRecoveryNotice } from "../three/WebGLRecoveryNotice";
+import { useWebGLContextRecovery } from "../three/useWebGLContextRecovery";
 import { LitmusMark } from "../../ui/LitmusMark";
 import type { LabVisualGesture } from "../three/gestures/LabVisualGestures";
 import type { IndicatorId } from "../../../experiments/titration/titration";
@@ -132,6 +134,7 @@ export function ImmersiveSetupDrivenBench({
   const [webGLReady, setWebGLReady] = useState(false);
   const [autoQuality, setAutoQuality] = useState<GlassQuality>("high");
   const [reducedGraphics, setReducedGraphics] = useState(false);
+  const { contextLost, sceneKey, registerRenderer } = useWebGLContextRecovery();
   const [coachOpen, setCoachOpen] = useState(false);
   // A flagged mistake reaches the student only if the dock is open to show it.
   useCoachAutoOpen(coachMessages, setCoachOpen);
@@ -434,9 +437,21 @@ export function ImmersiveSetupDrivenBench({
               >
                 {soundMuted ? "Sound off" : "Sound on"}
               </button>
-              <span className={sceneStyles.readyStatus} role="status">
+              {/*
+                Silenced while the context is lost: the recovery notice is the
+                live region then, and the chip must not claim "ready" over a
+                bench that is not.
+              */}
+              <span
+                className={sceneStyles.readyStatus}
+                role={contextLost ? undefined : "status"}
+              >
                 <span aria-hidden="true" />
-                {webGLReady ? "3D bench ready" : "Starting 3D bench…"}
+                {contextLost
+                  ? "Reloading 3D bench…"
+                  : webGLReady
+                    ? "3D bench ready"
+                    : "Starting 3D bench…"}
               </span>
             </div>
           </div>
@@ -505,9 +520,10 @@ export function ImmersiveSetupDrivenBench({
             setLookActive(true);
             canvasFrameRef.current?.focus();
           }}
-          onCreated={({ gl }) => {
+          onCreated={({ gl, invalidate }) => {
             setWebGLReady(true);
             if (!gl.capabilities.isWebGL2) setAutoQuality("low");
+            registerRenderer(gl.domElement, invalidate);
           }}
           fallback={
             <div className={sceneStyles.fallback} role="status">
@@ -516,6 +532,7 @@ export function ImmersiveSetupDrivenBench({
           }
         >
           <BuretteDispenseProvider
+            key={sceneKey}
             controller={dispense}
             enabled={selected === "burette" && dispenseEnabled}
           >
@@ -565,6 +582,10 @@ export function ImmersiveSetupDrivenBench({
             />
           </BuretteDispenseProvider>
         </Canvas>
+
+        {contextLost && (
+          <WebGLRecoveryNotice reducedGraphics={reducedGraphics} />
+        )}
 
         {lookActive && (
           <span

@@ -303,8 +303,11 @@ function actionLabel(
   }
 }
 
+const OBSERVED_COLOR_OBSERVABLE_ID = "observable.observed_color.v1";
+
 function equipmentSummary(
-  equipment: SetupDrivenLabProjection["equipment"][number]
+  equipment: SetupDrivenLabProjection["equipment"][number],
+  observables: SetupDrivenLabProjection["observables"] = {}
 ): string {
   const value = (key: string) => equipment.stateFields[key];
   switch (equipment.equipmentDefinitionId) {
@@ -341,9 +344,22 @@ function equipmentSummary(
       return `Reads ${reading} mL · ${delivered} mL delivered · ${conditioned}`;
     }
     case "component.erlenmeyer_flask.v1": {
-      const color = value("observableColor");
+      /*
+       * Solution colour is published by the chemistry model as an observable;
+       * the native flask field stays at its initial placeholder. Text here is
+       * also what keeps the endpoint legible without relying on the 3D tint.
+       */
+      const observedColor = observables[OBSERVED_COLOR_OBSERVABLE_ID];
+      const color =
+        value("indicatorAdded") &&
+        typeof observedColor === "string" &&
+        observedColor.length > 0
+          ? observedColor
+          : value("observableColor");
       const appearance =
-        typeof color === "string" && color !== "unobserved"
+        typeof color === "string" &&
+        color !== "unobserved" &&
+        color !== "not yet observed"
           ? `contents ${color}`
           : "contents not yet observed";
       return `${Number(value("totalVolumeML") ?? 0).toFixed(2)} mL · ${
@@ -418,6 +434,46 @@ function ruleLabel(
   }
 }
 
+const PARAMETER_RANGE_LABELS: Readonly<
+  Record<string, { readonly label: string; readonly unit: string }>
+> = {
+  volumeML: { label: "Volume", unit: " mL" },
+  durationS: { label: "Delivery time", unit: " seconds" },
+  reportedML: { label: "The reported burette reading", unit: " mL" },
+  massG: { label: "Mass", unit: " g" },
+  reportedG: { label: "The reported balance reading", unit: " g" }
+};
+
+/**
+ * The runtime already names the offending field and its effective bounds —
+ * including per-step authored limits like a 0.5 mL dispense cap — in the
+ * error details. Without them the student is told only "outside the
+ * permitted range" and has to guess both the field and the limit.
+ */
+function parameterRangeMessage(error: unknown): string | null {
+  if (!(error instanceof GenericLabRuntimeError)) return null;
+  const { parameterKey, effectiveMinimum, effectiveMaximum } = error.details;
+  if (typeof parameterKey !== "string") return null;
+  const named = PARAMETER_RANGE_LABELS[parameterKey] ?? {
+    label: parameterKey,
+    unit: ""
+  };
+  const minimum =
+    typeof effectiveMinimum === "number" ? effectiveMinimum : null;
+  const maximum =
+    typeof effectiveMaximum === "number" ? effectiveMaximum : null;
+  if (minimum !== null && maximum !== null) {
+    return `${named.label} must be between ${minimum} and ${maximum}${named.unit} for this step.`;
+  }
+  if (maximum !== null) {
+    return `${named.label} must be at most ${maximum}${named.unit} for this step.`;
+  }
+  if (minimum !== null) {
+    return `${named.label} must be at least ${minimum}${named.unit} for this step.`;
+  }
+  return null;
+}
+
 function actionErrorMessage(error: unknown): string {
   const code =
     error instanceof GenericLabRuntimeError ||
@@ -429,7 +485,10 @@ function actionErrorMessage(error: unknown): string {
       : null;
   if (code) {
     if (code === "generic-runtime.parameter_invalid.v1")
-      return "That value is outside the permitted range. Check the field and try again.";
+      return (
+        parameterRangeMessage(error) ??
+        "That value is outside the permitted range. Check the field and try again."
+      );
     if (code === "generic-runtime.precondition_failed.v1")
       return "That step is not possible with the equipment in its current state.";
     if (code === "generic-runtime.workflow_terminal.v1")
@@ -1326,7 +1385,12 @@ export function NativeSetupDrivenWorkspace({
                   {current.projection.equipment.map((equipment) => (
                     <li key={equipment.instanceId}>
                       <strong>{equipment.label}</strong>
-                      <span>{equipmentSummary(equipment)}</span>
+                      <span>
+                        {equipmentSummary(
+                          equipment,
+                          current.projection.observables
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>

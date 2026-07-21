@@ -21,7 +21,7 @@
 .eyebrow {
   margin: 0 0 0.5rem;
   color: var(--lab-primary);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: var(--type-ui-semibold);
   letter-spacing: 0.035em;
 }
@@ -38,7 +38,7 @@
   border-radius: 999px;
   background: var(--lab-primary-soft);
   color: var(--lab-primary);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   font-weight: var(--type-ui-semibold);
 }
@@ -80,7 +80,7 @@
 .controlGroup h3 {
   padding: 0;
   color: var(--lab-ink);
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: var(--type-ui-semibold);
 }
 
@@ -88,7 +88,7 @@
   display: grid;
   gap: 0.4rem;
   color: var(--lab-ink-muted);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: var(--type-ui-medium);
 }
 
@@ -128,7 +128,7 @@
   color: var(--lab-ink);
   cursor: pointer;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: var(--type-ui-semibold);
   transition:
     color 120ms ease-out,
@@ -173,14 +173,14 @@
 .groupStatus {
   margin: 0;
   color: var(--lab-primary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
 .note {
   margin: 0;
   color: var(--lab-ink-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -191,7 +191,7 @@
   border-radius: 0.625rem;
   background: var(--lab-danger-soft);
   color: var(--lab-danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .controlGroup button:active:not(:disabled) {

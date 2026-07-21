@@ -15,10 +15,13 @@
   --color-border-strong: #aebfb9;
   --color-success: #176b4d;
   --color-success-soft: #e0f0e8;
+  --color-success-border: #b8d8c8;
   --color-warning: #845613;
   --color-warning-soft: #fff2d5;
+  --color-warning-border: #e5ca91;
   --color-danger: #a72f3b;
   --color-danger-soft: #fbe9ec;
+  --color-danger-border: #e5b6bd;
   /*
    * Terracotta is the warmth in a teal-led system. It was already the identity
    * mark on every shell, hardcoded in seven files; tokenised here.
@@ -393,19 +396,19 @@ h3 {
 }
 
 .ui-notice[data-tone="warning"] {
-  border-color: #e5ca91;
+  border-color: var(--color-warning-border);
   background: var(--color-warning-soft);
   color: var(--color-warning);
 }
 
 .ui-notice[data-tone="error"] {
-  border-color: #e5b6bd;
+  border-color: var(--color-danger-border);
   background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 
 .ui-notice[data-tone="success"] {
-  border-color: #b8d8c8;
+  border-color: var(--color-success-border);
   background: var(--color-success-soft);
   color: var(--color-success);
 }

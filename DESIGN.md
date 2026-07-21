@@ -25,10 +25,13 @@ colors:
   border-strong: "#aebfb9"
   success: "#176b4d"
   success-soft: "#e0f0e8"
+  success-border: "#b8d8c8"
   warning: "#845613"
   warning-soft: "#fff2d5"
+  warning-border: "#e5ca91"
   danger: "#a72f3b"
   danger-soft: "#fbe9ec"
+  danger-border: "#e5b6bd"
 typography:
   display:
     fontFamily: "tomarik-display, Trebuchet MS, ui-rounded, sans-serif"

@@ -23,7 +23,7 @@
   border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: #3b2922;
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   font-weight: 850;
 }
 
@@ -35,12 +35,12 @@
 .banner strong {
   font-family: var(--font-ui);
   font-weight: var(--type-ui-semibold);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
 }
 
 .banner p {
   margin-top: 0.12rem;
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   line-height: 1.35;
 }
 

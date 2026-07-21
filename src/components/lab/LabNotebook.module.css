@@ -13,13 +13,13 @@
 .notebook h3 {
   margin: 0 0 0.4rem;
   color: var(--lab-ink);
-  font-size: 0.95rem;
+  font-size: var(--text-md);
 }
 
 .eyebrow {
   margin: 0 0 -0.55rem;
   color: var(--lab-primary);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: var(--type-ui-semibold);
   letter-spacing: 0.035em;
 }
@@ -32,7 +32,7 @@
 .section p {
   margin: 0;
   color: var(--lab-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-sm);
   line-height: 1.55;
 }
 
@@ -42,7 +42,7 @@ p.stage {
   border-radius: 999px;
   background: var(--lab-primary-soft);
   color: var(--lab-primary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -61,7 +61,7 @@ p.stage {
 
 .factList dt {
   color: var(--lab-ink-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .factList dd {

@@ -57,6 +57,20 @@ export interface FocusedEquipmentActionPanelProps {
 }
 
 /**
+ * Recording a measurement to the instrument's precision is itself assessed, so
+ * the expected precision is stated rather than enforced: a reading entered to
+ * the wrong number of decimals stays a real, recorded student mistake instead
+ * of being silently corrected by the input.
+ */
+function reportedValuePrecisionHint(parameterKey: string): string | null {
+  if (parameterKey === "reportedML")
+    return "Record to the burette's precision, 0.01 mL.";
+  if (parameterKey === "reportedG")
+    return "Record to the balance's precision, 0.01 g.";
+  return null;
+}
+
+/**
  * Titration-style in-simulation action panel for the focused native-lab
  * equipment selection.
  */
@@ -240,6 +254,11 @@ export function FocusedEquipmentActionPanel({
                           ? " g"
                           : ""}
                     </span>
+                    {reportedValuePrecisionHint(bounds.parameterKey) && (
+                      <small>
+                        {reportedValuePrecisionHint(bounds.parameterKey)}
+                      </small>
+                    )}
                   </label>
                 ))}
                 {registeredEnumParameters(action.actionId).map((parameter) => (

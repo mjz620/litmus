@@ -109,6 +109,14 @@ export function CoachPanelView({
           value={question}
           maxLength={600}
           onChange={(event) => setQuestion(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            // Enter sends, Shift+Enter keeps the newline — the chat
+            // convention students expect from every messaging box.
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
           placeholder="Why should I slow down near the endpoint?"
         />
         <button

@@ -366,8 +366,9 @@ function flushPending(
     };
   }
 
-  const normalizedDurationS =
-    pendingML > 0 ? pendingDurationS * (normalizedML / pendingML) : 0;
+  const normalizedDurationS = normalizeDispenseActionDuration(
+    pendingML > 0 ? pendingDurationS * (normalizedML / pendingML) : 0
+  );
   const returnedResidueML = Math.max(0, pendingML - normalizedML);
 
   return {
@@ -459,6 +460,17 @@ export function normalizeDispenseActionVolume(volumeML: number): number {
   if (!Number.isFinite(volumeML) || volumeML <= 0) return 0;
   const factor = 10 ** DISPENSE_ACTION_PRECISION_DECIMALS;
   return Math.floor((volumeML + Number.EPSILON) * factor) / factor;
+}
+
+/**
+ * The chemistry model only accepts centisecond-exact delivery durations, but
+ * a hold accumulates raw wall-clock time, so the release commit of any hold
+ * longer than the one-drop shortcut carried an off-grid duration and the
+ * whole dispense was rejected at pointer-up.
+ */
+export function normalizeDispenseActionDuration(durationS: number): number {
+  if (!Number.isFinite(durationS) || durationS <= 0) return 0;
+  return Math.max(0.01, Math.round(durationS * 100) / 100);
 }
 
 interface UseDispenseGestureOptions {

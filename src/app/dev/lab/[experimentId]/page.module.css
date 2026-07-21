@@ -37,7 +37,7 @@
   border-radius: 0.9rem;
   background: var(--lab-warning);
   color: var(--lab-ink);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .studentLink {
@@ -92,7 +92,7 @@
   max-width: 34rem;
   margin: 0.8rem 0 0;
   color: var(--lab-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
@@ -111,13 +111,13 @@
 
 .analytics h3 {
   margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
 }
 
 .eyebrow {
   margin: 0 0 -0.65rem;
   color: var(--lab-primary);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -163,7 +163,7 @@
 
 .stateList dt {
   color: var(--lab-ink-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .stateList dd {
@@ -175,14 +175,14 @@
 
 .code {
   font-family: var(--font-ui);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   text-transform: none;
 }
 
 .flags {
   margin: 0.6rem 0 0;
   color: var(--lab-ink-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .raw {
@@ -193,7 +193,7 @@
   border-radius: 0.6rem;
   background: var(--lab-ink);
   color: var(--lab-surface);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }
 

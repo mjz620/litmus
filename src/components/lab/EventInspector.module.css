@@ -21,7 +21,7 @@
 
 .content h3 {
   margin: 0 0 0.4rem;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
 }
 
 .raw {
@@ -32,7 +32,7 @@
   border-radius: 0.5rem;
   background: #14201c;
   color: #eef7f1;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -53,5 +53,5 @@
 
 .event p {
   margin: 0.35rem 0 0;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }

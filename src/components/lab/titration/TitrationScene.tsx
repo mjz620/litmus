@@ -21,6 +21,8 @@ import {
   LOOK_STEP_EVENT,
   type LookStepDetail
 } from "../three/BenchCameraControls";
+import { useWebGLContextRecovery } from "../three/useWebGLContextRecovery";
+import { WebGLRecoveryNotice } from "../three/WebGLRecoveryNotice";
 import { BuretteDispenseProvider } from "../three/Burette";
 import { LabScene } from "../three/LabScene";
 import type { WashLiquid } from "../three/WashStation";
@@ -133,6 +135,7 @@ export function TitrationScene({
   onPrecisionControlsChange
 }: TitrationSceneProps) {
   const canvasFrameRef = useRef<HTMLDivElement>(null);
+  const { contextLost, sceneKey, registerRenderer } = useWebGLContextRecovery();
   const [webGLReady, setWebGLReady] = useState(false);
   const [autoQuality, setAutoQuality] = useState<GlassQuality>("high");
   const [reducedGraphics, setReducedGraphics] = useState(false);
@@ -609,9 +612,10 @@ export function TitrationScene({
             setLookActive(true);
             canvasFrameRef.current?.focus();
           }}
-          onCreated={({ gl }) => {
+          onCreated={({ gl, invalidate }) => {
             setWebGLReady(true);
             if (!gl.capabilities.isWebGL2) setAutoQuality("low");
+            registerRenderer(gl.domElement, invalidate);
           }}
           fallback={
             <div className={styles.fallback} role="status">
@@ -621,6 +625,7 @@ export function TitrationScene({
           }
         >
           <BuretteDispenseProvider
+            key={sceneKey}
             controller={physicalDispense}
             enabled={
               focused === "burette" && indicatorAdded && deliveryAvailable
@@ -656,6 +661,9 @@ export function TitrationScene({
             />
           </BuretteDispenseProvider>
         </Canvas>
+        {contextLost && (
+          <WebGLRecoveryNotice reducedGraphics={reducedGraphics} />
+        )}
         {lookActive && (
           <span className={styles.lookChip} role="status" aria-live="polite">
             Looking around — move cursor to edges to pan · Esc to release

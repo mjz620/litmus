@@ -74,7 +74,7 @@
   max-width: 34rem;
   margin: 0.8rem 0 0;
   color: var(--lab-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
@@ -130,7 +130,7 @@
   border-radius: var(--radius-md);
   background: var(--lab-primary-soft);
   color: var(--lab-primary);
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
 }
 
 .accessoryCard summary > span:last-child {
@@ -140,7 +140,7 @@
 
 .accessoryCard summary strong {
   font-family: var(--font-heading);
-  font-size: 0.92rem;
+  font-size: var(--text-sm);
   font-weight: var(--type-display-weight);
 }
 
