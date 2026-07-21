@@ -8,6 +8,7 @@ import {
   type CapabilityAuthorOpenAiClient
 } from "../../../../src/lib/agent/lab-authoring/capabilityOpenAi.server";
 import {
+  capabilityAuthorPlanShellStrictJsonSchema,
   capabilityAuthorPlanStrictJsonSchema,
   type CapabilityAuthorRequest
 } from "../../../../src/lib/agent/lab-authoring/capabilityAuthorSchemas";
@@ -15,6 +16,7 @@ import {
   runCapabilityAuthoringWithDeterministicFallback,
   type CapabilityAuthorPlannerContext
 } from "../../../../src/lib/agent/lab-authoring/capabilityAuthor";
+import { GENERIC_LAB_RUNTIME_SCHEMA_VERSION } from "../../../../src/lab-workflows/runtime";
 
 const REQUEST: CapabilityAuthorRequest = {
   contractVersion: "2.0.0",
@@ -158,8 +160,13 @@ describe("live capability author structured-output boundary", () => {
       text: { format: { strict: boolean; schema: unknown } };
     };
     expect(firstRequest.text.format.strict).toBe(true);
+    /*
+     * Trace cases are requested concurrently after this call, so the plan call
+     * transmits the shell shape. The full bounded schema still validates the
+     * merged plan, which is what the repair below is reacting to.
+     */
     expect(firstRequest.text.format.schema).toEqual(
-      capabilityAuthorPlanStrictJsonSchema()
+      capabilityAuthorPlanShellStrictJsonSchema()
     );
     const secondRequest = create.mock.calls[1]?.[0] as { input: unknown };
     expect(JSON.stringify(secondRequest.input)).toContain(
@@ -215,5 +222,111 @@ describe("live capability author structured-output boundary", () => {
     }
 
     expect(create).toHaveBeenCalledTimes(1);
+  });
+});
+
+/*
+ * Authoring latency is dominated by output volume (~60-70 output tokens per
+ * second), and the five trace cases are most of a candidate plan. Emitting
+ * them in one response is inherently serial; requesting one per call lets them
+ * overlap. These tests pin the contract that makes that safe.
+ */
+describe("parallel trace-case generation", () => {
+  const shell = {
+    disposition: "candidate",
+    objective: "Prepare a 0.0100 M sodium chloride dilution.",
+    assumptions: [],
+    questions: [],
+    limitations: []
+  };
+  const traceFor = (kind: string) => ({
+    kind,
+    actions: [
+      {
+        schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
+        permissionId: "permission.s1.a1",
+        actionId: "action.transfer_liquid.v1",
+        sourceEquipmentInstanceId: "stock_pipette",
+        targetEquipmentInstanceIds: ["volumetric_flask"],
+        parameters: []
+      }
+    ]
+  });
+
+  it("requests every trace kind concurrently and merges them into one plan", async () => {
+    const kinds = [
+      "valid",
+      "alternate_valid",
+      "recoverable_mistake",
+      "terminal_mistake",
+      "tolerance_boundary"
+    ];
+    const { create, planner } = plannerWithResponses(
+      completedResponse(shell),
+      ...kinds.map((kind) => completedResponse(traceFor(kind)))
+    );
+
+    const result = await planner.runRound(plannerContext());
+
+    // One plan call plus one call per trace kind.
+    expect(create).toHaveBeenCalledTimes(1 + kinds.length);
+    const plan = result.plan as { traceCases: { kind: string }[] };
+    expect(plan.traceCases.map(({ kind }) => kind).sort()).toEqual(
+      [...kinds].sort()
+    );
+    // Usage must account for the fan-out, not just the plan call.
+    expect(result.usage.modelCalls).toBe(1 + kinds.length);
+  });
+
+  it("asks each trace call for exactly one named kind", async () => {
+    const kinds = [
+      "valid",
+      "alternate_valid",
+      "recoverable_mistake",
+      "terminal_mistake",
+      "tolerance_boundary"
+    ];
+    const { create, planner } = plannerWithResponses(
+      completedResponse(shell),
+      ...kinds.map((kind) => completedResponse(traceFor(kind)))
+    );
+
+    await planner.runRound(plannerContext());
+
+    const requested = create.mock.calls.slice(1).map((call) => {
+      const input = (call[0] as { input: { content?: unknown }[] }).input;
+      return JSON.parse(String(input[input.length - 1]?.content)) as {
+        kind: string;
+      };
+    });
+    expect(requested.map(({ kind }) => kind).sort()).toEqual([...kinds].sort());
+  });
+
+  it("emits no trace calls when the plan is not a candidate", async () => {
+    const { create, planner } = plannerWithResponses(
+      completedResponse({
+        ...shell,
+        disposition: "needs_clarification",
+        questions: ["Which concentration should students target?"]
+      })
+    );
+
+    const result = await planner.runRound(plannerContext());
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect((result.plan as { traceCases: unknown[] }).traceCases).toEqual([]);
+  });
+
+  it("pins the requested kind so a mislabelled response cannot collapse two kinds", async () => {
+    // Every trace call answers "valid"; the merge must still yield five kinds.
+    const { planner } = plannerWithResponses(
+      completedResponse(shell),
+      ...Array.from({ length: 5 }, () => completedResponse(traceFor("valid")))
+    );
+
+    const result = await planner.runRound(plannerContext());
+
+    const plan = result.plan as { traceCases: { kind: string }[] };
+    expect(new Set(plan.traceCases.map(({ kind }) => kind)).size).toBe(5);
   });
 });

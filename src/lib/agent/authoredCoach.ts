@@ -745,33 +745,83 @@ function deterministicModelOutput(
   };
 }
 
-function assertKnownModelReferences(
+/**
+ * Drop citations the deterministic context never supplied, keeping the answer.
+ *
+ * This used to throw, which discarded the model's entire response and served
+ * the current step's authored instruction in its place. One unrecognised id in
+ * a citation array was enough, so a correct answer to a direct question —
+ * "what happens if I didn't tare" — came back as an unrelated restatement of
+ * the next step, badged "From the lab steps". All-or-nothing rejection made a
+ * citation problem look like a comprehension problem.
+ *
+ * Stripping is the conservative repair: it can only ever remove a claim of
+ * support, never add one. `evidenceEventTypes` on the response is derived from
+ * the surviving evidence ids, so a repaired answer cites strictly less than the
+ * model asked for and never something the engine did not supply.
+ *
+ * What is removed is returned rather than swallowed, so the caller can report
+ * it — a model that routinely invents ids is a prompt defect, and silently
+ * rewriting its citations would hide that.
+ */
+function groundModelReferences(
+  request: Readonly<AuthoredCoachRequest>,
+  output: Readonly<AuthoredCoachModelOutput>
+): {
+  readonly output: AuthoredCoachModelOutput;
+  readonly droppedReferences: readonly string[];
+} {
+  if (!output.shouldRespond || !output.guidance) {
+    return { output, droppedReferences: [] };
+  }
+  const context = request.workflowContext;
+  const supported = {
+    objectiveIds: new Set(context.activeObjectiveIds),
+    ruleIds: new Set(context.rules.map(({ id }) => id)),
+    instructionIds: new Set(context.instructions.map(({ id }) => id)),
+    evidenceEventIds: new Set(context.evidence.map(({ eventId }) => eventId)),
+    recoveryActionIds: new Set(
+      context.availableActions.map(({ actionId }) => actionId)
+    )
+  } as const;
+
+  const dropped: string[] = [];
+  const keep = (field: keyof typeof supported): string[] => {
+    const values = output.guidance?.[field] ?? [];
+    return values.filter((value) => {
+      if (supported[field].has(value)) return true;
+      dropped.push(`${field}:${value}`);
+      return false;
+    });
+  };
+
+  const guidance = {
+    ...output.guidance,
+    objectiveIds: keep("objectiveIds"),
+    ruleIds: keep("ruleIds"),
+    instructionIds: keep("instructionIds"),
+    evidenceEventIds: keep("evidenceEventIds"),
+    recoveryActionIds: keep("recoveryActionIds")
+  };
+
+  return {
+    output: dropped.length === 0 ? output : { ...output, guidance },
+    droppedReferences: dropped
+  };
+}
+
+/**
+ * The guards that survive repair. Unlike an invented citation, none of these
+ * can be fixed by removing something: an unsolicited intervention untied to a
+ * violation has no business being shown at all, and safety guidance carrying
+ * the wrong label misrepresents the hazard.
+ */
+function assertGroundedIntervention(
   request: Readonly<AuthoredCoachRequest>,
   output: Readonly<AuthoredCoachModelOutput>
 ): void {
   if (!output.shouldRespond || !output.guidance) return;
   const context = request.workflowContext;
-  const objectiveIds = new Set(context.activeObjectiveIds);
-  const ruleIds = new Set(context.rules.map(({ id }) => id));
-  const instructionIds = new Set(context.instructions.map(({ id }) => id));
-  const evidenceIds = new Set(context.evidence.map(({ eventId }) => eventId));
-  const actionIds = new Set(
-    context.availableActions.map(({ actionId }) => actionId)
-  );
-  const references = [
-    [output.guidance.objectiveIds, objectiveIds],
-    [output.guidance.ruleIds, ruleIds],
-    [output.guidance.instructionIds, instructionIds],
-    [output.guidance.evidenceEventIds, evidenceIds],
-    [output.guidance.recoveryActionIds, actionIds]
-  ] as const;
-  if (
-    references.some(([values, supported]) =>
-      values.some((value) => !supported.has(value))
-    )
-  ) {
-    throw new TypeError("Coach model output invented a context reference.");
-  }
   const violatedRuleIds = new Set(
     context.diagnoses
       .filter(({ status }) => status === "violated")
@@ -828,14 +878,27 @@ function validateModelOutput(
   candidate: unknown,
   deterministic: Readonly<AuthoredCoachModelOutput>
 ): AuthoredCoachModelOutput {
-  const output = authoredCoachModelOutputSchema.parse(candidate);
-  if (output.hintLevel > request.triggerPolicy.maxHintLevel) {
+  const parsed = authoredCoachModelOutputSchema.parse(candidate);
+  if (parsed.hintLevel > request.triggerPolicy.maxHintLevel) {
     throw new TypeError("Coach model exceeded the deterministic hint limit.");
   }
-  if (deterministic.shouldRespond && !output.shouldRespond) {
+  if (deterministic.shouldRespond && !parsed.shouldRespond) {
     throw new TypeError("Coach model ignored an authorized intervention.");
   }
-  assertKnownModelReferences(request, output);
+  /*
+   * Repair citations first, then judge the repaired answer. Running the
+   * remaining guards against the original would let a response qualify on the
+   * strength of a reference that is about to be removed.
+   */
+  const { output, droppedReferences } = groundModelReferences(request, parsed);
+  if (droppedReferences.length > 0) {
+    console.warn("coach.grounding.references_dropped", {
+      definitionId: request.workflowContext.definition.id,
+      source: request.triggerPolicy.source,
+      droppedReferences: droppedReferences.slice(0, 32)
+    });
+  }
+  assertGroundedIntervention(request, output);
   assertNoProhibitedClaims(output);
   return output;
 }
@@ -943,7 +1006,17 @@ export async function generateAuthoredCoachResponse(
       options.model.respond(request),
       options.modelTimeoutMs ?? AUTHORED_COACH_MODEL_TIMEOUT_MS
     );
-  } catch {
+  } catch (error) {
+    /*
+     * Both fallback paths used to swallow the error entirely. The student saw
+     * an unrelated lab step and no operator could tell whether the model had
+     * timed out, been rejected, or never been called — which is precisely how
+     * a citation bug went unnoticed while looking like a bad coach.
+     */
+    console.warn("coach.model_unavailable", {
+      definitionId: request.workflowContext.definition.id,
+      reason: error instanceof Error ? error.message : "unknown error"
+    });
     return responseFromOutput(request, deterministic, {
       model: AUTHORED_COACH_FALLBACK_MODEL,
       mode: "deterministic_fallback",
@@ -960,7 +1033,12 @@ export async function generateAuthoredCoachResponse(
         fallbackReason: null
       }
     );
-  } catch {
+  } catch (error) {
+    console.warn("coach.model_output_invalid", {
+      definitionId: request.workflowContext.definition.id,
+      source: request.triggerPolicy.source,
+      reason: error instanceof Error ? error.message : "unknown error"
+    });
     return responseFromOutput(request, deterministic, {
       model: AUTHORED_COACH_FALLBACK_MODEL,
       mode: "deterministic_fallback",

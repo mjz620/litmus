@@ -14,6 +14,20 @@ export function coachGuidanceLabel(
 ): string | null {
   if (!response || !("contractVersion" in response) || !response.guidance)
     return null;
+  /*
+   * Never call authored lab guidance "AI guidance".
+   *
+   * The coach falls back to the workflow's own authored instruction whenever
+   * the model is unavailable or its output fails the grounding guards — which
+   * happens routinely, because the model is deliberately never given the
+   * numbers a question like "what is the molarity?" would need. Labelling that
+   * fallback as AI output told the student a model had answered them when none
+   * had, which is exactly the assertion-over-evidence this product refuses
+   * everywhere else. The response already reports its own provenance.
+   */
+  if (response.metadata?.mode === "deterministic_fallback") {
+    return "From the lab steps";
+  }
   switch (response.guidance.kind) {
     case "mandatory_procedure":
       return "Required procedure";

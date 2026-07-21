@@ -1,3 +1,4 @@
+import { currentApiPath } from "../demo/demoEnvironment";
 import type {
   AnyCoachRequest,
   AnyCoachResponse,
@@ -24,7 +25,7 @@ export class NoopCoachClient implements CoachClient {
 
 export class HttpCoachClient implements CoachClient {
   async request(request: AnyCoachRequest): Promise<AnyCoachResponse> {
-    const response = await fetch("/api/coach", {
+    const response = await fetch(currentApiPath("/api/coach"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request)

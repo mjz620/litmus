@@ -341,7 +341,133 @@ describe("LC2-703 diagnosis-aware authored Coach", () => {
     });
   });
 
-  it("falls back for invented model IDs, chemistry claims, down models, and slow models", async () => {
+  /*
+   * A student asking "what happens if I didn't tare" used to get the next lab
+   * step read back at them. One unrecognised id anywhere in the citation arrays
+   * discarded the model's whole answer, so a citation problem presented as a
+   * comprehension problem. Unknown ids are now stripped and the answer stands.
+   */
+  it("strips invented references instead of discarding the answer", async () => {
+    const runtime = solutionSession(solutionDefinition, "coach-grounding");
+    const context = createAuthoredCoachWorkflowContext(
+      runtime.getWorkflow(),
+      runtime.getGenericState()
+    );
+    const authoredRequest = request(context);
+    const validOutput = modelOutputFromResponse(
+      await generateAuthoredCoachResponse(authoredRequest)
+    );
+    if (!validOutput.guidance) throw new Error("Expected guidance.");
+
+    const knownActionIds = validOutput.guidance.recoveryActionIds;
+    const partlyInvented = structuredClone(validOutput);
+    partlyInvented.message = "Tare the balance before you record the mass.";
+    partlyInvented.guidance!.recoveryActionIds = [
+      ...knownActionIds,
+      "action.unknown.v1"
+    ];
+
+    const result = await generateAuthoredCoachResponse(authoredRequest, {
+      model: {
+        model: "partly-invented",
+        async respond() {
+          return partlyInvented;
+        }
+      }
+    });
+
+    // The answer survives, in the model's own words.
+    expect(result.metadata.mode).toBe("live");
+    expect(result.metadata.fallbackReason).toBeNull();
+    expect(result.message).toBe(
+      "Tare the balance before you record the mass."
+    );
+    // Only the unsupported id is gone; supplied ones are untouched.
+    expect(result.guidance?.recoveryActionIds).toEqual(knownActionIds);
+    expect(result.guidance?.recoveryActionIds).not.toContain(
+      "action.unknown.v1"
+    );
+  });
+
+  /*
+   * Repair may only ever remove a claim of support. If stripping could leave a
+   * response asserting evidence the engine never supplied, it would be a worse
+   * failure than the rejection it replaced.
+   */
+  it("never lets a repaired answer cite more than the model asked for", async () => {
+    const runtime = solutionSession(solutionDefinition, "coach-grounding-sub");
+    const context = createAuthoredCoachWorkflowContext(
+      runtime.getWorkflow(),
+      runtime.getGenericState()
+    );
+    const authoredRequest = request(context);
+    const validOutput = modelOutputFromResponse(
+      await generateAuthoredCoachResponse(authoredRequest)
+    );
+    if (!validOutput.guidance) throw new Error("Expected guidance.");
+
+    const invented = structuredClone(validOutput);
+    invented.guidance!.objectiveIds = ["objective.not_supplied.v1"];
+    invented.guidance!.ruleIds = ["rule.not_supplied.v1"];
+    invented.guidance!.instructionIds = ["instruction.not_supplied.v1"];
+    invented.guidance!.evidenceEventIds = ["event-that-never-happened"];
+
+    const result = await generateAuthoredCoachResponse(authoredRequest, {
+      model: {
+        model: "fully-invented",
+        async respond() {
+          return invented;
+        }
+      }
+    });
+
+    for (const cited of [
+      result.guidance?.objectiveIds ?? [],
+      result.guidance?.ruleIds ?? [],
+      result.guidance?.instructionIds ?? [],
+      result.guidance?.evidenceEventIds ?? []
+    ]) {
+      expect(cited).toEqual([]);
+    }
+    // evidenceEventTypes is derived from surviving evidence ids, so a fabricated
+    // event cannot reach the student as a cited observation.
+    expect(result.evidenceEventTypes).toEqual([]);
+  });
+
+  /*
+   * The guards that repair must not weaken. An unsolicited intervention has to
+   * stay tied to a real violation — stripping the invented rule it cited leaves
+   * it tied to nothing, which is a fallback, not a repair.
+   */
+  it("still falls back when stripping leaves unsolicited coaching untethered", async () => {
+    const runtime = solutionSession(solutionDefinition, "coach-grounding-event");
+    const context = createAuthoredCoachWorkflowContext(
+      runtime.getWorkflow(),
+      runtime.getGenericState()
+    );
+    const eventRequestForRuntime = eventRequest(context);
+    const baseline = await generateAuthoredCoachResponse(
+      eventRequestForRuntime
+    );
+    const output = modelOutputFromResponse(baseline);
+    if (!output.guidance) return; // Nothing to coach in this state.
+
+    const untethered = structuredClone(output);
+    untethered.guidance!.ruleIds = ["rule.not_supplied.v1"];
+    untethered.guidance!.evidenceEventIds = [];
+
+    const result = await generateAuthoredCoachResponse(eventRequestForRuntime, {
+      model: {
+        model: "untethered",
+        async respond() {
+          return untethered;
+        }
+      }
+    });
+    expect(result.metadata.fallbackReason).toBe("model_output_invalid");
+  });
+
+  it("falls back for chemistry claims, down models, and slow models", async () => {
     const runtime = solutionSession(solutionDefinition, "coach-model-guard");
     const context = createAuthoredCoachWorkflowContext(
       runtime.getWorkflow(),
@@ -350,22 +476,6 @@ describe("LC2-703 diagnosis-aware authored Coach", () => {
     const authoredRequest = request(context);
     const deterministic = await generateAuthoredCoachResponse(authoredRequest);
     const validOutput = modelOutputFromResponse(deterministic);
-
-    const invented = structuredClone(validOutput);
-    if (!invented.guidance) throw new Error("Expected guidance.");
-    invented.guidance.recoveryActionIds = ["action.unknown.v1"];
-    const inventedResult = await generateAuthoredCoachResponse(
-      authoredRequest,
-      {
-        model: {
-          model: "invented",
-          async respond() {
-            return invented;
-          }
-        }
-      }
-    );
-    expect(inventedResult.metadata.fallbackReason).toBe("model_output_invalid");
 
     const chemistryClaim = structuredClone(validOutput);
     chemistryClaim.message = "The pH is 7.00, so you are finished.";

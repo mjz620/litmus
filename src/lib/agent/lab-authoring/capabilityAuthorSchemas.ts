@@ -158,16 +158,68 @@ export function strictifyCapabilityAuthorOutputSchema(value: unknown): unknown {
   ]);
 }
 
-/** A fresh JSON-safe strict schema for each provider request. */
-export function capabilityAuthorPlanStrictJsonSchema(): Record<string, unknown> {
-  const schema = strictifyCapabilityAuthorOutputSchema(
-    z.toJSONSchema(capabilityAuthorPlanSchema)
+function strictJsonSchemaFor(schema: z.ZodType): Record<string, unknown> {
+  const projected = strictifyCapabilityAuthorOutputSchema(
+    z.toJSONSchema(schema)
   );
-  if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
+  if (!projected || typeof projected !== "object" || Array.isArray(projected)) {
     throw new Error("Capability author output schema must be an object.");
   }
-  return schema as Record<string, unknown>;
+  return projected as Record<string, unknown>;
 }
+
+/** A fresh JSON-safe strict schema for each provider request. */
+export function capabilityAuthorPlanStrictJsonSchema(): Record<string, unknown> {
+  return strictJsonSchemaFor(capabilityAuthorPlanSchema);
+}
+
+/*
+ * Split-plan schemas for parallel trace generation.
+ *
+ * Authoring latency is dominated by output volume — measured throughput is
+ * roughly 60-70 output tokens per second, and the five trace cases are the
+ * overwhelming majority of a candidate plan. Emitting them in one response is
+ * therefore inherently serial: five traces measured ~50s against ~19s for one.
+ *
+ * The shell carries the plan's judgement (disposition and prose) with no
+ * traces; each trace kind is then requested concurrently against the same
+ * finished draft. The merged result is validated with the full
+ * `capabilityAuthorPlanSchema`, so the contract downstream is unchanged.
+ */
+export const capabilityAuthorPlanShellSchema = z.strictObject({
+  disposition: z.enum([
+    "candidate",
+    "needs_clarification",
+    "unsupported",
+    "rejected_for_safety"
+  ]),
+  objective: boundedText(1_000),
+  assumptions: z
+    .array(boundedText())
+    .max(CAPABILITY_AUTHOR_LIMITS.maxAssumptions),
+  questions: z.array(boundedText()).max(CAPABILITY_AUTHOR_LIMITS.maxQuestions),
+  limitations: z
+    .array(boundedText())
+    .max(CAPABILITY_AUTHOR_LIMITS.maxLimitations)
+});
+
+export function capabilityAuthorPlanShellStrictJsonSchema(): Record<
+  string,
+  unknown
+> {
+  return strictJsonSchemaFor(capabilityAuthorPlanShellSchema);
+}
+
+export function capabilityAuthorTraceCaseStrictJsonSchema(): Record<
+  string,
+  unknown
+> {
+  return strictJsonSchemaFor(capabilityAuthorPlanTraceCaseSchema);
+}
+
+export type CapabilityAuthorPlanShell = z.infer<
+  typeof capabilityAuthorPlanShellSchema
+>;
 
 export const capabilityAuthorDiagnosticSchema = z.strictObject({
   source: z.enum(["validation", "trace", "tool", "model", "limit"]),

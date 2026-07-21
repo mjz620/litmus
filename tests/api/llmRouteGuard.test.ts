@@ -68,7 +68,7 @@ describe("guardLlmRoute", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.principal.userId).toBe(STUDENT.userId);
+    expect(result.principal?.userId).toBe(STUDENT.userId);
   });
 
   it("returns 503 rather than admitting the caller when auth throws", async () => {
@@ -138,5 +138,77 @@ describe("guardLlmRoute", () => {
 
     clock += 60_001;
     expect((await call()).ok).toBe(true);
+  });
+});
+
+/*
+ * Guest practice is a product commitment: a student can run a whole lab
+ * without an account, and the coach is part of that lab. Requiring a session
+ * on the coach route silently disabled coaching for every guest — the client
+ * caught the 401 and showed canned text labelled as AI guidance.
+ */
+describe("guest access", () => {
+  it("admits a signed-out caller when the route allows guests", async () => {
+    const result = await guardLlmRoute({
+      limiter: wideOpen(),
+      allowGuests: true,
+      guestKey: "203.0.113.10",
+      authenticate: async () => null
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.principal).toBeNull();
+  });
+
+  it("still refuses signed-out callers when guests are not allowed", async () => {
+    const result = await guardLlmRoute({
+      limiter: wideOpen(),
+      authenticate: async () => null
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.response.status).toBe(401);
+  });
+
+  it("budgets guests per address so one cannot exhaust another", async () => {
+    const limiter = new FixedWindowRateLimiter(1, 60_000);
+    const now = () => 1_000;
+    const guest = (guestKey: string) =>
+      guardLlmRoute({
+        limiter,
+        now,
+        allowGuests: true,
+        guestKey,
+        authenticate: async () => null
+      });
+
+    expect((await guest("203.0.113.10")).ok).toBe(true);
+    expect((await guest("203.0.113.10")).ok).toBe(false);
+    expect((await guest("203.0.113.11")).ok).toBe(true);
+  });
+
+  it("keeps guest and signed-in budgets separate", async () => {
+    const limiter = new FixedWindowRateLimiter(1, 60_000);
+    const now = () => 1_000;
+
+    const guest = await guardLlmRoute({
+      limiter,
+      now,
+      allowGuests: true,
+      guestKey: TEACHER.userId,
+      authenticate: async () => null
+    });
+    const signedIn = await guardLlmRoute({
+      limiter,
+      now,
+      allowGuests: true,
+      authenticate: async () => TEACHER
+    });
+
+    expect(guest.ok).toBe(true);
+    // A guest keyed on a string equal to a user id must not consume that user's budget.
+    expect(signedIn.ok).toBe(true);
   });
 });

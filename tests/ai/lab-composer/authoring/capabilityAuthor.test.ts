@@ -436,7 +436,7 @@ describe("LC2-601 bounded capability author", () => {
       questions: [],
       validation: { runnable: true, previewEligible: true }
     });
-    expect(response.result.objective).toMatch(/sodium-chloride dilution/i);
+    expect(response.result.objective).toMatch(/copper\(II\) nitrate dilution/i);
     expect(JSON.stringify(response.result.questions)).not.toMatch(/titration/i);
     expect(response.result.limitations).toContain(
       "The live helper did not produce a runnable supported draft, so Litmus completed this proposal with its verified local builder."

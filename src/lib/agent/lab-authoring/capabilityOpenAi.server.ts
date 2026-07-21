@@ -19,7 +19,11 @@ import {
 import {
   CAPABILITY_AUTHOR_LIMITS,
   capabilityAuthorPlanSchema,
-  capabilityAuthorPlanStrictJsonSchema
+  capabilityAuthorPlanShellSchema,
+  capabilityAuthorPlanShellStrictJsonSchema,
+  capabilityAuthorPlanStrictJsonSchema,
+  capabilityAuthorTraceCaseStrictJsonSchema,
+  capabilityAuthorTraceKindSchema
 } from "./capabilityAuthorSchemas";
 import { CAPABILITY_AUTHOR_TOOLS } from "./capabilityTools.server";
 
@@ -57,6 +61,26 @@ function outputValidationRepairPrompt(error: z.ZodError): string {
   });
 }
 
+const CAPABILITY_AUTHOR_REASONING_EFFORTS = Object.freeze([
+  "none",
+  "low",
+  "medium",
+  "high",
+  "xhigh"
+] as const);
+
+type CapabilityAuthorReasoningEffort =
+  (typeof CAPABILITY_AUTHOR_REASONING_EFFORTS)[number];
+
+/** Override with OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT to trade latency for depth. */
+const CAPABILITY_AUTHOR_REASONING_EFFORT: CapabilityAuthorReasoningEffort =
+  (CAPABILITY_AUTHOR_REASONING_EFFORTS as readonly string[]).includes(
+    process.env.OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT ?? ""
+  )
+    ? (process.env
+        .OPENAI_LAB_CAPABILITY_AUTHOR_EFFORT as CapabilityAuthorReasoningEffort)
+    : "low";
+
 export interface CapabilityAuthorOpenAiClient {
   readonly responses: Pick<OpenAI["responses"], "create">;
 }
@@ -81,6 +105,118 @@ function hasRefusal(
           content.type === "refusal"
       )
   );
+}
+
+/** Set OPENAI_LAB_CAPABILITY_AUTHOR_PARALLEL_TRACES=0 to fall back to one call. */
+const parallelTraces =
+  process.env.OPENAI_LAB_CAPABILITY_AUTHOR_PARALLEL_TRACES !== "0";
+
+const TRACE_KIND_BRIEFS: Readonly<Record<string, string>> = Object.freeze({
+  valid:
+    "The canonical successful run: every required step performed correctly, in order, reaching completion.",
+  alternate_valid:
+    "A different but equally correct run — a legitimate reordering or an alternate permitted choice — that also reaches completion.",
+  recoverable_mistake:
+    "A realistic student error the workflow lets them detect and correct, continuing to completion afterwards.",
+  terminal_mistake:
+    "A realistic error that the workflow treats as unrecoverable, ending the run without completion.",
+  tolerance_boundary:
+    "A run that lands exactly on an authored tolerance edge, exercising the boundary rather than the comfortable middle."
+});
+
+/**
+ * Fill a plan shell's trace cases with one concurrent request per trace kind.
+ *
+ * The tool loop has already built the draft, so each trace is an independent
+ * reading of the same finished workflow; nothing about them is sequential
+ * except the transport. Running them together turns the slowest phase of
+ * authoring from the sum of five generations into roughly the longest one.
+ *
+ * Each request replays the accumulated conversation so the model still sees
+ * the draft and tool results it built. That repeats input tokens per trace —
+ * a deliberate trade of cost for latency, and input tokens are the cheap half.
+ */
+async function completePlanWithParallelTraces(
+  shell: unknown,
+  options: {
+    readonly client: CapabilityAuthorOpenAiClient;
+    readonly model: string;
+    readonly input: readonly ResponseInputItem[];
+    readonly signal: AbortSignal;
+    readonly onUsage: (
+      calls: number,
+      inputTokens: number,
+      outputTokens: number
+    ) => void;
+  }
+): Promise<unknown> {
+  const parsedShell = capabilityAuthorPlanShellSchema.safeParse(shell);
+  if (!parsedShell.success) return shell;
+  if (parsedShell.data.disposition !== "candidate") {
+    return { ...parsedShell.data, traceCases: [] };
+  }
+
+  const kinds = capabilityAuthorTraceKindSchema.options;
+  const traceCases = await Promise.all(
+    kinds.map(async (kind) => {
+      const response = await options.client.responses.create(
+        {
+          model: options.model,
+          input: [
+            ...options.input,
+            {
+              role: "user",
+              content: JSON.stringify({
+                instruction:
+                  "Return exactly one executable trace case for the draft you just authored. Emit only this trace kind.",
+                kind,
+                meaning: TRACE_KIND_BRIEFS[kind],
+                rules: [
+                  "Use only permission ids and equipment instance ids present in the draft.",
+                  "Order actions exactly as a student would perform them.",
+                  "Do not restate the plan, the objective, or any other trace kind."
+                ]
+              })
+            }
+          ],
+          max_output_tokens: CAPABILITY_AUTHOR_LIMITS.maxOutputTokensPerCall,
+          store: false,
+          reasoning: { effort: CAPABILITY_AUTHOR_REASONING_EFFORT },
+          text: {
+            verbosity: "low",
+            format: {
+              type: "json_schema",
+              name: "capability_author_trace_case",
+              strict: true,
+              schema: capabilityAuthorTraceCaseStrictJsonSchema()
+            }
+          }
+        },
+        { signal: options.signal }
+      );
+      options.onUsage(
+        1,
+        response.usage?.input_tokens ?? 0,
+        response.usage?.output_tokens ?? 0
+      );
+      if (response.status === "incomplete") {
+        throw new CapabilityAuthoringError(
+          "authoring.output_truncated.v2",
+          `The ${kind} trace case was incomplete before it finished.`,
+          502,
+          true
+        );
+      }
+      // Pin the kind so a mislabelled response cannot collapse two kinds into
+      // one and trip the "exactly one of every kind" rule downstream.
+      return {
+        ...(JSON.parse(response.output_text) as Record<string, unknown>),
+        kind
+      };
+    })
+  );
+
+  return { ...parsedShell.data, traceCases };
 }
 
 export function createOpenAiCapabilityAuthorPlanner(
@@ -139,12 +275,35 @@ export function createOpenAiCapabilityAuthorPlanner(
               max_output_tokens:
                 CAPABILITY_AUTHOR_LIMITS.maxOutputTokensPerCall,
               store: false,
+              /*
+               * Authoring latency is dominated by output volume, not thinking:
+               * measured throughput is ~60 output tokens/second, and a plan
+               * carrying five trace cases runs to thousands of tokens. Reasoning
+               * effort is a smaller lever but a free one — measured 11.0s at
+               * "low" against 15.5s unset and 17.7s at "medium" on an identical
+               * request. The task is heavily constrained by a strict schema and
+               * typed tools, so deep reasoning buys little here.
+               *
+               * Note "minimal" is rejected by gpt-5.6; the accepted values are
+               * none, low, medium, high, and xhigh.
+               */
+              reasoning: { effort: CAPABILITY_AUTHOR_REASONING_EFFORT },
               text: {
+                // Shortens prose fields (assumptions, limitations, purposes)
+                // without touching schema-constrained structure.
+                verbosity: "low",
                 format: {
                   type: "json_schema",
                   name: "capability_author_plan",
                   strict: true,
-                  schema: capabilityAuthorPlanStrictJsonSchema()
+                  /*
+                   * With parallel traces on, this call returns judgement and
+                   * prose only; the traces follow concurrently. That keeps the
+                   * serial phase small, which is where the latency lives.
+                   */
+                  schema: parallelTraces
+                    ? capabilityAuthorPlanShellStrictJsonSchema()
+                    : capabilityAuthorPlanStrictJsonSchema()
                 }
               }
             },
@@ -184,9 +343,21 @@ export function createOpenAiCapabilityAuthorPlanner(
         if (toolCalls.length === 0) {
           let parsedPlan: unknown;
           try {
-            parsedPlan = capabilityAuthorPlanSchema.parse(
-              JSON.parse(response.output_text)
-            );
+            const shell = JSON.parse(response.output_text) as unknown;
+            const completed = parallelTraces
+              ? await completePlanWithParallelTraces(shell, {
+                  client,
+                  model,
+                  input,
+                  signal: context.signal,
+                  onUsage: (calls, inTok, outTok) => {
+                    modelCalls += calls;
+                    inputTokens += inTok;
+                    outputTokens += outTok;
+                  }
+                })
+              : shell;
+            parsedPlan = capabilityAuthorPlanSchema.parse(completed);
           } catch (error) {
             if (
               error instanceof z.ZodError &&

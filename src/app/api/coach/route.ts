@@ -12,7 +12,8 @@ import { generateCoachResponse } from "../../../lib/agent/coach";
 import { coachRequestSchema } from "../../../lib/agent/schemas";
 import {
   LLM_ROUTE_LIMITERS,
-  guardLlmRoute
+  guardLlmRoute,
+  guestKeyFromRequest
 } from "../../../lib/api/llmRouteGuard";
 
 export const runtime = "nodejs";
@@ -91,11 +92,38 @@ async function authoredResponse(body: unknown) {
   }
 }
 
-export async function POST(request: Request) {
-  // Reaches a paid model: authenticate and consume budget before reading a body.
-  const guard = await guardLlmRoute({ limiter: LLM_ROUTE_LIMITERS.coach });
-  if (!guard.ok) return guard.response;
+/**
+ * Coach handler over an injected rate limiter. The judge demo mounts this at
+ * its own endpoint with its own limiter so an evaluator exploring the demo
+ * cannot exhaust the budget students and teachers share, and vice versa.
+ */
+export function createCoachHandler(
+  limiter: Parameters<
+    typeof guardLlmRoute
+  >[0]["limiter"] = LLM_ROUTE_LIMITERS.coach
+) {
+  return async function coachHandler(request: Request) {
+    /*
+     * Reaches a paid model, but guests must keep working: a student can run a
+     * whole practice lab without an account and the coach belongs to that lab.
+     * Signed-in students are budgeted per user, guests per address.
+     */
+    const guard = await guardLlmRoute({
+      limiter,
+      allowGuests: true,
+      guestKey: guestKeyFromRequest(request)
+    });
+    if (!guard.ok) return guard.response;
 
+    return handleCoachBody(request);
+  };
+}
+
+export async function POST(request: Request) {
+  return createCoachHandler()(request);
+}
+
+async function handleCoachBody(request: Request) {
   let body: unknown;
   try {
     body = await request.json();

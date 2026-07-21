@@ -91,11 +91,37 @@ async function authoredResponse(body: unknown) {
   }
 }
 
-export async function POST(request: Request) {
-  // Reaches a paid model: authenticate and consume budget before reading a body.
-  const guard = await guardLlmRoute({ limiter: LLM_ROUTE_LIMITERS.evaluate });
-  if (!guard.ok) return guard.response;
+/**
+ * Evaluation handler over an injected guard. Production authenticates, because
+ * a graded report belongs to a real student. The judge demo mounts this with
+ * its own limiter and admits guests, since an evaluator has no account and
+ * submitting a report is the end of the lab they came to see.
+ */
+export function createEvaluateHandler(
+  options: {
+    readonly limiter?: Parameters<typeof guardLlmRoute>[0]["limiter"];
+    readonly allowGuests?: boolean;
+    readonly guestKey?: string;
+  } = {}
+) {
+  return async function evaluateHandler(request: Request) {
+    // Reaches a paid model: guard and consume budget before reading a body.
+    const guard = await guardLlmRoute({
+      limiter: options.limiter ?? LLM_ROUTE_LIMITERS.evaluate,
+      allowGuests: options.allowGuests ?? false,
+      guestKey: options.guestKey
+    });
+    if (!guard.ok) return guard.response;
 
+    return handleEvaluateBody(request);
+  };
+}
+
+export async function POST(request: Request) {
+  return createEvaluateHandler()(request);
+}
+
+async function handleEvaluateBody(request: Request) {
   let body: unknown;
   try {
     body = await request.json();

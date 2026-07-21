@@ -168,7 +168,7 @@ const UNSAFE_OR_OUT_OF_SCOPE_REQUEST_PATTERN =
   /(?:ignore (?:all |the )?(?:previous|prior|system)|invent (?:a |new )?(?:registry|component|action|adapter|model)|validator (?:already )?approved|output (?:code|javascript)|reveal (?:the )?(?:prompt|secret|chain.of.thought)|open flame|bunsen|flame test)/i;
 
 const SOLUTION_PREPARATION_REQUEST_PATTERN =
-  /(?:solution preparation|dilution|dilute|volumetric (?:transfer|flask|pipette)|sodium chloride|stock solution|fill(?:ing)? to (?:the )?mark|mix(?:ing)? (?:a )?solution)/i;
+  /(?:solution preparation|dilution|dilute|volumetric (?:transfer|flask|pipette)|sodium chloride|copper nitrate|copper\(ii\) nitrate|stock solution|fill(?:ing)? to (?:the )?mark|mix(?:ing)? (?:a )?solution)/i;
 
 function requestsVerifiedSolutionPreparation(
   request: CapabilityAuthorRequest
@@ -274,13 +274,14 @@ const SOLUTION_CONFIGURATION_IDS = Object.freeze([
   "placement.solution_pipette_stand.v1",
   "placement.solution_flask_center.v1",
   "placement.solution_wash_left.v1",
-  "quantity-preset.sodium_chloride_solution_50ml.v1",
+  "quantity-preset.copper_nitrate_solution_50ml.v1",
   "quantity-preset.distilled_water_250ml.v1",
   "schema.material_initialization.bounded_concentration.v1",
   "unit.mol_per_l.v1",
   "unit.ml.v1",
   "observable.solution_volume_ml.v1",
   "observable.solution_concentration_m.v1",
+  "observable.stock_concentration_m.v1",
   "completion.all_required_observations.v1",
   "assessment.event_performance.v1"
 ]);
@@ -434,10 +435,10 @@ export function createDeterministicCapabilityAuthorPlanner(): CapabilityAuthorPl
         plan: {
           disposition: "candidate",
           objective:
-            "Prepare a bounded sodium-chloride dilution with calibrated volumetric technique.",
+            "Prepare a bounded copper(II) nitrate dilution with calibrated volumetric technique.",
           assumptions: [
-            "Use the verified aqueous sodium-chloride identity.",
-            "Use a 0.5000 mol/L stock and a 100.00 mL final preparation.",
+            "Use the verified aqueous copper(II) nitrate identity.",
+            "Use a 2.0000 mol/L stock and a 100.00 mL final preparation.",
             "Every student action remains available by keyboard."
           ],
           questions: [],

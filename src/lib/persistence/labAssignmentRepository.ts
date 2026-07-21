@@ -92,7 +92,7 @@ export function experimentCatalogFromDefinition(
       ? "acid_base_titration"
       : id.includes("solution") ||
           id.includes("dilution") ||
-          id.includes("sodium_chloride")
+          id.includes("copper_nitrate")
         ? "solution_preparation"
         : spec.id;
   return {

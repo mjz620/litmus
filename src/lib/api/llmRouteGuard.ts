@@ -95,11 +95,37 @@ export interface LlmRouteGuardOptions {
   readonly requireRole?: ComposerAuthPrincipal["role"];
   readonly authenticate?: () => Promise<ComposerAuthPrincipal | null>;
   readonly now?: () => number;
+  /*
+   * Allow signed-out callers, budgeted by address instead of by user.
+   *
+   * Guest practice is a product commitment, not an edge case — a student can
+   * run a whole lab without an account, and the coach is part of that lab.
+   * Requiring a session here silently disabled coaching for every guest, so
+   * routes that guests legitimately reach opt in and accept an address-keyed
+   * budget for them. Signed-in callers keep their own per-user budget.
+   */
+  readonly allowGuests?: boolean;
+  /** Address-derived key for guest budgeting; ignored when allowGuests is off. */
+  readonly guestKey?: string | null;
 }
 
 export type LlmRouteGuardResult =
-  | { readonly ok: true; readonly principal: ComposerAuthPrincipal }
+  | {
+      readonly ok: true;
+      /** Null for an admitted guest on a route that allows them. */
+      readonly principal: ComposerAuthPrincipal | null;
+    }
   | { readonly ok: false; readonly response: NextResponse };
+
+/** Best-effort caller address for guest budgeting. */
+export function guestKeyFromRequest(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0];
+  return (
+    forwarded?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    "guest-unknown"
+  );
+}
 
 function rateLimitHeaders(decision: RateLimitDecision): Record<string, string> {
   return {
@@ -140,13 +166,30 @@ export async function guardLlmRoute(
   }
 
   if (!principal) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { ok: false, error: "Authentication required." },
-        { status: 401 }
-      )
-    };
+    if (!options.allowGuests) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { ok: false, error: "Authentication required." },
+          { status: 401 }
+        )
+      };
+    }
+    // Guests share a budget per address rather than per account.
+    const guestDecision = options.limiter.check(
+      `guest:${options.guestKey ?? "guest-unknown"}`,
+      now()
+    );
+    if (!guestDecision.allowed) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { ok: false, error: "Rate limit exceeded. Try again shortly." },
+          { status: 429, headers: rateLimitHeaders(guestDecision) }
+        )
+      };
+    }
+    return { ok: true, principal: null };
   }
 
   if (options.requireRole && principal.role !== options.requireRole) {
@@ -186,4 +229,15 @@ export const LLM_ROUTE_LIMITERS = Object.freeze({
   realtimeToken: new FixedWindowRateLimiter(5, MINUTE_MS),
   author: new FixedWindowRateLimiter(10, MINUTE_MS),
   judge: new FixedWindowRateLimiter(10, MINUTE_MS)
+});
+
+/**
+ * Separate budgets for the judge demo's mirrored endpoints. Distinct limiter
+ * instances are the point: an evaluator working through the demo and a
+ * classroom mid-lab draw from different allowances, so neither can rate-limit
+ * the other.
+ */
+export const DEMO_ROUTE_LIMITERS = Object.freeze({
+  coach: new FixedWindowRateLimiter(30, MINUTE_MS),
+  evaluate: new FixedWindowRateLimiter(10, MINUTE_MS)
 });
