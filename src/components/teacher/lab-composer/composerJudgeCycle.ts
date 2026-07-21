@@ -2,6 +2,8 @@ import {
   applyLabDraftTransaction,
   type LabDraftCommand
 } from "../../../lab-workflows/authoring";
+import { createCalorimetryTracePlan } from "../../../lab-workflows/definitions/calorimetry/tracePlan";
+import { createPrecipitationTracePlan } from "../../../lab-workflows/definitions/precipitation/tracePlan";
 import { createSolutionPreparationTracePlan } from "../../../lab-workflows/definitions/solution-preparation/tracePlan";
 import { createEndpointDrillTracePlan } from "../../../lab-workflows/definitions/titration/endpointDrillTracePlan";
 import {
@@ -90,6 +92,32 @@ const COMPOSER_JUDGE_TRACE_PLANS: readonly {
       "permission.mix_solution"
     ],
     create: createSolutionPreparationTracePlan
+  },
+  {
+    requiredPermissionIds: [
+      "permission.pour_hot",
+      "permission.pour_cold",
+      "permission.place_probe",
+      "permission.mix_calorimeter",
+      "permission.read_temperature"
+    ],
+    create: createCalorimetryTracePlan
+  },
+  {
+    /*
+     * Four cases, not five: the precipitation capability has no authored rule
+     * a run can violate and recover from, nor one that ends an attempt, so
+     * those two kinds have nothing to demonstrate here. The judge reviews the
+     * scenarios that exist rather than being denied all of them.
+     */
+    requiredPermissionIds: [
+      "permission.tare_balance",
+      "permission.pour_silver",
+      "permission.pour_chloride",
+      "permission.collect_precipitate",
+      "permission.read_mass"
+    ],
+    create: createPrecipitationTracePlan
   }
 ];
 

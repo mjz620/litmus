@@ -5,6 +5,7 @@ import {
   type WorkflowJudgeRequest,
   type WorkflowJudgeResponse
 } from "../../../lib/agent/lab-workflow-judge/schemas";
+import { currentApiPath } from "../../../lib/demo/demoEnvironment";
 
 export const COMPOSER_JUDGE_REQUEST_TIMEOUT_MS = 20_000;
 
@@ -33,7 +34,7 @@ export async function requestWorkflowJudgeReview(
   const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
   try {
-    response = await fetcher("/api/lab-composer/judge", {
+    response = await fetcher(currentApiPath("/api/lab-composer/judge"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(request),

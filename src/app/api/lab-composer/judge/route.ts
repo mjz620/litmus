@@ -83,69 +83,89 @@ async function review(input: unknown) {
   });
 }
 
-export async function POST(request: Request) {
-  /*
-   * The Workflow Judge is a teacher-facing Composer tool that reaches a paid
-   * model. Authenticate first, then key the existing rate budget to the user
-   * rather than the address — a whole class shares one school NAT, so an
-   * address-keyed budget limits the wrong thing.
-   */
-  let guard: Awaited<ReturnType<typeof authenticateComposerPrincipal>>;
-  try {
-    guard = await authenticateComposerPrincipal();
-  } catch {
-    // Fail closed: an auth backend fault must never admit the caller.
-    return NextResponse.json(
-      { ok: false, error: "Authentication is unavailable." },
-      { status: 503 }
-    );
-  }
-  if (!guard) {
-    return NextResponse.json(
-      { ok: false, error: "Authentication required." },
-      { status: 401 }
-    );
-  }
-  if (guard.role !== "teacher") {
-    return NextResponse.json(
-      { ok: false, error: "Teacher access required." },
-      { status: 403 }
-    );
-  }
+/**
+ * Workflow Judge handler over injected access rules.
+ *
+ * Production is teacher-only and budgets per user: a whole class shares one
+ * school NAT, so an address-keyed budget would limit the wrong thing. The
+ * judge demo mounts this with guests admitted on a separate address-keyed
+ * budget, since an evaluator has no account and the review loop is what they
+ * came to see. Judging itself is unchanged either way.
+ */
+export function createWorkflowJudgeHandler(
+  options: {
+    readonly allowGuests?: boolean;
+    readonly guestKey?: (request: Request) => string;
+  } = {}
+) {
+  return async function workflowJudgeHandler(request: Request) {
+    let rateKey: string;
+    if (options.allowGuests) {
+      rateKey = `guest:${options.guestKey?.(request) ?? "guest-unknown"}`;
+    } else {
+      let guard: Awaited<ReturnType<typeof authenticateComposerPrincipal>>;
+      try {
+        guard = await authenticateComposerPrincipal();
+      } catch {
+        // Fail closed: an auth backend fault must never admit the caller.
+        return NextResponse.json(
+          { ok: false, error: "Authentication is unavailable." },
+          { status: 503 }
+        );
+      }
+      if (!guard) {
+        return NextResponse.json(
+          { ok: false, error: "Authentication required." },
+          { status: 401 }
+        );
+      }
+      if (guard.role !== "teacher") {
+        return NextResponse.json(
+          { ok: false, error: "Teacher access required." },
+          { status: 403 }
+        );
+      }
+      rateKey = guard.userId;
+    }
 
-  const rate = checkWorkflowJudgeRateLimit(guard.userId);
-  const rateHeaders = {
-    "X-RateLimit-Limit": String(rate.limit),
-    "X-RateLimit-Remaining": String(rate.remaining)
+    const rate = checkWorkflowJudgeRateLimit(rateKey);
+    const rateHeaders = {
+      "X-RateLimit-Limit": String(rate.limit),
+      "X-RateLimit-Remaining": String(rate.remaining)
+    };
+    if (!rate.allowed) {
+      return errorResponse(
+        new WorkflowJudgeInputError(
+          "judge.rate_limited.v2",
+          "Too many Workflow Judge requests. Try again shortly.",
+          ["$"],
+          429,
+          true
+        ),
+        { ...rateHeaders, "Retry-After": String(rate.retryAfterSeconds) }
+      );
+    }
+    try {
+      return NextResponse.json(await review(await readBoundedJson(request)), {
+        headers: rateHeaders
+      });
+    } catch (error) {
+      return errorResponse(
+        error instanceof WorkflowJudgeInputError
+          ? error
+          : new WorkflowJudgeInputError(
+              "judge.internal_failure.v2",
+              "Workflow Judge is temporarily unavailable.",
+              ["$"],
+              503,
+              true
+            ),
+        rateHeaders
+      );
+    }
   };
-  if (!rate.allowed) {
-    return errorResponse(
-      new WorkflowJudgeInputError(
-        "judge.rate_limited.v2",
-        "Too many Workflow Judge requests. Try again shortly.",
-        ["$"],
-        429,
-        true
-      ),
-      { ...rateHeaders, "Retry-After": String(rate.retryAfterSeconds) }
-    );
-  }
-  try {
-    return NextResponse.json(await review(await readBoundedJson(request)), {
-      headers: rateHeaders
-    });
-  } catch (error) {
-    return errorResponse(
-      error instanceof WorkflowJudgeInputError
-        ? error
-        : new WorkflowJudgeInputError(
-            "judge.internal_failure.v2",
-            "Workflow Judge is temporarily unavailable.",
-            ["$"],
-            503,
-            true
-          ),
-      rateHeaders
-    );
-  }
+}
+
+export async function POST(request: Request) {
+  return createWorkflowJudgeHandler()(request);
 }

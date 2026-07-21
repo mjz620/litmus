@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import {
   applyLabDraftTransaction,
@@ -91,7 +92,10 @@ import {
   saveComposerDraft,
   type TeacherClassSummary
 } from "../../../lib/persistence/composerDefinitionClient";
-import { composerPreviewHref } from "../../../lib/demo/demoEnvironment";
+import {
+  composerPreviewHref,
+  isDemoPathname
+} from "../../../lib/demo/demoEnvironment";
 import { useViewer } from "../../auth/ViewerContext";
 
 import styles from "./LabComposer.module.css";
@@ -229,16 +233,20 @@ function ruleRole(rule: Readonly<WorkflowRule>): string {
 
 export function LabComposer() {
   const viewer = useViewer();
+  const pathname = usePathname();
   /*
-   * The proposal API is teacher-gated (guests 401, students 403). Saying so
+   * The demo mirrors the teaching review on its own guest budget, so inside
+   * the demo area the review runs without an account. Everywhere else both
+   * AI surfaces are teacher-gated (guests 401, students 403), and saying so
    * next to the button beats letting the request fail after the fact.
    */
-  const agentSignInNotice =
-    viewer?.role === "teacher"
-      ? null
-      : "The AI draft proposal needs a teacher sign-in. Drafts, checks, and preview work without an account.";
+  const inDemo = isDemoPathname(pathname ?? "");
+  const isTeacher = viewer?.role === "teacher";
+  const agentSignInNotice = isTeacher
+    ? null
+    : "The AI draft proposal needs a teacher sign-in. Drafts, checks, and preview work without an account.";
   const judgeSignInNotice =
-    viewer?.role === "teacher"
+    isTeacher || inDemo
       ? null
       : "The optional teaching review needs a teacher sign-in. The Litmus checker and preview work without an account.";
   const [draft, setDraft] = useState<Readonly<LabWorkflowDraftV2>>(

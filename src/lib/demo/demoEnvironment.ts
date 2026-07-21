@@ -25,7 +25,8 @@ export const DEMO_AREA_PREFIX = "/demo";
 const DEMO_ENDPOINTS: Readonly<Record<string, string>> = Object.freeze({
   "/api/coach": "/api/demo/coach",
   "/api/evaluate": "/api/demo/evaluate",
-  "/api/sessions/checkpoint": "/api/demo/checkpoint"
+  "/api/sessions/checkpoint": "/api/demo/checkpoint",
+  "/api/lab-composer/judge": "/api/demo/lab-composer/judge"
 });
 
 /** Every production endpoint the demo area redirects to a mirror. */
