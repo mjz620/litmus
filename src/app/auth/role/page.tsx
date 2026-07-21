@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { hasPublicSupabaseEnvironment } from "../../../lib/env";
+import { roleHomePath } from "../../../lib/auth/viewer";
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
 import styles from "../../../components/ui/ContentSurface.module.css";
@@ -21,8 +22,11 @@ export default async function RolePage({ searchParams }: RolePageProps) {
     .select("role")
     .eq("id", data.user.id)
     .maybeSingle();
-  if (profile?.role === "teacher") redirect("/teacher/classes");
-  if (profile?.role === "student") redirect("/experiments");
+  // The role is chosen once. An account that already has one never sees this
+  // page again, so it cannot be used to switch sides.
+  if (profile?.role === "teacher" || profile?.role === "student") {
+    redirect(roleHomePath(profile.role));
+  }
 
   const params = await searchParams;
   const rawRole = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -34,7 +38,7 @@ export default async function RolePage({ searchParams }: RolePageProps) {
       <PageHeader
         eyebrow="Set up your workspace"
         title="Are you a student or a teacher?"
-        description="Pick one to finish signup. Students open practice labs; teachers open the class dashboard."
+        description="Pick one to finish signup. Students open practice labs; teachers open the class dashboard. This choice is permanent for this account."
       />
       <form className={`${styles.formCard} ui-form`} action={saveRole}>
         <div className={styles.choiceGrid}>

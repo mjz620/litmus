@@ -57,7 +57,39 @@ export async function GET(request: Request) {
   const nextPath = sanitizeNextPath(requestUrl.searchParams.get("next"));
   const origin = requestUrl.origin;
 
-  if (!code || !hasPublicSupabaseEnvironment()) {
+  /*
+   * When the provider or Supabase fails before issuing a code, the redirect
+   * arrives with error params instead of `code`. Those used to be discarded and
+   * reported as a generic "no login code", which hid the real cause — a stale
+   * Google client secret surfaced here as advice about localhost. Pass the
+   * provider's own reason through so it is visible in the UI and the logs.
+   */
+  const providerError = requestUrl.searchParams.get("error");
+  if (providerError) {
+    const providerErrorCode = requestUrl.searchParams.get("error_code");
+    const providerErrorDescription =
+      requestUrl.searchParams.get("error_description");
+    console.error("auth.callback.provider_error", {
+      error: providerError,
+      code: providerErrorCode,
+      description: providerErrorDescription
+    });
+    const destination = new URL("/auth/sign-in?error=provider", origin);
+    // Bounded and rendered as text, never interpreted as markup or a redirect.
+    const reason = (providerErrorDescription ?? providerErrorCode ?? providerError)
+      .replace(/\s+/g, " ")
+      .slice(0, 200);
+    destination.searchParams.set("reason", reason);
+    return NextResponse.redirect(destination);
+  }
+
+  if (!hasPublicSupabaseEnvironment()) {
+    return NextResponse.redirect(
+      new URL("/auth/sign-in?error=unconfigured", origin)
+    );
+  }
+
+  if (!code) {
     return NextResponse.redirect(
       new URL("/auth/sign-in?error=callback", origin)
     );

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { getViewer, roleHomePath } from "../../../lib/auth/viewer";
 import { GoogleSignInButton } from "../../../components/auth/GoogleSignInButton";
 import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
 import styles from "../../../components/ui/ContentSurface.module.css";
@@ -7,14 +9,31 @@ import styles from "../../../components/ui/ContentSurface.module.css";
 interface SignInPageProps {
   searchParams: Promise<{
     error?: string | string[];
+    reason?: string | string[];
     next?: string | string[];
   }>;
 }
 
-function authErrorMessage(error: string | undefined): string | null {
+function authErrorMessage(
+  error: string | undefined,
+  reason: string | undefined
+): string | null {
   switch (error) {
+    case "provider":
+      /*
+       * The identity provider's own words. Reported verbatim because the
+       * generic wording that used to stand in here sent people looking at the
+       * wrong thing — "Unable to exchange external code" means the Google
+       * client secret stored in Supabase is stale, which no amount of retrying
+       * fixes.
+       */
+      return reason
+        ? `Google sign-in failed: ${reason}`
+        : "Google sign-in failed before it could return a login code.";
+    case "unconfigured":
+      return "Sign-in is not configured on this deployment. Guest practice remains available.";
     case "callback":
-      return "Google sign-in did not return a valid login code. Try again from this same address (use either localhost or 127.0.0.1 consistently).";
+      return "Google sign-in did not return a login code. Please try again.";
     case "exchange":
       return "Google signed you in, but Litmus could not create a session cookie. Try once more; if it keeps failing, check that this site's /auth/callback address is allowed in Supabase Auth redirect URLs.";
     default:
@@ -31,9 +50,21 @@ function sanitizeNextPath(value: string | undefined): string | null {
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = await searchParams;
   const rawError = Array.isArray(params.error) ? params.error[0] : params.error;
+  const rawReason = Array.isArray(params.reason)
+    ? params.reason[0]
+    : params.reason;
   const rawNext = Array.isArray(params.next) ? params.next[0] : params.next;
-  const message = authErrorMessage(rawError);
+  const message = authErrorMessage(rawError, rawReason?.slice(0, 200));
   const nextPath = sanitizeNextPath(rawNext);
+
+  /*
+   * A signed-in account never sees the role picker again. This page offers both
+   * roles side by side, so leaving it reachable while signed in read as an
+   * invitation to hold the other one — the callback would have silently kept
+   * the original role and dropped the user somewhere they did not ask for.
+   */
+  const viewer = await getViewer();
+  if (viewer) redirect(nextPath ?? roleHomePath(viewer.role));
 
   return (
     <ProductShell width="narrow">

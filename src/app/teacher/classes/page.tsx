@@ -1,12 +1,31 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { PageHeader, ProductShell } from "../../../components/ui/ProductShell";
 import styles from "../../../components/ui/ContentSurface.module.css";
 import { hasPublicSupabaseEnvironment } from "../../../lib/env";
+import { getViewer, roleHomePath } from "../../../lib/auth/viewer";
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import { createClass } from "./actions";
 
 export default async function TeacherClassesPage() {
+  /*
+   * Every other authenticated surface redirects a signed-out visitor, but this
+   * one rendered the teacher workspace to anyone. RLS meant no class data
+   * leaked — the list simply came back empty — so it looked like a signed-in
+   * teacher with no classes rather than a missing session, which made a broken
+   * session very hard to tell apart from an empty account.
+   *
+   * The role half was missing: a signed-in student got the same empty workspace
+   * and a create-class form that could only ever fail, since the insert policy
+   * requires is_teacher(). Students now go to their own workspace instead.
+   */
+  if (hasPublicSupabaseEnvironment()) {
+    const viewer = await getViewer();
+    if (!viewer) redirect("/auth/sign-in?next=/teacher/classes");
+    if (viewer.role !== "teacher") redirect(roleHomePath(viewer.role));
+  }
+
   const classes = hasPublicSupabaseEnvironment() ? await loadClasses() : [];
 
   return (
