@@ -190,6 +190,14 @@ export interface SetupDrivenLabProjection {
   readonly actions: readonly SetupDrivenActionProjection[];
   readonly availablePermissionIds: readonly string[];
   readonly diagnoses: readonly WorkflowDiagnosis[];
+  /*
+   * Engine-owned chemistry observables keyed by registered observable id. The
+   * UI reads these to project outcomes that belong to the solution rather than
+   * to any one apparatus — a precipitate colour, for instance, is owned by the
+   * chemistry model and not by the beaker holding it. Values are read-only and
+   * never recomputed by the interface.
+   */
+  readonly observables: Readonly<Record<string, boolean | number | string>>;
 }
 
 export const SETUP_DRIVEN_SESSION_ERROR_CODES = Object.freeze({
@@ -968,7 +976,18 @@ function createSession<State>(
           .filter(({ available }) => available)
           .map(({ permissionId }) => permissionId)
       ),
-      diagnoses: state.diagnoses
+      diagnoses: state.diagnoses,
+      observables: Object.freeze(
+        Object.fromEntries(
+          state.chemistry.observables.flatMap(({ observableId, value }) =>
+            typeof value === "boolean" ||
+            typeof value === "number" ||
+            typeof value === "string"
+              ? [[observableId, value] as const]
+              : []
+          )
+        )
+      )
     });
   }
 

@@ -9,7 +9,11 @@ import { validateLabWorkflowSpecV2 } from "../../../src/lab-workflows/validation
 const CHECKED_AT = "2026-07-19T15:00:00.000Z";
 
 function observableOf(
-  state: { chemistry: { observables: readonly { observableId: string; value: unknown }[] } },
+  state: {
+    chemistry: {
+      observables: readonly { observableId: string; value: unknown }[];
+    };
+  },
   observableId: string
 ): unknown {
   return state.chemistry.observables.find(
@@ -47,15 +51,12 @@ describe("serialized precipitation v2 definition", () => {
 
 describe("precipitation scene resolution", () => {
   it("resolves every placement to a renderable visual adapter", async () => {
-    const { resolveEquipmentPose } = await import(
-      "../../../src/lab-workflows/registries/scene-placements"
-    );
-    const { LAB_VISUAL_ADAPTERS } = await import(
-      "../../../src/components/lab/titration/setupDrivenScene"
-    );
-    const { componentRegistry } = await import(
-      "../../../src/lab-workflows/registries/components"
-    );
+    const { resolveEquipmentPose } =
+      await import("../../../src/lab-workflows/registries/scene-placements");
+    const { LAB_VISUAL_ADAPTERS } =
+      await import("../../../src/components/lab/titration/setupDrivenScene");
+    const { componentRegistry } =
+      await import("../../../src/lab-workflows/registries/components");
 
     const workflow = validatePrecipitationV2(CHECKED_AT);
     for (const placement of workflow.layout.placements) {
@@ -78,24 +79,20 @@ describe("precipitation scene resolution", () => {
 
 describe("precipitation authoring reproduction", () => {
   it("is recreated atomically through the shared human command layer", async () => {
-    const { createAuthoredPrecipitationDraft } = await import(
-      "../../../src/lab-workflows/definitions/precipitation/authoring"
-    );
+    const { createAuthoredPrecipitationDraft } =
+      await import("../../../src/lab-workflows/definitions/precipitation/authoring");
     expect(createAuthoredPrecipitationDraft()).toEqual(PRECIPITATION_V2_DRAFT);
   });
 });
 
 describe("precipitation runtime traces", () => {
   it("completes every valid pour sequence and forms the same product", async () => {
-    const { createPrecipitationTracePlan } = await import(
-      "../../../src/lab-workflows/definitions/precipitation"
-    );
-    const { createGenericLabActionTrace, runGenericTraceSuite } = await import(
-      "../../../src/lab-workflows/replay"
-    );
-    const { createCapabilityGenericRuntimePorts } = await import(
-      "../../../src/lab-workflows/runtime"
-    );
+    const { createPrecipitationTracePlan } =
+      await import("../../../src/lab-workflows/definitions/precipitation");
+    const { createGenericLabActionTrace, runGenericTraceSuite } =
+      await import("../../../src/lab-workflows/replay");
+    const { createCapabilityGenericRuntimePorts } =
+      await import("../../../src/lab-workflows/runtime");
 
     const workflow = validatePrecipitationV2(CHECKED_AT);
     const cases = createPrecipitationTracePlan().map((testCase, index) => ({
@@ -121,14 +118,36 @@ describe("precipitation runtime traces", () => {
       expect(
         observableOf(result.finalState, "observable.precipitate_color.v1")
       ).toBe("white");
+      const q = observableOf(
+        result.finalState,
+        "observable.precipitation_ion_product.v1"
+      ) as number;
+      const ksp = observableOf(
+        result.finalState,
+        "observable.solubility_product.v1"
+      ) as number;
+      const dryMassG = observableOf(
+        result.finalState,
+        "observable.precipitate_mass_g.v1"
+      ) as number;
+      const balanceReadingG = observableOf(
+        result.finalState,
+        "observable.balance_reading_g.v1"
+      ) as number;
+      expect(q).toBeGreaterThan(ksp);
+      expect(dryMassG).toBeGreaterThan(0);
+      expect(balanceReadingG).toBe(Math.round(dryMassG * 100) / 100);
+      expect(
+        result.finalState.eventEnvelopes.some(
+          ({ payload }) => payload.type === "collect_precipitate"
+        )
+      ).toBe(true);
     }
   });
 
   it("does not complete or precipitate when only one solution is poured", async () => {
-    const {
-      createIncompletePrecipitationTrace,
-      PRECIPITATION_V2_SOURCE_HASH
-    } = await import("../../../src/lab-workflows/definitions/precipitation");
+    const { createIncompletePrecipitationTrace, PRECIPITATION_V2_SOURCE_HASH } =
+      await import("../../../src/lab-workflows/definitions/precipitation");
     const {
       assembleGenericLabRuntime,
       createCapabilityGenericRuntimePorts,

@@ -5,16 +5,27 @@ export {
   PrecipitationModelError
 } from "./model";
 export {
+  ION_AMOUNT_SCALE,
+  KSP_REGISTRY,
+  PRECIPITATION_BISECTION_STEPS,
   SOLUTION_IDS,
+  inventoryFromSolutionPortions,
   isSolutionId,
   listSolutions,
   normalizeEquation,
-  predictPrecipitation
+  predictPrecipitation,
+  solutionDefinition,
+  solvePrecipitationEquilibrium
 } from "./solubility";
 export type {
   Ion,
+  IonFormula,
+  IonInventoryInput,
   PrecipitateId,
+  PrecipitationEquilibrium,
   PrecipitationResult,
+  SolubilityProductEntry,
   SolutionDefinition,
-  SolutionId
+  SolutionId,
+  SolutionPortion
 } from "./solubility";

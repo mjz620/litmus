@@ -11,23 +11,80 @@ export interface PrecipitationTracePlanCase {
 
 function action(
   permissionId: string,
+  actionId: string,
   sourceEquipmentInstanceId: string,
-  volumeML: number
+  targetEquipmentInstanceIds: readonly string[],
+  parameters: NormalizedLabAction["parameters"] = []
 ): NormalizedLabAction {
   return {
     schemaVersion: GENERIC_LAB_RUNTIME_SCHEMA_VERSION,
     permissionId,
-    actionId: "action.pour_liquid.v1",
+    actionId,
     sourceEquipmentInstanceId,
-    targetEquipmentInstanceIds: ["mixing_beaker"],
-    parameters: [{ key: "volumeML", valueType: "number", value: volumeML }]
+    targetEquipmentInstanceIds,
+    parameters
   };
 }
 
 const pourSilver = (volumeML: number) =>
-  action("permission.pour_silver", "silver_bottle", volumeML);
+  action(
+    "permission.pour_silver",
+    "action.pour_liquid.v1",
+    "silver_bottle",
+    ["mixing_beaker"],
+    [{ key: "volumeML", valueType: "number", value: volumeML }]
+  );
 const pourChloride = (volumeML: number) =>
-  action("permission.pour_chloride", "chloride_bottle", volumeML);
+  action(
+    "permission.pour_chloride",
+    "action.pour_liquid.v1",
+    "chloride_bottle",
+    ["mixing_beaker"],
+    [{ key: "volumeML", valueType: "number", value: volumeML }]
+  );
+
+const placeBoat = () =>
+  action(
+    "permission.place_boat",
+    "action.place_on_balance.v1",
+    "weighing_boat",
+    ["balance"]
+  );
+const tareBalance = () =>
+  action("permission.tare_balance", "action.tare_balance.v1", "balance", []);
+const removeBoat = () =>
+  action(
+    "permission.remove_boat",
+    "action.remove_from_balance.v1",
+    "balance",
+    []
+  );
+const collectPrecipitate = () =>
+  action(
+    "permission.collect_precipitate",
+    "action.collect_precipitate.v1",
+    "mixing_beaker",
+    ["weighing_boat"]
+  );
+const readMass = (reportedG: number) =>
+  action(
+    "permission.read_mass",
+    "action.read_balance.v1",
+    "balance",
+    [],
+    [{ key: "reportedG", valueType: "number", value: reportedG }]
+  );
+
+function gravimetry(reportedG: number): readonly NormalizedLabAction[] {
+  return [
+    placeBoat(),
+    tareBalance(),
+    removeBoat(),
+    collectPrecipitate(),
+    placeBoat(),
+    readMass(reportedG)
+  ];
+}
 
 /**
  * Runtime conformance cases for the precipitation workflow. These prove the
@@ -47,23 +104,28 @@ export function createPrecipitationTracePlan(): readonly PrecipitationTracePlanC
     {
       // Canonical run.
       kind: "valid",
-      actions: [pourSilver(20), pourChloride(20)]
+      actions: [pourSilver(20), pourChloride(20), ...gravimetry(0.29)]
     },
     {
       // Reverse order. Precipitation has no required sequence — combining the
       // same two solutions gives the same product either way.
       kind: "alternate_valid",
-      actions: [pourChloride(20), pourSilver(20)]
+      actions: [pourChloride(20), pourSilver(20), ...gravimetry(0.29)]
     },
     {
       // Several small pours rather than one, still reaching both solutions.
       kind: "alternate_valid",
-      actions: [pourSilver(5), pourSilver(15), pourChloride(20)]
+      actions: [
+        pourSilver(5),
+        pourSilver(15),
+        pourChloride(20),
+        ...gravimetry(0.29)
+      ]
     },
     {
       // Minimum authored volumes still produce the same deterministic product.
       kind: "tolerance_boundary",
-      actions: [pourSilver(1), pourChloride(1)]
+      actions: [pourSilver(1), pourChloride(1), ...gravimetry(0.01)]
     }
   ];
 }

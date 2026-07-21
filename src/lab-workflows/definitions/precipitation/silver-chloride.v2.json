@@ -1,28 +1,23 @@
 {
   "schemaVersion": "2.0.0",
   "id": "workflow.silver_chloride_precipitation.native.v2",
-  "revision": 2,
-  "sourceRequest": "Create a precipitation lab where students combine silver nitrate and sodium chloride in a beaker and identify the insoluble product.",
+  "revision": 3,
+  "sourceRequest": "Create a quantitative silver chloride precipitation lab where students compare Q with Ksp, filter and dry the product, and weigh it on a balance.",
   "metadata": {
     "title": "Silver chloride precipitation",
-    "learningObjective": "Predict and observe whether combining two aqueous ionic solutions produces an insoluble product, and identify the ions responsible.",
-    "studentSummary": "Pour silver nitrate and sodium chloride into the same beaker and watch what forms. Decide which ions combined and which stayed dissolved.",
+    "learningObjective": "Use Q and Ksp to explain silver chloride precipitation, then collect and weigh the dry product by gravimetry.",
+    "studentSummary": "Combine measured silver nitrate and sodium chloride solutions, inspect the Q versus Ksp result, then filter, dry, and weigh the silver chloride.",
     "gradeBand": "11-12",
-    "estimatedMinutes": 15,
+    "estimatedMinutes": 25,
     "difficulty": "intermediate",
-    "tags": [
-      "precipitation",
-      "solubility",
-      "net ionic"
-    ],
+    "tags": ["precipitation", "solubility", "net ionic", "gravimetry"],
     "accessibilityNotes": [
-      "Precipitate presence and colour are reported as text, never colour alone."
+      "Precipitate presence and colour are reported as text, never colour alone.",
+      "Procedure basis: Royal Society of Chemistry, Gravimetric analysis practical videos for 16-18 students (filter, wash, dry, and measure silver chloride)."
     ],
     "deviceProfileId": "device.chromebook_core.v1"
   },
-  "objectiveIds": [
-    "precipitate_observation"
-  ],
+  "objectiveIds": ["precipitate_observation"],
   "equipment": [
     {
       "instanceId": "silver_bottle",
@@ -44,6 +39,20 @@
       "configurationPresetId": "component_config.beaker.250ml.v1",
       "label": "Reaction beaker",
       "required": true
+    },
+    {
+      "instanceId": "weighing_boat",
+      "equipmentDefinitionId": "component.weighing_boat.v1",
+      "configurationPresetId": "component_config.weighing_boat.2g.v1",
+      "label": "Dry precipitate weighing boat",
+      "required": true
+    },
+    {
+      "instanceId": "balance",
+      "equipmentDefinitionId": "component.balance.v1",
+      "configurationPresetId": "component_config.balance.centigram.v1",
+      "label": "Centigram balance",
+      "required": true
     }
   ],
   "layout": {
@@ -60,6 +69,14 @@
       {
         "equipmentInstanceId": "mixing_beaker",
         "placementSlotId": "placement.bench_vessel_center.v1"
+      },
+      {
+        "equipmentInstanceId": "weighing_boat",
+        "placementSlotId": "placement.precipitation_weighing_boat_right.v1"
+      },
+      {
+        "equipmentInstanceId": "balance",
+        "placementSlotId": "placement.precipitation_balance_left.v1"
       }
     ]
   },
@@ -74,9 +91,7 @@
       "id": "permission.pour_silver",
       "actionId": "action.pour_liquid.v1",
       "sourceEquipmentInstanceId": "silver_bottle",
-      "targetEquipmentInstanceIds": [
-        "mixing_beaker"
-      ],
+      "targetEquipmentInstanceIds": ["mixing_beaker"],
       "authoredLimits": {
         "maxPourVolumeML": 25
       },
@@ -90,12 +105,65 @@
       "id": "permission.pour_chloride",
       "actionId": "action.pour_liquid.v1",
       "sourceEquipmentInstanceId": "chloride_bottle",
-      "targetEquipmentInstanceIds": [
-        "mixing_beaker"
-      ],
+      "targetEquipmentInstanceIds": ["mixing_beaker"],
       "authoredLimits": {
         "maxPourVolumeML": 25
       },
+      "maxAttempts": 3,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.place_boat",
+      "actionId": "action.place_on_balance.v1",
+      "sourceEquipmentInstanceId": "weighing_boat",
+      "targetEquipmentInstanceIds": ["balance"],
+      "maxAttempts": 2,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.tare_balance",
+      "actionId": "action.tare_balance.v1",
+      "sourceEquipmentInstanceId": "balance",
+      "targetEquipmentInstanceIds": [],
+      "maxAttempts": 1,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.remove_boat",
+      "actionId": "action.remove_from_balance.v1",
+      "sourceEquipmentInstanceId": "balance",
+      "targetEquipmentInstanceIds": [],
+      "maxAttempts": 1,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.collect_precipitate",
+      "actionId": "action.collect_precipitate.v1",
+      "sourceEquipmentInstanceId": "mixing_beaker",
+      "targetEquipmentInstanceIds": ["weighing_boat"],
+      "maxAttempts": 1,
+      "availability": {
+        "allSatisfiedRuleIds": [],
+        "allUnsatisfiedRuleIds": []
+      }
+    },
+    {
+      "id": "permission.read_mass",
+      "actionId": "action.read_balance.v1",
+      "sourceEquipmentInstanceId": "balance",
+      "targetEquipmentInstanceIds": [],
       "maxAttempts": 3,
       "availability": {
         "allSatisfiedRuleIds": [],
@@ -111,16 +179,12 @@
         "kind": "action_observed",
         "actionId": "action.pour_liquid.v1",
         "sourceEquipmentInstanceId": "silver_bottle",
-        "targetEquipmentInstanceIds": [
-          "mixing_beaker"
-        ]
+        "targetEquipmentInstanceIds": ["mixing_beaker"]
       },
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "precipitate_observation"
-      ]
+      "objectiveIds": ["precipitate_observation"]
     },
     {
       "id": "rule.chloride_poured",
@@ -129,16 +193,98 @@
         "kind": "action_observed",
         "actionId": "action.pour_liquid.v1",
         "sourceEquipmentInstanceId": "chloride_bottle",
-        "targetEquipmentInstanceIds": [
-          "mixing_beaker"
-        ]
+        "targetEquipmentInstanceIds": ["mixing_beaker"]
       },
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "precipitate_observation"
-      ]
+      "objectiveIds": ["precipitate_observation"]
+    },
+    {
+      "id": "rule.boat_placed",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.place_on_balance.v1",
+        "sourceEquipmentInstanceId": "weighing_boat",
+        "targetEquipmentInstanceIds": ["balance"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["precipitate_observation"]
+    },
+    {
+      "id": "rule.balance_tared",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.tare_balance.v1",
+        "sourceEquipmentInstanceId": "balance",
+        "targetEquipmentInstanceIds": []
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["precipitate_observation"]
+    },
+    {
+      "id": "rule.boat_removed",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.remove_from_balance.v1",
+        "sourceEquipmentInstanceId": "balance",
+        "targetEquipmentInstanceIds": []
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["precipitate_observation"]
+    },
+    {
+      "id": "rule.precipitate_collected",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.collect_precipitate.v1",
+        "sourceEquipmentInstanceId": "mixing_beaker",
+        "targetEquipmentInstanceIds": ["weighing_boat"]
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["precipitate_observation"]
+    },
+    {
+      "id": "rule.boat_placed_twice",
+      "kind": "required",
+      "condition": {
+        "kind": "action_count_within_range",
+        "actionId": "action.place_on_balance.v1",
+        "sourceEquipmentInstanceId": "weighing_boat",
+        "targetEquipmentInstanceIds": ["balance"],
+        "minimumCount": 2,
+        "maximumCount": 2
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["precipitate_observation"]
+    },
+    {
+      "id": "rule.mass_read",
+      "kind": "required",
+      "condition": {
+        "kind": "action_observed",
+        "actionId": "action.read_balance.v1",
+        "sourceEquipmentInstanceId": "balance",
+        "targetEquipmentInstanceIds": []
+      },
+      "severity": "procedural",
+      "recoverable": true,
+      "terminal": false,
+      "objectiveIds": ["precipitate_observation"]
     },
     {
       "id": "rule.workflow_complete",
@@ -148,15 +294,16 @@
         "completionPolicyId": "completion.all_required_observations.v1",
         "evidenceRuleIds": [
           "rule.silver_poured",
-          "rule.chloride_poured"
+          "rule.chloride_poured",
+          "rule.balance_tared",
+          "rule.precipitate_collected",
+          "rule.mass_read"
         ]
       },
       "severity": "procedural",
       "recoverable": true,
       "terminal": false,
-      "objectiveIds": [
-        "precipitate_observation"
-      ]
+      "objectiveIds": ["precipitate_observation"]
     }
   ],
   "instructions": [
@@ -164,24 +311,28 @@
       "id": "instruction.inspect_solutions",
       "title": "Identify the ions in each bottle",
       "guidance": "Read both labels and write down the cation and anion each solution contributes before you combine anything.",
-      "relatedRuleIds": [
-        "rule.silver_poured"
-      ]
+      "relatedRuleIds": ["rule.silver_poured"]
     },
     {
       "id": "instruction.combine",
       "title": "Combine the solutions in the beaker",
       "guidance": "Pour a measured volume of each solution into the same beaker. Watch the moment the second solution meets the first.",
-      "relatedRuleIds": [
-        "rule.silver_poured",
-        "rule.chloride_poured"
-      ]
+      "relatedRuleIds": ["rule.silver_poured", "rule.chloride_poured"]
     },
     {
       "id": "instruction.identify_product",
       "title": "Identify the precipitate",
-      "guidance": "Note whether a solid appeared and what colour it is, then work out which pair of ions formed it and which stayed dissolved as spectators.",
+      "guidance": "Compare the reported ion product Q with Ksp. Note whether a solid appeared and what colour it is, then identify the reacting and spectator ions.",
+      "relatedRuleIds": ["rule.chloride_poured"]
+    },
+    {
+      "id": "instruction.weigh_product",
+      "title": "Collect and weigh the dry product",
+      "guidance": "Place the empty boat on the balance, tare it, remove it, then collect the filtered, washed, and fully dried precipitate. Return the boat to the balance and record the displayed dry mass.",
       "relatedRuleIds": [
+        "rule.balance_tared",
+        "rule.precipitate_collected",
+        "rule.mass_read",
         "rule.workflow_complete"
       ]
     }
@@ -197,19 +348,19 @@
     "criteria": [
       {
         "id": "criterion.precipitate_observation",
-        "objectiveIds": [
-          "precipitate_observation"
-        ],
+        "objectiveIds": ["precipitate_observation"],
         "ruleIds": [
           "rule.silver_poured",
-          "rule.chloride_poured"
+          "rule.chloride_poured",
+          "rule.precipitate_collected",
+          "rule.mass_read"
         ],
-        "description": "Combines both registered ionic solutions in one vessel and produces an observable precipitate.",
+        "description": "Combines measured ionic solutions, interprets Q versus Ksp, and collects a dry precipitate for balance measurement.",
         "maxPoints": 10,
         "scoringGuide": [
           "0: the two solutions were never combined in one vessel",
           "5: only one solution reached the beaker",
-          "10: both solutions combined and the precipitate observed"
+          "10: both solutions combined, Q and Ksp support precipitation, and the dry product was weighed"
         ],
         "assessmentModeId": "assessment.event_performance.v1",
         "evidenceMappings": [
@@ -227,6 +378,21 @@
             "kind": "observable",
             "observableId": "observable.precipitate_color.v1",
             "required": false
+          },
+          {
+            "kind": "observable",
+            "observableId": "observable.precipitation_saturation_ratio.v1",
+            "required": true
+          },
+          {
+            "kind": "observable",
+            "observableId": "observable.precipitate_mass_g.v1",
+            "required": true
+          },
+          {
+            "kind": "observable",
+            "observableId": "observable.balance_reading_g.v1",
+            "required": true
           }
         ]
       }
@@ -234,21 +400,18 @@
     "totalPoints": 10,
     "passingPolicyId": "passing.percent_70.v1"
   },
-  "safetyPolicyIds": [
-    "safety.virtual_solution_preparation_ppe_notice.v1"
-  ],
+  "safetyPolicyIds": ["safety.virtual_solution_preparation_ppe_notice.v1"],
   "safetyBindings": [
     {
       "safetyPolicyId": "safety.virtual_solution_preparation_ppe_notice.v1",
       "equipmentInstanceIds": [
         "silver_bottle",
         "chloride_bottle",
-        "mixing_beaker"
+        "mixing_beaker",
+        "weighing_boat",
+        "balance"
       ],
-      "materialInstanceIds": [
-        "silver_stock",
-        "chloride_stock"
-      ]
+      "materialInstanceIds": ["silver_stock", "chloride_stock"]
     }
   ],
   "presentation": {

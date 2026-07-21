@@ -1,9 +1,18 @@
+import { materialAmountAt } from "../material-ledger";
 import type { GenericStateField } from "../../runtime/generic/types";
-import type { GenericChemistryModule } from "../coordinator/types";
+import type {
+  GenericChemistryActionContext,
+  GenericChemistryModule,
+  GenericChemistryModuleInitializationContext
+} from "../coordinator/types";
 import {
+  inventoryFromSolutionPortions,
   isSolutionId,
-  predictPrecipitation,
-  type SolutionId
+  solvePrecipitationEquilibrium,
+  type IonFormula,
+  type PrecipitationEquilibrium,
+  type SolutionId,
+  type SolutionPortion
 } from "./solubility";
 
 export const PRECIPITATION_MODEL_ID = "chemistry-model.precipitation.v1";
@@ -12,7 +21,14 @@ const PRECIPITATION_CAPABILITY_ID = "chemistry.precipitation_solubility.v1";
 
 export const PRECIPITATION_OBSERVABLE_IDS = Object.freeze({
   precipitateObserved: "observable.precipitate_observed.v1",
-  precipitateColor: "observable.precipitate_color.v1"
+  precipitateColor: "observable.precipitate_color.v1",
+  ionProduct: "observable.precipitation_ion_product.v1",
+  solubilityProduct: "observable.solubility_product.v1",
+  saturationRatio: "observable.precipitation_saturation_ratio.v1",
+  precipitateAmountMol: "observable.precipitate_amount_mol.v1",
+  precipitateMassG: "observable.precipitate_mass_g.v1",
+  dissolvedSilverM: "observable.dissolved_silver_m.v1",
+  dissolvedChlorideM: "observable.dissolved_chloride_m.v1"
 } as const);
 
 const ERROR = Object.freeze({
@@ -33,30 +49,43 @@ function fail(code: string, message: string): never {
   throw new PrecipitationModelError(code, message);
 }
 
-/**
- * Registered aqueous reagents mapped onto the solubility vocabulary. Only
- * reagent IDs that exist in the registry appear here; an unmapped reagent is a
- * hard failure rather than a silent no-reaction.
- */
+/** Material identities select ionic composition; concentration comes from the compiled binding. */
 const REAGENT_SOLUTIONS: Readonly<Record<string, SolutionId>> = Object.freeze({
   "reagent.silver_nitrate_0_100m.v1": "silver_nitrate",
   "reagent.sodium_chloride_0_100m.v1": "sodium_chloride",
   "reagent.sodium_chloride_aqueous.v1": "sodium_chloride",
-  "reagent.sodium_chloride_1_000m.v1": "sodium_chloride"
+  "reagent.sodium_chloride_1_000m.v1": "sodium_chloride",
+  "reagent.distilled_water.v1": "distilled_water",
+  "reagent.distilled_water_cold_20c.v1": "distilled_water",
+  "reagent.distilled_water_hot_60c.v1": "distilled_water"
 });
 
 const FIELD = Object.freeze({
-  contents: "contents",
+  bindingInputs: "bindingInputs",
+  reactionContainerId: "reactionContainerId",
   formsPrecipitate: "formsPrecipitate",
   precipitateId: "precipitateId",
   precipitateFormula: "precipitateFormula",
   precipitateColor: "precipitateColor",
   netIonicEquation: "netIonicEquation",
-  spectatorIons: "spectatorIons"
+  spectatorIons: "spectatorIons",
+  dissolvedIonConcentrations: "dissolvedIonConcentrations",
+  reactionQuotientBefore: "reactionQuotientBefore",
+  solubilityProduct: "solubilityProduct",
+  saturationRatioBefore: "saturationRatioBefore",
+  precipitateMoles: "precipitateMoles",
+  precipitateMassG: "precipitateMassG",
+  totalVolumeL: "totalVolumeL"
 } as const);
 
-/** Container contents travel as sorted `container=solution` pairs. */
-const CONTENTS_SEPARATOR = "=";
+const PART_SEPARATOR = "\u001f";
+const MASS_SCALE = 1_000_000;
+
+interface BindingInput {
+  readonly materialInstanceId: string;
+  readonly solutionId: SolutionId;
+  readonly concentrationM: number;
+}
 
 function field(
   state: readonly GenericStateField[],
@@ -65,6 +94,14 @@ function field(
   const found = state.find((entry) => entry.key === key);
   if (!found) fail(ERROR.invalidState, `Missing precipitation field ${key}.`);
   return found;
+}
+
+function numberField(state: readonly GenericStateField[], key: string): number {
+  const value = field(state, key).value;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    fail(ERROR.invalidState, `Precipitation field ${key} must be numeric.`);
+  }
+  return value;
 }
 
 function stringListField(
@@ -78,128 +115,237 @@ function stringListField(
   return value;
 }
 
-function solutionFor(materialProfileId: string): SolutionId {
+function solutionFor(materialProfileId: string): SolutionId | null {
   const solutionId = REAGENT_SOLUTIONS[materialProfileId];
-  if (!solutionId || !isSolutionId(solutionId)) {
-    fail(
-      ERROR.unknownReagent,
-      `Reagent ${materialProfileId} has no registered solubility mapping.`
+  if (solutionId !== undefined && isSolutionId(solutionId)) return solutionId;
+  return null;
+}
+
+function encodeBinding(input: BindingInput): string {
+  return [
+    input.materialInstanceId,
+    input.solutionId,
+    String(input.concentrationM)
+  ].join(PART_SEPARATOR);
+}
+
+function decodeBinding(value: string): BindingInput {
+  const [materialInstanceId, solutionId, concentrationText, ...rest] =
+    value.split(PART_SEPARATOR);
+  const concentrationM = Number(concentrationText);
+  if (
+    rest.length > 0 ||
+    !materialInstanceId ||
+    !solutionId ||
+    !isSolutionId(solutionId) ||
+    !Number.isFinite(concentrationM) ||
+    concentrationM < 0
+  ) {
+    fail(ERROR.invalidState, "Malformed precipitation material binding.");
+  }
+  return { materialInstanceId, solutionId, concentrationM };
+}
+
+function concentrationEntries(
+  equilibrium: PrecipitationEquilibrium
+): readonly string[] {
+  return Object.entries(equilibrium.dissolvedIonConcentrationsM)
+    .filter((entry): entry is [string, number] => entry[1] !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([formula, concentration]) =>
+      [formula, String(concentration)].join(PART_SEPARATOR)
     );
-  }
-  return solutionId;
 }
 
-function encode(containerInstanceId: string, solutionId: SolutionId): string {
-  return `${containerInstanceId}${CONTENTS_SEPARATOR}${solutionId}`;
-}
-
-function decode(entry: string): {
-  readonly containerInstanceId: string;
-  readonly solutionId: SolutionId;
-} {
-  const separatorIndex = entry.indexOf(CONTENTS_SEPARATOR);
-  if (separatorIndex <= 0) {
-    fail(ERROR.invalidState, `Malformed contents entry ${entry}.`);
+function concentrationFor(
+  state: readonly GenericStateField[],
+  formula: IonFormula
+): number {
+  const prefix = `${formula}${PART_SEPARATOR}`;
+  const entry = stringListField(state, FIELD.dissolvedIonConcentrations).find(
+    (candidate) => candidate.startsWith(prefix)
+  );
+  if (!entry) return 0;
+  const value = Number(entry.slice(prefix.length));
+  if (!Number.isFinite(value) || value < 0) {
+    fail(ERROR.invalidState, `Invalid dissolved concentration for ${formula}.`);
   }
-  const containerInstanceId = entry.slice(0, separatorIndex);
-  const solutionId = entry.slice(separatorIndex + 1);
-  if (!isSolutionId(solutionId)) {
-    fail(ERROR.invalidState, `Unknown solution ${solutionId} in contents.`);
-  }
-  return { containerInstanceId, solutionId };
+  return value;
 }
 
 function emptyResultFields(): readonly GenericStateField[] {
   return [
+    { key: FIELD.reactionContainerId, value: null },
     { key: FIELD.formsPrecipitate, value: false },
     { key: FIELD.precipitateId, value: null },
     { key: FIELD.precipitateFormula, value: null },
     { key: FIELD.precipitateColor, value: "clear" },
-    { key: FIELD.netIonicEquation, value: "" },
-    { key: FIELD.spectatorIons, value: [] as readonly string[] }
+    { key: FIELD.netIonicEquation, value: "No reaction" },
+    { key: FIELD.spectatorIons, value: [] as readonly string[] },
+    { key: FIELD.dissolvedIonConcentrations, value: [] as readonly string[] },
+    { key: FIELD.reactionQuotientBefore, value: 0 },
+    { key: FIELD.solubilityProduct, value: 0 },
+    { key: FIELD.saturationRatioBefore, value: 0 },
+    { key: FIELD.precipitateMoles, value: 0 },
+    { key: FIELD.precipitateMassG, value: 0 },
+    { key: FIELD.totalVolumeL, value: 0 }
   ];
 }
 
-/**
- * Seed one contents entry per material binding, recording which solution is
- * sitting in which container before the student touches anything.
- */
+function resultFields(
+  containerInstanceId: string,
+  equilibrium: PrecipitationEquilibrium
+): readonly GenericStateField[] {
+  return [
+    { key: FIELD.reactionContainerId, value: containerInstanceId },
+    { key: FIELD.formsPrecipitate, value: equilibrium.formsPrecipitate },
+    { key: FIELD.precipitateId, value: equilibrium.precipitateId },
+    { key: FIELD.precipitateFormula, value: equilibrium.formula },
+    { key: FIELD.precipitateColor, value: equilibrium.color },
+    { key: FIELD.netIonicEquation, value: equilibrium.netIonicEquation },
+    { key: FIELD.spectatorIons, value: [...equilibrium.spectatorIons] },
+    {
+      key: FIELD.dissolvedIonConcentrations,
+      value: concentrationEntries(equilibrium)
+    },
+    {
+      key: FIELD.reactionQuotientBefore,
+      value: equilibrium.reactionQuotientBefore
+    },
+    {
+      key: FIELD.solubilityProduct,
+      value: equilibrium.solubilityProduct ?? 0
+    },
+    {
+      key: FIELD.saturationRatioBefore,
+      value: equilibrium.saturationRatioBefore
+    },
+    { key: FIELD.precipitateMoles, value: equilibrium.precipitateMoles },
+    {
+      key: FIELD.precipitateMassG,
+      value: Math.round(equilibrium.precipitateMassG * MASS_SCALE) / MASS_SCALE
+    },
+    { key: FIELD.totalVolumeL, value: equilibrium.totalVolumeL }
+  ];
+}
+
+function bindingsFrom(
+  context: Readonly<GenericChemistryModuleInitializationContext>
+): readonly BindingInput[] {
+  return context.materialBindings.flatMap((binding) => {
+    const solutionId = solutionFor(binding.materialProfileId);
+    if (solutionId === null) {
+      if (
+        binding.providedChemistryCapabilityIds.includes(
+          PRECIPITATION_CAPABILITY_ID
+        )
+      ) {
+        fail(
+          ERROR.unknownReagent,
+          `Reagent ${binding.materialProfileId} has no registered ionic composition.`
+        );
+      }
+      return [];
+    }
+    const concentrationM = binding.initialConcentrationM ?? 0;
+    if (!Number.isFinite(concentrationM) || concentrationM < 0) {
+      fail(
+        ERROR.unknownReagent,
+        `Reagent ${binding.materialProfileId} has no valid concentration.`
+      );
+    }
+    return [
+      { materialInstanceId: binding.instanceId, solutionId, concentrationM }
+    ];
+  });
+}
+
+function solveLedger(
+  ledger: GenericChemistryActionContext["materialLedger"],
+  bindings: readonly BindingInput[]
+): {
+  readonly containerInstanceId: string;
+  readonly equilibrium: PrecipitationEquilibrium;
+} | null {
+  const byContainer = new Map<string, SolutionPortion[]>();
+  for (const binding of bindings) {
+    const material = ledger.materials.find(
+      (candidate) => candidate.materialInstanceId === binding.materialInstanceId
+    );
+    if (!material || material.unitId !== "unit.ml.v1") continue;
+    for (const location of material.locations) {
+      const volumeML = materialAmountAt(
+        ledger,
+        material.materialInstanceId,
+        location.equipmentInstanceId
+      );
+      if (volumeML <= 0) continue;
+      const portions = byContainer.get(location.equipmentInstanceId) ?? [];
+      portions.push({
+        solutionId: binding.solutionId,
+        concentrationM: binding.concentrationM,
+        volumeML
+      });
+      byContainer.set(location.equipmentInstanceId, portions);
+    }
+  }
+
+  const solved = [...byContainer.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([containerInstanceId, portions]) => ({
+      containerInstanceId,
+      equilibrium: solvePrecipitationEquilibrium(
+        inventoryFromSolutionPortions(portions)
+      )
+    }))
+    .filter(({ equilibrium }) => equilibrium.solubilityProduct !== null)
+    .sort((left, right) => {
+      if (
+        left.equilibrium.saturationRatioBefore !==
+        right.equilibrium.saturationRatioBefore
+      ) {
+        return (
+          right.equilibrium.saturationRatioBefore -
+          left.equilibrium.saturationRatioBefore
+        );
+      }
+      return left.containerInstanceId.localeCompare(right.containerInstanceId);
+    });
+  return solved[0] ?? null;
+}
+
 function initialState(
   context: Parameters<GenericChemistryModule["initialize"]>[0]
 ): readonly GenericStateField[] {
-  const contents = context.materialBindings
-    .map((binding) =>
-      encode(binding.containerInstanceId, solutionFor(binding.materialProfileId))
-    )
-    .sort();
-
+  const bindings = bindingsFrom(context);
+  const solved = solveLedger(context.materialLedger, bindings);
   return [
-    { key: FIELD.contents, value: Object.freeze(contents) },
-    ...emptyResultFields()
-  ];
-}
-
-/**
- * Record delivered solutions and, once a container holds two distinct ones,
- * ask the solubility rules what forms. The prediction is a pure function of
- * the pair, so re-deriving it is stable across replay.
- */
-function applyTransfers(
-  action: Parameters<GenericChemistryModule["applyMaterialAction"]>[0],
-  state: readonly GenericStateField[]
-): readonly GenericStateField[] {
-  const contents = new Set(stringListField(state, FIELD.contents));
-
-  for (const transfer of action.transfers) {
-    if (transfer.amount <= 0) continue;
-    contents.add(
-      encode(transfer.targetEquipmentInstanceId, solutionFor(transfer.materialProfileId))
-    );
-  }
-
-  const nextContents = Object.freeze([...contents].sort());
-
-  const byContainer = new Map<string, Set<SolutionId>>();
-  for (const entry of nextContents) {
-    const { containerInstanceId, solutionId } = decode(entry);
-    const existing = byContainer.get(containerInstanceId) ?? new Set();
-    existing.add(solutionId);
-    byContainer.set(containerInstanceId, existing);
-  }
-
-  // Deterministic scan: containers in sorted order, first mixed pair wins.
-  const mixed = [...byContainer.entries()]
-    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-    .find(([, solutions]) => solutions.size >= 2);
-
-  if (!mixed) {
-    return [
-      { key: FIELD.contents, value: nextContents },
-      ...emptyResultFields()
-    ];
-  }
-
-  const [solutionA, solutionB] = [...mixed[1]].sort();
-  const result = predictPrecipitation(solutionA, solutionB);
-
-  return [
-    { key: FIELD.contents, value: nextContents },
-    { key: FIELD.formsPrecipitate, value: result.formsPrecipitate },
-    { key: FIELD.precipitateId, value: result.precipitateId },
-    { key: FIELD.precipitateFormula, value: result.formula },
-    { key: FIELD.precipitateColor, value: result.color },
-    { key: FIELD.netIonicEquation, value: result.netIonicEquation },
     {
-      key: FIELD.spectatorIons,
-      value: Object.freeze([...result.spectatorIons].sort())
-    }
+      key: FIELD.bindingInputs,
+      value: bindings.map(encodeBinding).sort()
+    },
+    ...(solved
+      ? resultFields(solved.containerInstanceId, solved.equilibrium)
+      : emptyResultFields())
   ];
 }
 
-const applyMaterialAction: GenericChemistryModule["applyMaterialAction"] = (
-  action,
-  state
-) => ({ state: applyTransfers(action, state) });
+const applyActionTransition: NonNullable<
+  GenericChemistryModule["applyActionTransition"]
+> = (context, state) => {
+  const bindings = stringListField(state, FIELD.bindingInputs).map(
+    decodeBinding
+  );
+  const solved = solveLedger(context.materialLedger, bindings);
+  return {
+    state: [
+      { key: FIELD.bindingInputs, value: bindings.map(encodeBinding).sort() },
+      ...(solved
+        ? resultFields(solved.containerInstanceId, solved.equilibrium)
+        : emptyResultFields())
+    ]
+  };
+};
 
 function observables(state: readonly GenericStateField[]) {
   const formsPrecipitate = field(state, FIELD.formsPrecipitate).value;
@@ -212,15 +358,56 @@ function observables(state: readonly GenericStateField[]) {
     {
       observableId: PRECIPITATION_OBSERVABLE_IDS.precipitateColor,
       value: typeof color === "string" ? color : "clear"
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.ionProduct,
+      value: numberField(state, FIELD.reactionQuotientBefore)
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.solubilityProduct,
+      value: numberField(state, FIELD.solubilityProduct)
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.saturationRatio,
+      value: numberField(state, FIELD.saturationRatioBefore)
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.precipitateAmountMol,
+      value: numberField(state, FIELD.precipitateMoles),
+      unitId: "unit.mol.v1"
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.precipitateMassG,
+      value: numberField(state, FIELD.precipitateMassG),
+      unitId: "unit.g.v1"
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.dissolvedSilverM,
+      value: concentrationFor(state, "Ag+"),
+      unitId: "unit.mol_per_l.v1"
+    },
+    {
+      observableId: PRECIPITATION_OBSERVABLE_IDS.dissolvedChlorideM,
+      value: concentrationFor(state, "Cl-"),
+      unitId: "unit.mol_per_l.v1"
     }
   ];
 }
 
-/**
- * Precipitation chemistry over the shared material ledger. It owns no
- * apparatus state and no volumes — it reads the transfers mechanics report and
- * projects the deterministic solubility outcome.
- */
+const applyMaterialAction: GenericChemistryModule["applyMaterialAction"] = (
+  _action,
+  state
+) => ({ state });
+
+const deriveGroundTruthValues: NonNullable<
+  GenericChemistryModule["deriveGroundTruthValues"]
+> = (state) => ({
+  precipitateAmountMol: numberField(state, FIELD.precipitateMoles),
+  precipitateMassG: numberField(state, FIELD.precipitateMassG),
+  reactionQuotientBefore: numberField(state, FIELD.reactionQuotientBefore),
+  solubilityProduct: numberField(state, FIELD.solubilityProduct)
+});
+
 export const PRECIPITATION_MODULE: GenericChemistryModule = Object.freeze({
   id: PRECIPITATION_MODEL_ID,
   version: "1.0.0",
@@ -231,6 +418,8 @@ export const PRECIPITATION_MODULE: GenericChemistryModule = Object.freeze({
     "chemistry.solution_mixing.v1"
   ] as const,
   initialize: initialState,
-  applyMaterialAction: applyMaterialAction,
-  deriveObservables: observables
+  applyMaterialAction,
+  applyActionTransition,
+  deriveObservables: observables,
+  deriveGroundTruthValues
 });
