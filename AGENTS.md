@@ -1,4 +1,4 @@
-# AGENTS.md — LabBench AI Repo Law
+# AGENTS.md — Litmus Repo Law
 
 These rules apply to every coding agent run in this repository.
 

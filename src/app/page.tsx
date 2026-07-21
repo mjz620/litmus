@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { LitmusMark } from "../components/ui/LitmusMark";
 import { ProductShell } from "../components/ui/ProductShell";
 
 import styles from "./page.module.css";
@@ -10,7 +11,7 @@ export default function Home() {
       <section className={styles.hero} aria-labelledby="page-title">
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>For high-school chemistry</p>
-          <h1 id="page-title">LabBench AI</h1>
+          <h1 id="page-title">Litmus</h1>
           <p className={styles.summary}>
             Practise the technique before you do it for real. Nothing here can
             break, spill, or be wasted, so you can run it as many times as you
@@ -35,15 +36,13 @@ export default function Home() {
             of near-equal weight it competed with the one action that matters.
           */}
           <p className={styles.asideLink}>
-            <Link href="/demo">Reviewing LabBench? Take the guided demo →</Link>
+            <Link href="/demo">Reviewing Litmus? Take the guided demo →</Link>
           </p>
         </div>
 
-        <aside className={styles.labConsole} aria-label="How LabBench works">
+        <aside className={styles.labConsole} aria-label="How Litmus works">
           <div className={styles.consoleHeader}>
-            <span className={styles.consoleMark} aria-hidden="true">
-              ⚗
-            </span>
+            <LitmusMark className={styles.consoleMark} />
             <div>
               <p>Student bench</p>
               <strong>Practice loop</strong>
@@ -55,14 +54,18 @@ export default function Home() {
               <span>01</span>
               <div>
                 <strong>Handle the equipment</strong>
-                <p>Pour, measure, and read instruments as you would for real.</p>
+                <p>
+                  Pour, measure, and read instruments as you would for real.
+                </p>
               </div>
             </li>
             <li>
               <span>02</span>
               <div>
                 <strong>Your work is recorded</strong>
-                <p>Every step you take is saved, so you can see what you did.</p>
+                <p>
+                  Every step you take is saved, so you can see what you did.
+                </p>
               </div>
             </li>
             <li>
@@ -80,7 +83,7 @@ export default function Home() {
         </aside>
       </section>
 
-      <section className={styles.audiences} aria-label="LabBench experiences">
+      <section className={styles.audiences} aria-label="Litmus experiences">
         {/*
           The decorative glyphs are gone. They were three unrelated characters
           from three type families, rendering inconsistently across platforms

@@ -12,7 +12,7 @@ export default function NotFound() {
       />
       <div className="ui-empty">
         <h2>Return to a verified experiment</h2>
-        <p>Choose from the experiments registered in LabBench.</p>
+        <p>Choose from the experiments registered in Litmus.</p>
         <Link className="ui-button" href="/experiments">
           Browse experiments
         </Link>

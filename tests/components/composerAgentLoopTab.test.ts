@@ -22,7 +22,7 @@ describe("LC2-704 Composer Agent-loop tab", () => {
         state: "waiting"
       }),
       expect.objectContaining({
-        actor: "LabBench",
+        actor: "Litmus",
         title: "Lab checker has not run on this version",
         state: "waiting"
       }),
@@ -34,7 +34,7 @@ describe("LC2-704 Composer Agent-loop tab", () => {
     ]);
   });
 
-  it("keeps teacher decisions and stale teaching feedback separate from LabBench authority", () => {
+  it("keeps teacher decisions and stale teaching feedback separate from Litmus authority", () => {
     const entries = buildComposerAgentLoopEntries({
       proposal: null,
       evidenceState: "stale",
@@ -66,7 +66,7 @@ describe("LC2-704 Composer Agent-loop tab", () => {
           title: "Teacher edited the draft"
         }),
         expect.objectContaining({
-          actor: "LabBench",
+          actor: "Litmus",
           title: "Lab checker found changes to make"
         }),
         expect.objectContaining({

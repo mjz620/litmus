@@ -66,7 +66,7 @@ export const COMPOSER_STAGES: readonly ComposerStageDefinition[] =
       label: "AI review",
       shortPurpose: "Trace",
       purpose:
-        "See the suggested draft, LabBench checks, optional teaching feedback, and your decisions in one place."
+        "See the suggested draft, Litmus checks, optional teaching feedback, and your decisions in one place."
     }
   ]);
 

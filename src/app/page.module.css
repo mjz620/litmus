@@ -77,14 +77,9 @@
 }
 
 .consoleMark {
-  display: grid;
   width: 2.65rem;
   height: 2.65rem;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: var(--color-ink);
-  font-size: 1.25rem;
+  flex: 0 0 auto;
 }
 
 .consoleHeader p,

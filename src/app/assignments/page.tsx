@@ -21,7 +21,7 @@ export default async function StudentAssignmentsPage() {
         <PageHeader
           eyebrow="My assignments"
           title="Assignments unavailable"
-          description="Class assignments need a configured LabBench backend. Guest practice labs remain open without an account."
+          description="Class assignments need a configured Litmus backend. Guest practice labs remain open without an account."
           backHref="/experiments"
           backLabel="Experiments"
         />

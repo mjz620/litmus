@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { DEMO_TRACE_STORAGE_KEY } from "../../lib/demo/demoTrace";
+import { LitmusMark } from "../ui/LitmusMark";
 
 import styles from "./DemoBar.module.css";
 
@@ -31,9 +32,9 @@ export function DemoBar() {
   return (
     <nav className={styles.bar} aria-label="Demo roles">
       <Link className={styles.brand} href="/demo">
-        <span aria-hidden="true">✦</span>
+        <LitmusMark className={styles.brandMark} />
         <span>
-          <strong>LabBench</strong>
+          <strong>Litmus</strong>
           <small>playground</small>
         </span>
       </Link>

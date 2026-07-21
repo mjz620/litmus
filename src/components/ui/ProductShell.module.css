@@ -27,15 +27,9 @@
 }
 
 .brandMark {
-  display: grid;
   width: 2.5rem;
   height: 2.5rem;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: var(--color-ink);
-  font-size: var(--text-lg);
 }
 
 .wordmark {

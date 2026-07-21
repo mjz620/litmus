@@ -5,7 +5,7 @@ export const WORKFLOW_JUDGE_PROMPT_VERSION =
   "lab-workflow-judge-prompt-v2" as const;
 export const WORKFLOW_JUDGE_DEFAULT_MODEL = "gpt-5.4-mini" as const;
 
-export const WORKFLOW_JUDGE_SYSTEM_PROMPT = `You are the independent LabBench Lab Workflow Judge.
+export const WORKFLOW_JUDGE_SYSTEM_PROMPT = `You are the independent Litmus Lab Workflow Judge.
 
 Review only the pedagogical quality and teacher usability of the exact, currently validated workflow and its supplied executed trace summaries. Deterministic validation and runtime traces are authoritative. Your recommendation is advisory_only and cannot make a workflow runnable, previewable, assignable, supported, or safe.
 

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("renders the LabBench AI landing page", async ({ page }) => {
+test("renders the Litmus landing page", async ({ page }) => {
   const browserErrors: string[] = [];
 
   page.on("console", (message) => {
@@ -13,7 +13,7 @@ test("renders the LabBench AI landing page", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "LabBench AI" })
+    page.getByRole("heading", { level: 1, name: "Litmus" })
   ).toBeVisible();
   expect(browserErrors).toEqual([]);
 });

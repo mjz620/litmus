@@ -22,15 +22,10 @@
   text-decoration: none;
 }
 
-.brand > span:first-child {
-  display: grid;
+.brandMark {
   width: 2.5rem;
   height: 2.5rem;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: #3b2922;
-  font-size: 1.05rem;
+  flex: 0 0 auto;
 }
 
 .brand > span:last-child {

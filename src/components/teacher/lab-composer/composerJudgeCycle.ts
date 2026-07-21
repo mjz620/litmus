@@ -297,7 +297,7 @@ export async function applyComposerJudgeSuggestion(input: {
       ok: false,
       stage: "validation",
       message:
-        "LabBench rejected that suggestion during its required checks. Your draft was not changed."
+        "Litmus rejected that suggestion during its required checks. Your draft was not changed."
     };
   }
   let traces: readonly CapabilityAuthorTraceSummary[];

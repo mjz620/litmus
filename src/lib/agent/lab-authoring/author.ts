@@ -372,7 +372,7 @@ function createMockResult(
   ) {
     return unsupportedResult({
       request,
-      objective: "Create a lab only from verified LabBench capabilities.",
+      objective: "Create a lab only from verified Litmus capabilities.",
       missingCapabilityIds: [],
       ambiguity:
         "The request attempts to override authoring constraints or invent capabilities."

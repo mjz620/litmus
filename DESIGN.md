@@ -1,5 +1,5 @@
 ---
-name: LabBench AI
+name: Litmus
 description: A virtual chemistry bench students are allowed to touch before the real one.
 colors:
   canvas: "#f3f0e8"
@@ -99,7 +99,7 @@ components:
     rounded: "{rounded.sm}"
 ---
 
-# Design System: LabBench AI
+# Design System: Litmus
 
 ## 1. Overview
 

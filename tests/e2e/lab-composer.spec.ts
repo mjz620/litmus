@@ -134,7 +134,7 @@ function nonRunnableAgentProposal(
     result: {
       outcome,
       objective: copy.objective,
-      assumptions: ["Only registered LabBench equipment may be used."],
+      assumptions: ["Only registered Litmus equipment may be used."],
       questions: [],
       limitations: copy.limitations,
       workflow: null,
@@ -440,7 +440,7 @@ test("capability author shows streamed procedural progress without private reaso
           progress: {
             stage: "using_verified_fallback",
             message:
-              "The live helper could not finish, so LabBench is using its verified local builder."
+              "The live helper could not finish, so Litmus is using its verified local builder."
           }
         },
         { type: "result", result: finalProposal }
@@ -521,7 +521,7 @@ test("optional teaching review stays separate from validation and becomes stale 
 
   await expect(page.getByText("Ready to preview")).toBeVisible();
   await expect(
-    page.getByText(/only the LabBench checker can do that/i)
+    page.getByText(/only the Litmus checker can do that/i)
   ).toBeVisible();
   const reviewButton = page.getByRole("button", {
     name: "Run teaching review"
@@ -679,7 +679,7 @@ test("unsupported, unsafe, and budget-limited proposals stay non-runnable and ke
     await generate.press("Enter");
     await expect(page.getByText(label)).toBeVisible();
     await expect(
-      page.getByText("Only registered LabBench equipment may be used.")
+      page.getByText("Only registered Litmus equipment may be used.")
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Use this draft" })

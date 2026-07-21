@@ -14,7 +14,7 @@ type LoopEntryState = "waiting" | "working" | "passed" | "needs-attention";
 
 interface LoopEntry {
   readonly id: string;
-  readonly actor: "Draft helper" | "LabBench" | "Teaching review" | "Teacher";
+  readonly actor: "Draft helper" | "Litmus" | "Teaching review" | "Teacher";
   readonly title: string;
   readonly detail: string;
   readonly state: LoopEntryState;
@@ -160,7 +160,7 @@ export function buildComposerAgentLoopEntries(
   if (input.validationState === "passed") {
     entries.push({
       id: "labbench-passed",
-      actor: "LabBench",
+      actor: "Litmus",
       title: "Lab checker passed",
       detail:
         "The current lab is supported for Preview. This deterministic check, not AI advice, decides that.",
@@ -169,7 +169,7 @@ export function buildComposerAgentLoopEntries(
   } else if (input.validationState === "needs-attention") {
     entries.push({
       id: "labbench-needs-attention",
-      actor: "LabBench",
+      actor: "Litmus",
       title: "Lab checker found changes to make",
       detail:
         "Preview stays unavailable until the current lab passes the deterministic check.",
@@ -178,7 +178,7 @@ export function buildComposerAgentLoopEntries(
   } else {
     entries.push({
       id: "labbench-waiting",
-      actor: "LabBench",
+      actor: "Litmus",
       title: "Lab checker has not run on this version",
       detail:
         "Check the lab before requesting teaching feedback or opening Preview.",
@@ -192,7 +192,7 @@ export function buildComposerAgentLoopEntries(
     ).length;
     entries.push({
       id: "author-scenarios",
-      actor: "LabBench",
+      actor: "Litmus",
       title: `${passed} of 5 student scenarios passed`,
       detail:
         passed === 5
@@ -208,7 +208,7 @@ export function buildComposerAgentLoopEntries(
       actor: "Teaching review",
       title: "Reviewing the learning experience",
       detail:
-        "LabBench is repeating the required student scenarios before returning optional teaching feedback.",
+        "Litmus is repeating the required student scenarios before returning optional teaching feedback.",
       state: "working"
     });
   }
@@ -229,7 +229,7 @@ export function buildComposerAgentLoopEntries(
       actor: "Teaching review",
       title: "No teaching review yet",
       detail:
-        "After the LabBench checker passes, you can request optional teaching feedback in Check & preview.",
+        "After the Litmus checker passes, you can request optional teaching feedback in Check & preview.",
       state: "waiting"
     });
   } else if (input.judgeStatus === "stale") {
@@ -305,7 +305,7 @@ export function ComposerAgentLoopTab({
             <span>Suggests a starting structure.</span>
           </li>
           <li>
-            <strong>LabBench</strong>
+            <strong>Litmus</strong>
             <span>Checks support and student scenarios before Preview.</span>
           </li>
           <li>

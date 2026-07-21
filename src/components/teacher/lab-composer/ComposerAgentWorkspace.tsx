@@ -136,7 +136,7 @@ export function ComposerAgentWorkspace({
           <h2 id="agent-workspace-heading">Describe the lab you want</h2>
         </div>
         <span>
-          AI suggests a structure. LabBench runs the safety, support, and
+          AI suggests a structure. Litmus runs the safety, support, and
           simulation checks.
         </span>
       </header>
@@ -212,7 +212,7 @@ export function ComposerAgentWorkspace({
             ({ stage }) => stage === "using_verified_fallback"
           ) && (
             <p className={styles.agentFallbackNotice}>
-              The live helper did not finish, so LabBench continued with its
+              The live helper did not finish, so Litmus continued with its
               verified local builder.
             </p>
           )}
@@ -280,7 +280,7 @@ export function ComposerAgentWorkspace({
             >
               <header>
                 <div>
-                  <p>LabBench checks · deterministic</p>
+                  <p>Litmus checks · deterministic</p>
                   <h4 id="agent-checks-heading">What the simulator verified</h4>
                 </div>
                 <strong>

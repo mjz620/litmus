@@ -100,12 +100,12 @@ export function ComposerJudgePanel({
 
       <p className={styles.judgeAuthorityNote}>
         This review can suggest teaching improvements. It cannot approve the
-        simulation or turn on Preview; only the LabBench checker can do that.
+        simulation or turn on Preview; only the Litmus checker can do that.
       </p>
 
       {!review && status !== "running" && (
         <p>
-          Run this only after the lab checker passes. LabBench will repeat five
+          Run this only after the lab checker passes. Litmus will repeat five
           student scenarios before asking for teaching feedback.
         </p>
       )}

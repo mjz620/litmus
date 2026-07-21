@@ -47,10 +47,10 @@ export default function DemoHubPage() {
       <div className={styles.container}>
         <header className={styles.header}>
           <Link className={styles.backLink} href="/">
-            ← LabBench AI home
+            ← Litmus home
           </Link>
           <p className={styles.eyebrow}>Guided product tour</p>
-          <h1>LabBench AI judge demo</h1>
+          <h1>Litmus product demo</h1>
           <p className={styles.summary}>
             Reach the student bench, the teacher readiness view, and Lab
             Composer from here. Practice needs no account; teachers sign in only

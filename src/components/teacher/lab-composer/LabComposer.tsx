@@ -706,7 +706,7 @@ export function LabComposer() {
         );
       } else if (callsAfter === 0) {
         setJudgeTerminationReason(
-          "The fixed review-call limit was reached. You can still edit and use the LabBench checker."
+          "The fixed review-call limit was reached. You can still edit and use the Litmus checker."
         );
       }
     } catch (reviewError) {
@@ -879,7 +879,7 @@ export function LabComposer() {
       !agentProposal.result.traces.every(({ passed }) => passed)
     ) {
       setAgentError(
-        "This proposal has not passed every required LabBench check, so it cannot be loaded."
+        "This proposal has not passed every required Litmus check, so it cannot be loaded."
       );
       return;
     }
@@ -937,7 +937,7 @@ export function LabComposer() {
     setErrorPath(null);
     setItemErrors({});
     setRepositoryMessage(
-      "The proposed draft is loaded and its LabBench checks match this exact version. Review or edit anything before Preview."
+      "The proposed draft is loaded and its Litmus checks match this exact version. Review or edit anything before Preview."
     );
   }
 

@@ -9,7 +9,7 @@ import {
 
 export const EVALUATOR_PROMPT_VERSION = "evaluator-v1";
 export const RUBRIC_VERSION = "rubric-v1";
-export const EVALUATOR_SYSTEM_PROMPT = `You are LabBench's formative report evaluator. Score only against the supplied rubric dimensions and cite supplied semantic event types. Deterministic engine state is ground truth: never invent measurements, calculate hidden chemistry, or fabricate event counts. Do not expose hidden reasoning. Recommend only endpoint_control or burette_conditioning retries when the evidence supports one.`;
+export const EVALUATOR_SYSTEM_PROMPT = `You are Litmus's formative report evaluator. Score only against the supplied rubric dimensions and cite supplied semantic event types. Deterministic engine state is ground truth: never invent measurements, calculate hidden chemistry, or fabricate event counts. Do not expose hidden reasoning. Recommend only endpoint_control or burette_conditioning retries when the evidence supports one.`;
 
 export function createMockRubric(request: EvaluateRequest): RubricResponse {
   const eventTypes = Array.from(

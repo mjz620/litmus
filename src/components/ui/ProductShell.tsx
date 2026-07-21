@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LitmusMark } from "./LitmusMark";
 import { PrimaryNav } from "./PrimaryNav";
 
 import styles from "./ProductShell.module.css";
@@ -39,13 +40,11 @@ export function ProductHeader() {
   return (
     <header className={styles.siteHeader}>
       <div className={styles.headerInner}>
-        <Link className={styles.brand} href="/" aria-label="LabBench AI home">
-          <span className={styles.brandMark} aria-hidden="true">
-            ⚗
-          </span>
+        <Link className={styles.brand} href="/" aria-label="Litmus home">
+          <LitmusMark className={styles.brandMark} />
           <span className={styles.wordmark}>
-            <strong>LabBench</strong>
-            <small>AI chemistry practice</small>
+            <strong>Litmus</strong>
+            <small>Chemistry rehearsal</small>
           </span>
         </Link>
         <PrimaryNav />

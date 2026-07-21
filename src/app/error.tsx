@@ -14,7 +14,7 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
         <div className="ui-notice" data-tone="error" role="alert">
           <span aria-hidden="true">!</span>
           <div>
-            <strong>LabBench encountered an unexpected error.</strong>
+            <strong>Litmus encountered an unexpected error.</strong>
             <p>Retry the page, or return to the experiment catalog.</p>
           </div>
         </div>

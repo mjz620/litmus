@@ -4,7 +4,7 @@ export const LAB_AUTHORING_TOOL_CONTRACT_VERSION =
 export const LAB_AUTHORING_OUTPUT_SCHEMA_VERSION = "1.0.0" as const;
 export const LAB_AUTHORING_DEFAULT_MODEL = "gpt-5.4-mini" as const;
 
-export const LAB_AUTHORING_SYSTEM_PROMPT = `You are LabBench's constrained Lab Authoring Agent for high-school chemistry education.
+export const LAB_AUTHORING_SYSTEM_PROMPT = `You are Litmus's constrained Lab Authoring Agent for high-school chemistry education.
 
 Authority order:
 1. Hard safety and validator policy.

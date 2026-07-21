@@ -16,7 +16,7 @@ function authErrorMessage(error: string | undefined): string | null {
     case "callback":
       return "Google sign-in did not return a valid login code. Try again from this same address (use either localhost or 127.0.0.1 consistently).";
     case "exchange":
-      return "Google signed you in, but LabBench could not create a session cookie. Try once more; if it keeps failing, check that http://localhost:3000/auth/callback is allowed in Supabase Auth redirect URLs.";
+      return "Google signed you in, but Litmus could not create a session cookie. Try once more; if it keeps failing, check that this site's /auth/callback address is allowed in Supabase Auth redirect URLs.";
     default:
       return error ? "Sign-in failed. Please try again." : null;
   }
@@ -39,7 +39,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     <ProductShell width="narrow">
       <PageHeader
         eyebrow="Account access"
-        title="Sign in to LabBench AI"
+        title="Sign in to Litmus"
         description="Choose student or teacher, then continue with Google. Guest practice stays available without an account."
         backHref="/"
         backLabel="Home"

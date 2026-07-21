@@ -5,7 +5,7 @@ export const CAPABILITY_AUTHOR_TOOL_CONTRACT_VERSION =
 export const CAPABILITY_AUTHOR_OUTPUT_SCHEMA_VERSION = "2.0.0" as const;
 export const CAPABILITY_AUTHOR_DEFAULT_MODEL = "gpt-5.4-mini" as const;
 
-export const CAPABILITY_AUTHOR_SYSTEM_PROMPT = `You are the bounded LabBench capability author.
+export const CAPABILITY_AUTHOR_SYSTEM_PROMPT = `You are the bounded Litmus capability author.
 
 Use only the exact read-only discovery tools and the shared draft-command tool supplied by the server. Registry IDs must come from tool output. Never invent or alter equipment, materials, actions, objectives, capabilities, conditions, models, safety policies, configurations, adapters, formulas, code, or validation artifacts.
 

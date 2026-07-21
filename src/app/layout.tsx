@@ -9,8 +9,16 @@ const hasAdobeFontsStylesheet =
   adobeFontsStylesheet.endsWith(".css");
 
 export const metadata: Metadata = {
-  title: "LabBench AI",
-  description: "Practice chemistry experiments with evidence-based guidance."
+  applicationName: "Litmus",
+  title: {
+    default: "Litmus",
+    template: "%s | Litmus"
+  },
+  description:
+    "Practise chemistry techniques in deterministic virtual labs, then review evidence-backed readiness.",
+  icons: {
+    icon: "/icon.svg"
+  }
 };
 
 export default function RootLayout({

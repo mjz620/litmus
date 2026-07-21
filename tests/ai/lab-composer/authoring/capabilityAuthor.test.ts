@@ -397,7 +397,7 @@ describe("LC2-601 bounded capability author", () => {
       validation: { runnable: true }
     });
     expect(response.result.limitations).toContain(
-      "The live helper did not produce a runnable supported draft, so LabBench completed this proposal with its verified local builder."
+      "The live helper did not produce a runnable supported draft, so Litmus completed this proposal with its verified local builder."
     );
     expect(progressStages).toContain("using_verified_fallback");
     expect(progressStages.at(-1)).toBe("finalizing");
@@ -439,7 +439,7 @@ describe("LC2-601 bounded capability author", () => {
     expect(response.result.objective).toMatch(/sodium-chloride dilution/i);
     expect(JSON.stringify(response.result.questions)).not.toMatch(/titration/i);
     expect(response.result.limitations).toContain(
-      "The live helper did not produce a runnable supported draft, so LabBench completed this proposal with its verified local builder."
+      "The live helper did not produce a runnable supported draft, so Litmus completed this proposal with its verified local builder."
     );
   });
 

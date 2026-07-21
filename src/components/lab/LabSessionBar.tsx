@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { LitmusMark } from "../ui/LitmusMark";
 import { isTitrationState, useLabStore } from "../../stores/labStore";
 import { getExperimentPath } from "../../components/ui/experimentRoutes";
 import {
@@ -33,9 +34,7 @@ export function LabSessionBar({ title }: LabSessionBarProps) {
   return (
     <header className={styles.bar}>
       <div className={styles.identity}>
-        <span className={styles.mark} aria-hidden="true">
-          ⚗
-        </span>
+        <LitmusMark className={styles.mark} />
         <div>
           <Link className={styles.backLink} href="/experiments">
             ← Experiments

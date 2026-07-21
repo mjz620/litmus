@@ -1,6 +1,6 @@
 # Repo Current State
 
-This file is the living implementation record for LabBench AI. Root `AGENTS.md` and `tickets.md` remain authoritative.
+This file is the living implementation record for Litmus. Root `AGENTS.md` and `tickets.md` remain authoritative.
 
 ## Current implementation
 

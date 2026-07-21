@@ -149,7 +149,7 @@ const AUTHOR_PROGRESS = Object.freeze({
   using_verified_fallback: {
     stage: "using_verified_fallback",
     message:
-      "The live helper could not finish, so LabBench is using its verified local builder."
+      "The live helper could not finish, so Litmus is using its verified local builder."
   },
   finalizing: {
     stage: "finalizing",
@@ -221,7 +221,7 @@ function annotateVerifiedFallback(
       questions: [],
       limitations: [
         ...fallback.result.limitations,
-        "The live helper did not produce a runnable supported draft, so LabBench completed this proposal with its verified local builder."
+        "The live helper did not produce a runnable supported draft, so Litmus completed this proposal with its verified local builder."
       ].slice(0, CAPABILITY_AUTHOR_LIMITS.maxLimitations)
     }
   });
@@ -351,7 +351,7 @@ export function createDeterministicCapabilityAuthorPlanner(): CapabilityAuthorPl
         return {
           plan: {
             disposition: "unsupported",
-            objective: "Create a lab only from verified LabBench capabilities.",
+            objective: "Create a lab only from verified Litmus capabilities.",
             assumptions: [],
             questions: [],
             limitations: [
