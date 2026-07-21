@@ -31,7 +31,10 @@ import {
   NoopCoachClient,
   type CoachClient
 } from "../lib/agent/client";
-import { createAuthoredCoachWorkflowContext } from "../lib/agent/authoredCoach";
+import {
+  createAuthoredCoachWorkflowContext,
+  groundedAuthoredEventReasons
+} from "../lib/agent/authoredCoach";
 import { AUTHORED_COACH_CONTRACT_VERSION } from "../lib/agent/authoredCoachSchemas";
 import type {
   AnyCoachRequest,
@@ -539,16 +542,14 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
       const hasCurrentViolation = authoredContext?.diagnoses.some(
         ({ status }) => status === "violated"
       );
-      const hasGroundedAuthoredReason = reasons.some((reason) =>
-        authoredContext?.evidence.some(({ payload }) =>
-          payload.flags.includes(reason)
-        )
-      );
+      const authoredEventReasons = authoredContext
+        ? groundedAuthoredEventReasons(authoredContext, reasons)
+        : [];
       const useAuthoredContext =
         authoredContext !== null &&
         (source === "question" ||
-          hasCurrentViolation === true ||
-          hasGroundedAuthoredReason);
+          (source === "retry" && hasCurrentViolation === true) ||
+          (source === "event" && authoredEventReasons.length > 0));
       const coachRequest: AnyCoachRequest = useAuthoredContext
         ? {
             contractVersion: AUTHORED_COACH_CONTRACT_VERSION,
@@ -558,7 +559,10 @@ export function createLabStore(options: CreateLabStoreOptions = {}) {
             studentQuestion,
             triggerPolicy: {
               source,
-              reasons: [...new Set(reasons)],
+              reasons:
+                source === "event"
+                  ? authoredEventReasons
+                  : [...new Set(reasons)],
               maxHintLevel
             }
           }

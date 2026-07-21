@@ -83,6 +83,36 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
 
+function authoredEventReasonSet(
+  context: Readonly<AuthoredCoachWorkflowContext>
+): ReadonlySet<string> {
+  return new Set([
+    ...context.diagnoses
+      .filter(({ status }) => status === "violated")
+      .map(({ ruleId }) => `diagnosis:${ruleId}`),
+    ...context.evidence.flatMap(({ payload }) => [
+      ...payload.flags,
+      ...payload.evidence.map(
+        ({ skillId }) => `repeated_failure:${skillId}`
+      )
+    ])
+  ]);
+}
+
+/**
+ * Keeps an event-triggered request on the exact authored evidence contract.
+ * Native labs still emit a small number of legacy-only events (notably report
+ * submission) alongside their generic runtime evidence. Those events may use
+ * valid legacy flags, but they cannot authorize an authored intervention.
+ */
+export function groundedAuthoredEventReasons(
+  context: Readonly<AuthoredCoachWorkflowContext>,
+  candidates: readonly string[]
+): string[] {
+  const knownReasons = authoredEventReasonSet(context);
+  return unique(candidates.filter((reason) => knownReasons.has(reason)));
+}
+
 function deepFreeze<T>(value: T): Readonly<T> {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -393,13 +423,7 @@ function assertTrigger(request: Readonly<AuthoredCoachRequest>): void {
     );
   }
   if (source === "event") {
-    const knownReasons = new Set([
-      ...violated.map(({ ruleId }) => `diagnosis:${ruleId}`),
-      ...request.workflowContext.evidence.flatMap(({ payload }) => [
-        ...payload.flags,
-        ...payload.evidence.map(({ skillId }) => `repeated_failure:${skillId}`)
-      ])
-    ]);
+    const knownReasons = authoredEventReasonSet(request.workflowContext);
     if (
       request.triggerPolicy.reasons.some(
         (reason) => !knownReasons.has(reason)

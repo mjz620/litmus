@@ -669,6 +669,82 @@ describe("lab store", () => {
     step.mockRestore();
   });
 
+  it("does not mix a legacy report flag into authored Coach evidence", async () => {
+    const coachRequests: Parameters<CoachClient["request"]>[0][] = [];
+    const store = createLabStore({
+      coachClient: {
+        async request(input) {
+          coachRequests.push(input);
+          return {
+            shouldRespond: false,
+            interventionType: "none",
+            skillIds: [],
+            hintLevel: 0,
+            message: "",
+            evidenceEventTypes: [],
+            safety: { refused: false }
+          };
+        }
+      }
+    });
+    await store.getState().loadExperiment({
+      experimentId: "acid_base_titration",
+      sessionId: "native-report-coach-grounding",
+      config: EXAMPLE_STRONG,
+      runtimeMode: "native_v2"
+    });
+
+    expect(
+      store
+        .getState()
+        .dispatch({ type: "rinse_burette", solvent: "titrant" })
+    ).toBe(true);
+    expect(
+      store.getState().dispatch({ type: "fill_burette", volumeML: 50 })
+    ).toBe(true);
+    expect(
+      store.getState().dispatch({
+        type: "select_indicator",
+        indicator: "phenolphthalein"
+      })
+    ).toBe(true);
+    expect(
+      store.getState().dispatch({ type: "read_meniscus", reportedML: 0 })
+    ).toBe(true);
+    for (let addition = 0; addition < 51; addition += 1) {
+      expect(
+        store.getState().dispatch({
+          type: "add_titrant",
+          volumeML: 0.5,
+          durationS: 1
+        })
+      ).toBe(true);
+    }
+    await flushMicrotasks();
+    expect(
+      coachRequests.some((request) => "contractVersion" in request)
+    ).toBe(true);
+
+    expect(
+      store.getState().dispatch({
+        type: "submit_report",
+        reportedMolarityM: 1,
+        explanation: "Deliberately outside tolerance"
+      })
+    ).toBe(true);
+    await flushMicrotasks();
+
+    const reportRequest = coachRequests.at(-1);
+    expect(reportRequest).toBeDefined();
+    expect(reportRequest).not.toHaveProperty("contractVersion");
+    expect(reportRequest).toMatchObject({
+      recentEvents: expect.arrayContaining([
+        expect.objectContaining({ flags: ["result_out_of_tolerance"] })
+      ]),
+      triggerPolicy: { source: "event" }
+    });
+  });
+
   it("keeps setup-driven simulation synchronous while checkpoint and coach work wait", async () => {
     let releaseCheckpoint!: () => void;
     const checkpointBlocked = new Promise<void>((resolve) => {

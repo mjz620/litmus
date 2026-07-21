@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createAuthoredCoachWorkflowContext,
-  generateAuthoredCoachResponse
+  generateAuthoredCoachResponse,
+  groundedAuthoredEventReasons
 } from "../../src/lib/agent/authoredCoach";
 import {
   AUTHORED_COACH_CONTRACT_VERSION,
@@ -34,6 +35,18 @@ import {
 
 const CHECKED_AT = "2026-07-18T15:00:00.000Z";
 const solutionDefinition = validateSolutionPreparationV2(CHECKED_AT);
+
+it("filters legacy-only trigger reasons out of authored Coach evidence", () => {
+  const runtime = solutionSession(solutionDefinition, "coach-reason-filter");
+  const context = createAuthoredCoachWorkflowContext(
+    runtime.getWorkflow(),
+    runtime.getGenericState()
+  );
+
+  expect(
+    groundedAuthoredEventReasons(context, ["result_out_of_tolerance"])
+  ).toEqual([]);
+});
 
 function solutionSession(
   definition = solutionDefinition,
