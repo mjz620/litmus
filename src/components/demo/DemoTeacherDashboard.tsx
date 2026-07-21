@@ -8,15 +8,16 @@ import {
   DEMO_CLASS_ID,
   demoAnalyticsFixture
 } from "../../lib/analytics/demoFixture";
-import { extendAnalyticsWithDemoTrace } from "../../lib/demo/demoTrace";
-import { useDemoTrace } from "./useDemoTrace";
 import demoStyles from "./DemoTeacherDashboard.module.css";
 
+/**
+ * Teacher readiness view for the judge demo. Rows come from the seeded class
+ * fixture and run through the same aggregate functions the real dashboard
+ * uses, so what an evaluator reads here is computed exactly as it is in
+ * production.
+ */
 export function DemoTeacherDashboard() {
-  const trace = useDemoTrace();
-  const analytics = computeClassAnalytics(
-    extendAnalyticsWithDemoTrace(demoAnalyticsFixture, trace)
-  );
+  const analytics = computeClassAnalytics(demoAnalyticsFixture);
   return (
     <main className={demoStyles.page}>
       <div className={demoStyles.container}>
@@ -24,15 +25,15 @@ export function DemoTeacherDashboard() {
           <p className={demoStyles.eyebrow}>Teacher readiness</p>
           <h1>Chemistry 1 — Demo readiness</h1>
           <p>
-            Seeded rows and the highlighted live row use the same deterministic
-            aggregate functions.
+            Every figure below is computed from the seeded class by the same
+            aggregate functions the live teacher dashboard uses.
           </p>
           <span className={demoStyles.status}>
             <span aria-hidden="true" />
-            Live demo view
+            Seeded class
           </span>
           <p>
-            <a className="ui-button-secondary" href="/lab-composer">
+            <a className="ui-button-secondary" href="/demo/composer">
               Open Lab Composer
             </a>
           </p>

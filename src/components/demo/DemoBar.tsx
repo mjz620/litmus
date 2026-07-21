@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { DEMO_TRACE_STORAGE_KEY } from "../../lib/demo/demoTrace";
 import { LitmusMark } from "../ui/LitmusMark";
 
 import styles from "./DemoBar.module.css";
@@ -12,17 +11,20 @@ import styles from "./DemoBar.module.css";
 export function DemoBar() {
   const pathname = usePathname();
   const [resetting, setResetting] = useState(false);
+  /*
+   * Every destination stays under /demo so the evaluator never leaves the
+   * controlled area — that prefix is also what routes the coach, evaluation,
+   * and checkpoint calls to the isolated demo endpoints.
+   */
   const roles = [
-    { href: "/demo/student", label: "Student", icon: "⚗" },
+    { href: "/demo/labs", label: "Labs", icon: "⚗" },
     { href: "/demo/teacher", label: "Teacher", icon: "✎" },
-    { href: "/lab-composer", label: "Composer", icon: "▤" },
-    { href: "/demo/technical", label: "Technical", icon: "⌘" }
+    { href: "/demo/composer", label: "Composer", icon: "▤" }
   ] as const;
   async function reset() {
     setResetting(true);
     try {
       await fetch("/api/demo/reset", { method: "POST" });
-      localStorage.removeItem(DEMO_TRACE_STORAGE_KEY);
       location.assign("/demo");
     } finally {
       setResetting(false);

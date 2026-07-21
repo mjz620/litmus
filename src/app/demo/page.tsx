@@ -4,13 +4,13 @@ import styles from "./page.module.css";
 
 const demoRoles = [
   {
-    href: "/demo/student",
+    href: "/demo/labs",
     icon: "⚗",
     label: "Student",
-    kicker: "Interactive lab",
+    kicker: "Run a lab",
     description:
-      "Run the titration without an account. Every action is recorded as evidence.",
-    action: "Open student demo"
+      "Four techniques on the 3D bench — titration, dilution, calorimetry, gravimetry. No account needed.",
+    action: "Choose a lab"
   },
   {
     href: "/demo/teacher",
@@ -18,26 +18,17 @@ const demoRoles = [
     label: "Teacher",
     kicker: "Readiness view",
     description:
-      "View seeded class metrics plus the current live demo session.",
-    action: "Open teacher demo"
+      "See how recorded lab evidence rolls up into class readiness and a student roster.",
+    action: "Open teacher view"
   },
   {
-    href: "/lab-composer",
+    href: "/demo/composer",
     icon: "✎",
     label: "Lab Composer",
     kicker: "Authoring",
     description:
-      "Build and preview labs as a student or teacher. Cloud save and Assign require teacher sign-in.",
+      "Build a lab from verified equipment and actions, then preview it exactly as a student would run it.",
     action: "Open Composer"
-  },
-  {
-    href: "/demo/technical",
-    icon: "⌘",
-    label: "Technical",
-    kicker: "Evidence trace",
-    description:
-      "Inspect the engine, events, StudentModel, coach, checkpoint, and eval trace.",
-    action: "Open technical demo"
   }
 ] as const;
 
@@ -52,13 +43,14 @@ export default function DemoHubPage() {
           <p className={styles.eyebrow}>Guided product tour</p>
           <h1>Litmus product demo</h1>
           <p className={styles.summary}>
-            Reach the student bench, the teacher readiness view, and Lab
-            Composer from here. Practice needs no account; teachers sign in only
-            to save drafts and create assignments.
+            The student bench, the teacher readiness view, and Lab Composer —
+            the same interfaces the product ships, running in a self-contained
+            demo environment. Nothing here needs an account, and nothing you do
+            leaves this area.
           </p>
           <p className={styles.accessNote}>
             <span aria-hidden="true">✓</span>
-            No account or API key required for demo paths
+            No account or API key required
           </p>
         </header>
 
@@ -66,8 +58,8 @@ export default function DemoHubPage() {
           {demoRoles.map((role) => (
             <article className={styles.card} key={role.href}>
               {/*
-                No step number. These are four independent entry points, not a
-                sequence — numbering them 01-04 promised an order that does not
+                No step number. These are independent entry points, not a
+                sequence — numbering them promised an order that does not
                 exist and that nothing enforces.
               */}
               <span className={styles.roleIcon} aria-hidden="true">

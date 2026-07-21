@@ -2,11 +2,13 @@ import type { ReactNode } from "react";
 
 import { DemoBar } from "../../components/demo/DemoBar";
 
+import styles from "./layout.module.css";
+
 export default function DemoLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <DemoBar />
-      {children}
+      <div className={styles.content}>{children}</div>
     </>
   );
 }

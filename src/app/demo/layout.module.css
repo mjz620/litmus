@@ -1,0 +1,11 @@
+/*
+ * The demo role bar is chrome stacked above every demo surface. Lab benches
+ * size themselves against the viewport, so the area declares the bar's height
+ * once and the benches below shrink to the space that is actually left —
+ * rather than each claiming a full viewport and sliding under the bar.
+ */
+.content {
+  --demo-bar-height: 4rem;
+  --lab-viewport-height: calc(100svh - var(--demo-bar-height));
+  --lab-chrome-allowance: calc(11rem + var(--demo-bar-height));
+}
