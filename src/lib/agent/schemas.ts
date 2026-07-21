@@ -65,6 +65,13 @@ export const coachResponseSchema = z.object({
   skillIds: z.array(z.string().min(1).max(128)).max(16),
   hintLevel: z.number().int().min(0).max(3),
   message: z.string().max(1200),
+  /*
+   * OpenAI structured outputs require every field, so `.optional()` alone
+   * makes the API reject the whole schema — which the coach was silently
+   * swallowing into its canned local response, so every question returned
+   * generic mock text instead of a real answer. `.nullable()` keeps the
+   * schema API-legal; the model returns null when it has no suggestion.
+   */
   suggestedToolCall: z
     .object({
       name: z.enum([
@@ -72,13 +79,20 @@ export const coachResponseSchema = z.object({
         "record_diagnosis",
         "set_learning_goal"
       ]),
-      args: z.record(z.string(), z.unknown())
+      /*
+       * A JSON-encoded object, not an open record. OpenAI structured outputs
+       * reject the `propertyNames` an open `z.record` emits, which failed the
+       * whole schema and dropped every coach answer to the canned local
+       * response. A string keeps the field expressive and API-legal.
+       */
+      args: z.string()
     })
+    .nullable()
     .optional(),
   evidenceEventTypes: z.array(z.string().min(1).max(128)).max(32),
   safety: z.object({
     refused: z.boolean(),
-    reason: z.string().max(400).optional()
+    reason: z.string().max(400).nullable().optional()
   })
 });
 

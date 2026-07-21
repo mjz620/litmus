@@ -94,10 +94,14 @@ export async function generateCoachResponse(
     return coachResponseSchema.parse(
       await respondWithinTimeout(model, request)
     );
-  } catch {
+  } catch (error) {
     // The Coach is advisory and must never make a student-facing lab unusable.
     // Its local bounded response is valid for the same request and preserves the
-    // existing safety/off-topic and evidence contracts.
+    // existing safety/off-topic and evidence contracts. Log the cause so a
+    // model/schema failure is not indistinguishable from a quiet coach.
+    console.warn("coach.model_unavailable", {
+      reason: error instanceof Error ? error.message : "unknown error"
+    });
     return createMockCoachResponse(request);
   }
 }
