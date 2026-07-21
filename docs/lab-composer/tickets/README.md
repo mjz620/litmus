@@ -64,6 +64,9 @@ Downstream agents normally implement one ticket per run under `AGENTS.md`. The r
 | `LC2-910` | Complete | Coffee-cup calorimetry registries + pour/mix/lid/probe mechanics (ledger-only); thermal chemistry module and LabScene deferred to `LC2-911` |
 | `LC2-911` | Complete | Thermal `q=mcΔT` module + verified calorimeter/thermometer LabScene visual adapters |
 | `LC2-912` | Complete | Calorimetry seed, Composer template, practice route `/lab/calorimetry` |
+| `LC2-913` | Complete | Measured solids, balance mechanics, and mass-derived dissolution calorimetry |
+| `LC2-914` | Complete | Generalized native weak-acid/weak-base titration over registered dissociation metadata |
+| `LC2-915` | Complete | Quantitative Ksp precipitation, common-ion equilibrium, and measured gravimetry |
 
 The corrective `LC2-410`–`LC2-416` pass (from [`../../qa/strict-product-judge-report.md`](../../qa/strict-product-judge-report.md)) precedes further feature work. The release-blocking `LC2-410`–`LC2-414` tickets are complete. Phases 5–8 core gates plus `LC2-805`/`LC2-807` are complete; `LC2-806` physical sign-off remains before `LC2-808`.
 
@@ -114,6 +117,7 @@ LC2-806 + manual sign-off -> LC2-808
 - [Phase 6 — agent command layer](phase-6-agent.md)
 - [Phase 7 — hybrid evaluation](phase-7-evaluation.md)
 - [Phase 8 — persistence, assignment, hardening, and cleanup](phase-8-persistence.md)
+- [Phase 9 — measured extensions to deterministic chemistry](phase-9-measurement-chemistry.md)
 
 ## Universal ticket rules
 

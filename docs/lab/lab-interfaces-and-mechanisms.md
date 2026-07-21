@@ -18,7 +18,7 @@ and [`docs/lab/equipment-visual-contract.md`](equipment-visual-contract.md).
 | A lab is | a hand-written TypeScript `ExperimentDefinition` | a JSON document interpreted by a generic runtime |
 | Chemistry | inside the experiment file | a registered chemistry model |
 | Authorable in Composer | no | yes |
-| Examples | `titration`, `precipitation` | calorimetry, solution preparation, precipitation |
+| Examples | `titration`, `precipitation` | calorimetry, dissolution calorimetry, solution preparation, precipitation |
 
 The v2 system is the destination. `src/experiments/` is being retired: it is
 why solubility truth now lives in
@@ -28,8 +28,8 @@ of chemistry truth is precisely what invariant 1 exists to prevent.
 
 **Titration now defaults to the capability-native runtime.** `/lab/titration`
 with no query runs the validated native workflow on the generic capability
-ports — no legacy engine, no compatibility adapter. The two registered native
-titration definitions (only these two exist; anything else fails closed):
+ports — no legacy engine, no compatibility adapter. The registered native
+titration definitions are:
 
 - `workflow.acid_base_titration.full.native.v2` — the complete procedure from
   a clean bench (the default).
@@ -42,6 +42,9 @@ titration definitions (only these two exist; anything else fails closed):
   volumes and meniscus readings from material truth — then applies equipment
   field overrides for history the ledger cannot express (conditioning solvent,
   committed indicator addition, cumulative delivery).
+- `workflow.acetic_acid_titration.full.native.v1` — the Composer-visible
+  weak-acid procedure using registered acetic-acid pKa metadata, 0.100 M NaOH,
+  and a phenolphthalein endpoint.
 
 Student-visible bench facts on the native path (notebook, pH-curve axis, the
 `data-burette-*`/`data-procedure-stage` attributes) are projections over
@@ -152,12 +155,79 @@ adapter.apply(context) → { equipment, materialAction, events }
      ports.models.transition(...) → each model's applyMaterialAction
 ```
 
-A mechanic that moves no liquid returns `materialAction: null` and is
+A mechanic that moves no registered material returns `materialAction: null` and is
 **invisible to chemistry**. This has a real design consequence: an action like
 "mix these two solutions" that carries no volume change produces no ledger
 delta, so a chemistry model cannot observe it. Model such steps as real pours
 into a shared vessel — more physically honest, and it gives the 3D scene
 something to animate.
+
+### Generalized monoprotic acid/base equilibrium
+
+Acid/base material profiles carry registered `strong_acid`, `weak_acid`,
+`strong_base`, or `weak_base` behavior. Weak profiles additionally carry a
+25 °C pKa or pKb from a cited source. The compiled runtime passes this metadata
+to the chemistry module; reagent IDs are never interpreted as chemical truth.
+
+The model solves one continuous charge balance across initial, buffer,
+equivalence, and excess-titrant regions. Any weak-species case uses 200 fixed
+bisection steps over hydrogen-ion concentration. The residual is strictly
+increasing because protonated weak-base concentration increases with `[H+]`,
+while hydroxide and deprotonated weak-acid concentrations decrease, so exactly
+one root exists. Strong-acid/strong-base retains its algebraically equivalent
+closed-form root to preserve the historical parity oracle. Indicator transition
+volume is likewise found with a fixed-step monotonic bisection and compared to
+the equivalence volume; unsuitable choices emit deterministic evidence and do
+not satisfy the endpoint observable.
+
+### Measured solids and dissolution calorimetry
+
+`unit.g.v1` uses one million integer ledger units per gram. Solid transfers
+therefore use the same conservation checks as liquid transfers, while
+`volumeAt()` continues to count only `unit.ml.v1`. Published formula masses live
+on versioned solid material profiles; the thermal model converts the exact
+transferred mass to moles and never accepts authored moles as chemistry truth.
+
+The balance is an equipment-owned measurement path:
+
+1. `place_on_balance` exposes the weighing-vessel-plus-sample gross mass.
+2. `tare_balance` records the current gross mass as the tare offset.
+3. `transfer_solid` moves exact ledger mass and refreshes the display.
+4. `read_balance` records the student's reported, resolution-quantized mass.
+
+An omitted tare remains a valid, observable technique error. The recorded
+vessel-plus-sample mass then changes the measured molar enthalpy; deterministic
+chemistry does not silently repair it. The registered balance reading is also
+projected as text, so the 3D display is not the only source of measurement
+information.
+
+The thermal model stores signed microjoules and includes the registered
+calorimeter heat capacity in both stored heat and reported temperature. A solid
+transfer into the calorimeter applies `q_reaction = -q_solution+calorimeter`;
+positive dissolution enthalpy removes heat and lowers temperature. The shipped
+ammonium-nitrate workflow connects the real balance trace to this calculation
+and is runnable only after normal deterministic validation.
+
+### Quantitative precipitation and gravimetry
+
+Precipitation rebuilds each vessel's analytical ion inventory from conserved
+ledger volumes and compiled material concentrations. Formula amounts use
+`10^15` integer units per mole, retaining nanomolar dilution cases. The model
+compares Q with a cited 25 °C Ksp; when Q is greater, its reaction extent is the
+unique root of a strictly decreasing Q(x) over the stoichiometric interval.
+Exactly 200 bisection steps run on every replay.
+
+Remaining dissolved ions plus solid formula units pass the material ledger's
+hard integer-conservation assertion before Q/Ksp, free-ion concentrations,
+amount, and dry mass are exposed as observables. Ideal concentration is the
+deliberate AP-chemistry simplification: activity coefficients, complex ions,
+and hydroxide pH coupling are not validly represented at high ionic strength.
+
+`action.collect_precipitate.v1` compresses filtration, washing, and complete
+drying into one bounded apparatus operation. It reads the engine-owned dry-mass
+observable without calculating chemistry, places that mass in the weighing
+boat, and the ordinary tare/place/read mechanics measure it. The shipped AgCl
+workflow cites the Royal Society of Chemistry 16–18 gravimetric procedure.
 
 ---
 
@@ -174,8 +244,8 @@ deriveObservables(state)           → GenericObservable[]
 
 **State is flat scalars only** — `boolean | null | number | string | readonly
 string[]`. No nested objects. Models encode structure as sorted delimited
-strings (thermal energy uses `"id=value"`; precipitation uses
-`"container=solution"`).
+strings (thermal energy uses `"id=value"`; precipitation stores sorted material
+binding and free-ion concentration entries).
 
 Determinism is preserved by keeping numeric state as **scaled integers**
 (milli-Celsius, micro-Joules), never accumulated floats.
