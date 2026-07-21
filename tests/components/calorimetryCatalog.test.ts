@@ -5,7 +5,7 @@ import {
   getCalorimetryPracticePath,
   resolveExperimentId
 } from "../../src/components/ui/experimentRoutes";
-import { validateCalorimetryV2 } from "../../src/lab-workflows/definitions/calorimetry";
+import { validateDissolutionCalorimetryV2 } from "../../src/lab-workflows/definitions/calorimetry";
 import { resolveLabSceneConfiguration } from "../../src/components/lab/titration/setupDrivenScene";
 import { createSetupDrivenNativeSession } from "../../src/stores/setupDrivenLabSession";
 
@@ -15,8 +15,10 @@ describe("unified student catalog calorimetry practice", () => {
     expect(resolveExperimentId("calorimetry")).toBeNull();
   });
 
-  it("initializes the verified calorimetry seed on the shared immersive scene path", () => {
-    const workflow = validateCalorimetryV2("2026-07-19T12:00:00.000Z");
+  it("initializes the measured dissolution workflow on the shared immersive scene path", () => {
+    const workflow = validateDissolutionCalorimetryV2(
+      "2026-07-19T12:00:00.000Z"
+    );
     const session = createSetupDrivenNativeSession({
       sessionId: "catalog-calorimetry-practice",
       sessionSeed: "catalog-calorimetry-practice",
@@ -31,7 +33,12 @@ describe("unified student catalog calorimetry practice", () => {
     );
     expect(configuration.mode).toBe("setup_driven_v2");
     expect(configuration.selectableEquipmentIds).toEqual(
-      expect.arrayContaining(["calorimeter", "thermometer"])
+      expect.arrayContaining([
+        "balance",
+        "weighingBoat",
+        "calorimeter",
+        "thermometer"
+      ])
     );
     expect(configuration.projectedState?.burette).toBeNull();
   });
