@@ -9,7 +9,9 @@ const NATIVE_LOCAL_ORIGIN_ADAPTERS = new Set([
   "visual-adapter.reagent_bottle.v1",
   "visual-adapter.calorimeter.v1",
   "visual-adapter.thermometer.v1",
-  "visual-adapter.beaker.v1"
+  "visual-adapter.beaker.v1",
+  "visual-adapter.balance.v1",
+  "visual-adapter.weighing_boat.v1"
 ]);
 
 /**
@@ -21,11 +23,7 @@ export function worldPositionForEquipmentPose(
   pose: Readonly<ResolvedEquipmentPose>
 ): readonly [number, number, number] {
   if (NATIVE_LOCAL_ORIGIN_ADAPTERS.has(pose.visualAdapterDefinitionId)) {
-    return [
-      pose.footprintCenterXZ[0],
-      ISLAND.topY,
-      pose.footprintCenterXZ[1]
-    ];
+    return [pose.footprintCenterXZ[0], ISLAND.topY, pose.footprintCenterXZ[1]];
   }
   return pose.translation;
 }

@@ -20,7 +20,9 @@ describe("selectable equipment metadata", () => {
       "reagentBottle",
       "calorimeter",
       "thermometer",
-      "beaker"
+      "beaker",
+      "balance",
+      "weighingBoat"
     ]);
     expect(EQUIPMENT.burette.name).toBe("Burette");
     expect(EQUIPMENT.flask.name).toBe("Flask & indicator");
@@ -34,6 +36,8 @@ describe("selectable equipment metadata", () => {
     expect(EQUIPMENT.calorimeter.name).toBe("Coffee-cup calorimeter");
     expect(EQUIPMENT.thermometer.name).toBe("Digital thermometer");
     expect(EQUIPMENT.beaker.name).toBe("Beaker");
+    expect(EQUIPMENT.balance.name).toBe("Laboratory balance");
+    expect(EQUIPMENT.weighingBoat.name).toBe("Weighing boat");
   });
 
   it("names every selectable equipment item with a purpose", () => {
@@ -51,7 +55,8 @@ describe("selectable equipment metadata", () => {
       "deliver",
       "reading",
       "solution",
-      "calorimetry"
+      "calorimetry",
+      "weighing"
     ]);
   });
 

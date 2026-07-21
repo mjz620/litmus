@@ -5,13 +5,17 @@ import { configurationRegistry } from "../../../lab-workflows/registries/configu
 import { materialRegistry } from "../../../lab-workflows/registries/reagents";
 import { skillRegistry } from "../../../lab-workflows/registries/skills";
 import { BLANK_LAB_V2_DRAFT } from "../../../lab-workflows/definitions/blank-lab";
-import { CALORIMETRY_V2_DRAFT } from "../../../lab-workflows/definitions/calorimetry";
+import {
+  CALORIMETRY_V2_DRAFT,
+  DISSOLUTION_CALORIMETRY_V2_DRAFT
+} from "../../../lab-workflows/definitions/calorimetry";
 import {
   SOLUTION_PREPARATION_QUARTER_V2_DRAFT,
   SOLUTION_PREPARATION_STOCK_1M_V2_DRAFT,
   SOLUTION_PREPARATION_V2_DRAFT
 } from "../../../lab-workflows/definitions/solution-preparation";
 import { NATIVE_TITRATION_V2_DRAFT } from "../../../lab-workflows/definitions/titration/native-endpoint-control";
+import { WEAK_ACID_TITRATION_V1_DRAFT } from "../../../lab-workflows/definitions/titration/weak-acid-titration";
 import type { LabWorkflowDraftV2 } from "../../../lab-workflows/schema/v2";
 
 export type ComposerLabTemplateId =
@@ -20,6 +24,8 @@ export type ComposerLabTemplateId =
   | "solution_preparation_stock_1m"
   | "solution_preparation_quarter"
   | "calorimetry"
+  | "dissolution_calorimetry"
+  | "weak_acid_titration"
   | "titration";
 
 export interface ComposerLabTemplate {
@@ -42,6 +48,13 @@ export const composerLabTemplateCatalog: readonly ComposerLabTemplate[] =
       title: "Acid–base titration",
       description: "Practice endpoint control and precise meniscus reading.",
       draft: NATIVE_TITRATION_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "weak_acid_titration" as const,
+      title: "Acetic acid titration",
+      description:
+        "Titrate a weak acid with sodium hydroxide and use the phenolphthalein endpoint.",
+      draft: WEAK_ACID_TITRATION_V1_DRAFT
     }),
     Object.freeze({
       id: "solution_preparation" as const,
@@ -70,6 +83,13 @@ export const composerLabTemplateCatalog: readonly ComposerLabTemplate[] =
       description:
         "Pour equal registered hot and cold volumes, mix, and read the equilibrium temperature.",
       draft: CALORIMETRY_V2_DRAFT
+    }),
+    Object.freeze({
+      id: "dissolution_calorimetry" as const,
+      title: "Ammonium nitrate dissolution calorimetry",
+      description:
+        "Tare a balance, weigh a solid sample, observe cooling, and measure molar enthalpy.",
+      draft: DISSOLUTION_CALORIMETRY_V2_DRAFT
     })
   ]);
 
@@ -111,8 +131,7 @@ export const composerObservableCatalog = configurationRegistry
   .list()
   .filter(
     (entry) =>
-      entry.category === "observable" &&
-      entry.id === "observable.burette_reading_ml.v1"
+      entry.category === "observable" && entry.availability === "verified"
   );
 
 export function compatibleContainers<

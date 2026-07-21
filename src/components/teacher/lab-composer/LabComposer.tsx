@@ -1054,18 +1054,14 @@ export function LabComposer() {
         setServerDraftId(saved.id);
         setServerStorageRevision(saved.storageRevision);
         setSavedDraftNames((current) =>
-          Object.freeze(
-            [...new Set([saved.name, ...current, ...names])].sort()
-          )
+          Object.freeze([...new Set([saved.name, ...current, ...names])].sort())
         );
         setRepositoryMessage(
           `Saved “${draftName.trim()}” to your teacher account.`
         );
       } catch (serverError) {
         const message =
-          serverError instanceof Error
-            ? serverError.message
-            : "unknown error";
+          serverError instanceof Error ? serverError.message : "unknown error";
         setRepositoryMessage(
           message.toLowerCase().includes("authentication") ||
             message.toLowerCase().includes("sign in") ||
@@ -1547,6 +1543,13 @@ export function LabComposer() {
                 <button
                   type="button"
                   role="menuitem"
+                  onClick={() => startNewLab("weak_acid_titration")}
+                >
+                  Acetic acid titration template
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
                   onClick={() => startNewLab("solution_preparation")}
                 >
                   Dilute 0.5000 M NaCl → 0.0500 M
@@ -1571,6 +1574,13 @@ export function LabComposer() {
                   onClick={() => startNewLab("calorimetry")}
                 >
                   Hot/cold water calorimetry
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => startNewLab("dissolution_calorimetry")}
+                >
+                  Ammonium nitrate dissolution calorimetry
                 </button>
               </div>
             )}

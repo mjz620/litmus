@@ -26,6 +26,10 @@ import {
   THERMOMETER_PLACED_DROP,
   THERMOMETER_SEATED_LIFT,
   Thermometer,
+  LABORATORY_BALANCE_HIT,
+  LaboratoryBalance,
+  WEIGHING_BOAT_HIT,
+  WeighingBoat,
   VOLUMETRIC_FLASK_HIT,
   VOLUMETRIC_PIPETTE_HIT,
   VolumetricFlask,
@@ -187,6 +191,8 @@ export function LabScene({
   const calorimeterPose = poseFor("visual-adapter.calorimeter.v1");
   const thermometerPose = poseFor("visual-adapter.thermometer.v1");
   const beakerPose = poseFor("visual-adapter.beaker.v1");
+  const balancePose = poseFor("visual-adapter.balance.v1");
+  const weighingBoatPose = poseFor("visual-adapter.weighing_boat.v1");
   /* Probe seats inside the vessel it measures, rather than at its own stand. */
   const seatedInVessel = thermometerPlaced && calorimeterPose != null;
   const calorimeterWorldPosition = calorimeterPose
@@ -223,13 +229,20 @@ export function LabScene({
                 ? focusFor(thermometerPose, THERMOMETER_HIT)
                 : selected === "beaker"
                   ? focusFor(beakerPose, BEAKER_HIT)
-                  : null;
+                  : selected === "balance"
+                    ? focusFor(balancePose, LABORATORY_BALANCE_HIT)
+                    : selected === "weighingBoat"
+                      ? focusFor(weighingBoatPose, WEIGHING_BOAT_HIT)
+                      : null;
   const thermometerDrop =
     thermometerPlaced && !seatedInVessel ? THERMOMETER_PLACED_DROP : 0;
   const showBurette = show("burette", "visual-adapter.burette.v1");
   const showFlask = show("flask", "visual-adapter.erlenmeyer_flask.v1");
   const showMeniscus = showBurette && enabledEquipmentIds.includes("meniscus");
-  const showShelf = show("indicatorShelf", "visual-adapter.indicator_bottle.v1");
+  const showShelf = show(
+    "indicatorShelf",
+    "visual-adapter.indicator_bottle.v1"
+  );
   const showWashStation =
     enabledEquipmentIds.includes("washStation") &&
     (!poseDriven || washPose != null) &&
@@ -314,10 +327,22 @@ export function LabScene({
   }
   if (showBurette) {
     // The stand carries the burette, so the pair frames as one tall column.
-    addFixedContent(buretteTranslation, BURETTE.x, BURETTE.z, 0.1, BURETTE.tubeTopY);
+    addFixedContent(
+      buretteTranslation,
+      BURETTE.x,
+      BURETTE.z,
+      0.1,
+      BURETTE.tubeTopY
+    );
   }
   if (showFlask) {
-    addFixedContent(flaskTranslation, FLASK.x, FLASK.z, FLASK.baseRadius, FLASK_RIM_Y);
+    addFixedContent(
+      flaskTranslation,
+      FLASK.x,
+      FLASK.z,
+      FLASK.baseRadius,
+      FLASK_RIM_Y
+    );
   }
   if (showShelf) {
     addFixedContent(
@@ -391,13 +416,13 @@ export function LabScene({
   const pose = derivedFocusPose
     ? derivedFocusPose
     : selectedPose
-    ? transformCameraPose(
-        basePose,
-        selectedPose.translation,
-        selectedPose.yawRadians,
-        selectedPivot
-      )
-    : basePose;
+      ? transformCameraPose(
+          basePose,
+          selectedPose.translation,
+          selectedPose.yawRadians,
+          selectedPivot
+        )
+      : basePose;
 
   return (
     <>
@@ -409,219 +434,222 @@ export function LabScene({
       <ClassroomEnvironment />
 
       {showBurette && (
-      <group
-        position={[
-          BURETTE.x + buretteTranslation[0],
-          buretteCenterY + buretteTranslation[1],
-          BURETTE.z + buretteTranslation[2]
-        ]}
-        rotation={[0, burettePose?.yawRadians ?? 0, 0]}
-      >
-        <Interactable
-          id="burette"
-          enabled={enabledEquipmentIds.includes("burette")}
-          label={EQUIPMENT.burette.name}
-          highlightShape={{
-            geometry: (
-              <cylinderGeometry
-                args={[0.034, 0.034, buretteHighlightHeight, 18, 1, true]}
-              />
-            ),
-            labelPosition: [0, buretteHighlightHeight / 2 + 0.08, 0]
-          }}
-          hovered={hovered === "burette"}
-            selected={selected === "burette"}
-          onHover={onHover}
-          onSelect={onSelect}
+        <group
+          position={[
+            BURETTE.x + buretteTranslation[0],
+            buretteCenterY + buretteTranslation[1],
+            BURETTE.z + buretteTranslation[2]
+          ]}
+          rotation={[0, burettePose?.yawRadians ?? 0, 0]}
         >
-          <group position={[-BURETTE.x, -buretteCenterY, -BURETTE.z]}>
-            <Burette
-              availableML={buretteAvailableML}
-              capacityML={buretteCapacityML}
-              quality={quality}
-            />
-          </group>
-        </Interactable>
-      </group>
+          <Interactable
+            id="burette"
+            enabled={enabledEquipmentIds.includes("burette")}
+            label={EQUIPMENT.burette.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[0.034, 0.034, buretteHighlightHeight, 18, 1, true]}
+                />
+              ),
+              labelPosition: [0, buretteHighlightHeight / 2 + 0.08, 0]
+            }}
+            hovered={hovered === "burette"}
+            selected={selected === "burette"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <group position={[-BURETTE.x, -buretteCenterY, -BURETTE.z]}>
+              <Burette
+                availableML={buretteAvailableML}
+                capacityML={buretteCapacityML}
+                quality={quality}
+              />
+            </group>
+          </Interactable>
+        </group>
       )}
 
       {showFlask && (
-      <group
-        position={[
-          FLASK.x + flaskTranslation[0],
-          flaskCenterY + flaskTranslation[1],
-          FLASK.z + flaskTranslation[2]
-        ]}
-        rotation={[0, flaskPose?.yawRadians ?? 0, 0]}
-      >
-        <Interactable
-          id="flask"
-          enabled={enabledEquipmentIds.includes("flask")}
-          label={EQUIPMENT.flask.name}
-          highlightShape={{
-            geometry: (
-              <cylinderGeometry
-                args={[
-                  FLASK.baseRadius + 0.014,
-                  FLASK.baseRadius + 0.014,
-                  flaskHighlightHeight,
-                  20,
-                  1,
-                  true
-                ]}
-              />
-            ),
-            labelPosition: [0, flaskHighlightHeight / 2 + 0.06, 0]
-          }}
-          hovered={hovered === "flask"}
-            selected={selected === "flask"}
-          onHover={onHover}
-          onSelect={onSelect}
+        <group
+          position={[
+            FLASK.x + flaskTranslation[0],
+            flaskCenterY + flaskTranslation[1],
+            FLASK.z + flaskTranslation[2]
+          ]}
+          rotation={[0, flaskPose?.yawRadians ?? 0, 0]}
         >
-          <group position={[-FLASK.x, -flaskCenterY, -FLASK.z]}>
-            <ErlenmeyerFlask liquidColor={flaskLiquidColor} quality={quality} />
-          </group>
-        </Interactable>
-      </group>
+          <Interactable
+            id="flask"
+            enabled={enabledEquipmentIds.includes("flask")}
+            label={EQUIPMENT.flask.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[
+                    FLASK.baseRadius + 0.014,
+                    FLASK.baseRadius + 0.014,
+                    flaskHighlightHeight,
+                    20,
+                    1,
+                    true
+                  ]}
+                />
+              ),
+              labelPosition: [0, flaskHighlightHeight / 2 + 0.06, 0]
+            }}
+            hovered={hovered === "flask"}
+            selected={selected === "flask"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <group position={[-FLASK.x, -flaskCenterY, -FLASK.z]}>
+              <ErlenmeyerFlask
+                liquidColor={flaskLiquidColor}
+                quality={quality}
+              />
+            </group>
+          </Interactable>
+        </group>
       )}
 
       {/* Meniscus hotspot: an invisible hitbox at the liquid surface. */}
       {showMeniscus && (
-      <group
-        position={[
-          BURETTE.x + buretteTranslation[0],
-          meniscusY + buretteTranslation[1],
-          BURETTE.z + buretteTranslation[2]
-        ]}
-        rotation={[0, burettePose?.yawRadians ?? 0, 0]}
-      >
-        <Interactable
-          id="meniscus"
-          enabled={enabledEquipmentIds.includes("meniscus")}
-          label={EQUIPMENT.meniscus.name}
-          highlightShape={{
-            geometry: <torusGeometry args={[0.026, 0.0022, 8, 24]} />,
-            rotation: [Math.PI / 2, 0, 0],
-            labelPosition: [0, 0.08, 0]
-          }}
-          /* A 2 mm ring is too thin to click; target the liquid surface disc
-             instead, kept narrow enough not to steal the burette's tube. */
-          hitShape={{
-            geometry: (
-              <cylinderGeometry args={[0.03, 0.03, 0.014, 16, 1, true]} />
-            ),
-            labelPosition: [0, 0.08, 0]
-          }}
-          hovered={hovered === "meniscus"}
-            selected={selected === "meniscus"}
-          onHover={onHover}
-          onSelect={onSelect}
+        <group
+          position={[
+            BURETTE.x + buretteTranslation[0],
+            meniscusY + buretteTranslation[1],
+            BURETTE.z + buretteTranslation[2]
+          ]}
+          rotation={[0, burettePose?.yawRadians ?? 0, 0]}
         >
-          {/* No visual of its own — the hit volume above is the hotspot. */}
-          {null}
-        </Interactable>
-        {selected === "meniscus" && (
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry
-              args={[BURETTE.tubeRadius + 0.004, 0.00055, 6, 24]}
-            />
-            <meshBasicMaterial
-              color={LAB_PALETTE.selectionTeal}
-              transparent
-              opacity={0.65}
-              depthWrite={false}
-            />
-          </mesh>
-        )}
-      </group>
+          <Interactable
+            id="meniscus"
+            enabled={enabledEquipmentIds.includes("meniscus")}
+            label={EQUIPMENT.meniscus.name}
+            highlightShape={{
+              geometry: <torusGeometry args={[0.026, 0.0022, 8, 24]} />,
+              rotation: [Math.PI / 2, 0, 0],
+              labelPosition: [0, 0.08, 0]
+            }}
+            /* A 2 mm ring is too thin to click; target the liquid surface disc
+             instead, kept narrow enough not to steal the burette's tube. */
+            hitShape={{
+              geometry: (
+                <cylinderGeometry args={[0.03, 0.03, 0.014, 16, 1, true]} />
+              ),
+              labelPosition: [0, 0.08, 0]
+            }}
+            hovered={hovered === "meniscus"}
+            selected={selected === "meniscus"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            {/* No visual of its own — the hit volume above is the hotspot. */}
+            {null}
+          </Interactable>
+          {selected === "meniscus" && (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry
+                args={[BURETTE.tubeRadius + 0.004, 0.00055, 6, 24]}
+              />
+              <meshBasicMaterial
+                color={LAB_PALETTE.selectionTeal}
+                transparent
+                opacity={0.65}
+                depthWrite={false}
+              />
+            </mesh>
+          )}
+        </group>
       )}
 
       {showShelf && (
-      <group
-        position={[
-          SHELF.x + shelfTranslation[0],
-          SHELF.baseY + shelfTranslation[1],
-          SHELF.z + shelfTranslation[2]
-        ]}
-        rotation={[0, shelfPose?.yawRadians ?? 0, 0]}
-      >
-        <Interactable
-          id="indicatorShelf"
-          enabled={enabledEquipmentIds.includes("indicatorShelf")}
-          label={EQUIPMENT.indicatorShelf.name}
-          highlightShape={{
-            geometry: (
-              <boxGeometry
-                args={[
-                  SHELF.width + 0.06,
-                  SHELF.totalHeight + 0.04,
-                  SHELF.depth + 0.06
-                ]}
-              />
-            ),
-            position: [0, SHELF.totalHeight / 2, 0.02],
-            labelPosition: [0, SHELF.totalHeight + 0.08, 0]
-          }}
-          hovered={hovered === "indicatorShelf"}
-            selected={selected === "indicatorShelf"}
-          onHover={onHover}
-          onSelect={onSelect}
+        <group
+          position={[
+            SHELF.x + shelfTranslation[0],
+            SHELF.baseY + shelfTranslation[1],
+            SHELF.z + shelfTranslation[2]
+          ]}
+          rotation={[0, shelfPose?.yawRadians ?? 0, 0]}
         >
-          <IndicatorShelf
-            focused={selected === "indicatorShelf"}
-            selectionEnabled={indicatorSelectionEnabled}
-            selectedIndicator={selectedIndicator}
-            pouringIndicator={indicatorAddition?.indicator ?? null}
-            onBottleClick={onIndicatorBottleClick}
-            quality={quality}
-          />
-        </Interactable>
-      </group>
+          <Interactable
+            id="indicatorShelf"
+            enabled={enabledEquipmentIds.includes("indicatorShelf")}
+            label={EQUIPMENT.indicatorShelf.name}
+            highlightShape={{
+              geometry: (
+                <boxGeometry
+                  args={[
+                    SHELF.width + 0.06,
+                    SHELF.totalHeight + 0.04,
+                    SHELF.depth + 0.06
+                  ]}
+                />
+              ),
+              position: [0, SHELF.totalHeight / 2, 0.02],
+              labelPosition: [0, SHELF.totalHeight + 0.08, 0]
+            }}
+            hovered={hovered === "indicatorShelf"}
+            selected={selected === "indicatorShelf"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <IndicatorShelf
+              focused={selected === "indicatorShelf"}
+              selectionEnabled={indicatorSelectionEnabled}
+              selectedIndicator={selectedIndicator}
+              pouringIndicator={indicatorAddition?.indicator ?? null}
+              onBottleClick={onIndicatorBottleClick}
+              quality={quality}
+            />
+          </Interactable>
+        </group>
       )}
 
       {showWashStation && (
-      <group
-        position={[
-          WASH.x + washTranslation[0],
-          WASH.baseY + washTranslation[1],
-          WASH.z + washTranslation[2]
-        ]}
-        rotation={[0, washPose?.yawRadians ?? 0, 0]}
-      >
-        <Interactable
-          id="washStation"
-          enabled={enabledEquipmentIds.includes("washStation")}
-          label={EQUIPMENT.washStation.name}
-          highlightShape={{
-            geometry: (
-              <boxGeometry
-                args={[
-                  WASH.width + 0.05,
-                  WASH.totalHeight + 0.04,
-                  WASH.depth + 0.05
-                ]}
-              />
-            ),
-            position: [0, WASH.totalHeight / 2, 0],
-            labelPosition: [0, WASH.totalHeight + 0.08, 0]
-          }}
-          hovered={hovered === "washStation"}
-            selected={selected === "washStation"}
-          onHover={onHover}
-          onSelect={onSelect}
+        <group
+          position={[
+            WASH.x + washTranslation[0],
+            WASH.baseY + washTranslation[1],
+            WASH.z + washTranslation[2]
+          ]}
+          rotation={[0, washPose?.yawRadians ?? 0, 0]}
         >
-          <WashStation
-            focused={selected === "washStation"}
-            preparationEnabled={canPrepareBurette}
-            selectedLiquid={selectedWashLiquid}
-            funnelSelected={funnelSelected}
-            onWashBottleClick={onWashBottleClick}
-            onTitrantBottleClick={onTitrantBottleClick}
-            onFunnelClick={onFunnelClick}
-            quality={quality}
-          />
-        </Interactable>
-      </group>
+          <Interactable
+            id="washStation"
+            enabled={enabledEquipmentIds.includes("washStation")}
+            label={EQUIPMENT.washStation.name}
+            highlightShape={{
+              geometry: (
+                <boxGeometry
+                  args={[
+                    WASH.width + 0.05,
+                    WASH.totalHeight + 0.04,
+                    WASH.depth + 0.05
+                  ]}
+                />
+              ),
+              position: [0, WASH.totalHeight / 2, 0],
+              labelPosition: [0, WASH.totalHeight + 0.08, 0]
+            }}
+            hovered={hovered === "washStation"}
+            selected={selected === "washStation"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <WashStation
+              focused={selected === "washStation"}
+              preparationEnabled={canPrepareBurette}
+              selectedLiquid={selectedWashLiquid}
+              funnelSelected={funnelSelected}
+              onWashBottleClick={onWashBottleClick}
+              onTitrantBottleClick={onTitrantBottleClick}
+              onFunnelClick={onFunnelClick}
+              quality={quality}
+            />
+          </Interactable>
+        </group>
       )}
 
       {pipettePose && enabledEquipmentIds.includes("volumetricPipette") && (
@@ -816,6 +844,76 @@ export function LabScene({
               contentsColor={beakerContentsColor}
               quality={quality}
             />
+          </Interactable>
+        </group>
+      )}
+
+      {balancePose && enabledEquipmentIds.includes("balance") && (
+        <group
+          position={[...worldPositionForEquipmentPose(balancePose)]}
+          rotation={[0, balancePose.yawRadians, 0]}
+        >
+          <Interactable
+            id="balance"
+            enabled
+            label={EQUIPMENT.balance.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[
+                    LABORATORY_BALANCE_HIT.radius,
+                    LABORATORY_BALANCE_HIT.radius,
+                    LABORATORY_BALANCE_HIT.height,
+                    20,
+                    1,
+                    true
+                  ]}
+                />
+              ),
+              position: [0, LABORATORY_BALANCE_HIT.centerY, 0],
+              labelPosition: [0, LABORATORY_BALANCE_HIT.labelY, 0]
+            }}
+            hovered={hovered === "balance"}
+            selected={selected === "balance"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <LaboratoryBalance />
+          </Interactable>
+        </group>
+      )}
+
+      {weighingBoatPose && enabledEquipmentIds.includes("weighingBoat") && (
+        <group
+          position={[...worldPositionForEquipmentPose(weighingBoatPose)]}
+          rotation={[0, weighingBoatPose.yawRadians, 0]}
+        >
+          <Interactable
+            id="weighingBoat"
+            enabled
+            label={EQUIPMENT.weighingBoat.name}
+            highlightShape={{
+              geometry: (
+                <cylinderGeometry
+                  args={[
+                    WEIGHING_BOAT_HIT.radius,
+                    WEIGHING_BOAT_HIT.radius,
+                    WEIGHING_BOAT_HIT.height,
+                    20,
+                    1,
+                    true
+                  ]}
+                />
+              ),
+              position: [0, WEIGHING_BOAT_HIT.centerY, 0],
+              labelPosition: [0, WEIGHING_BOAT_HIT.labelY, 0]
+            }}
+            hovered={hovered === "weighingBoat"}
+            selected={selected === "weighingBoat"}
+            onHover={onHover}
+            onSelect={onSelect}
+          >
+            <WeighingBoat />
           </Interactable>
         </group>
       )}

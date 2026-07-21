@@ -22,7 +22,9 @@ export const RENDERABLE_VISUAL_ADAPTER_IDS: readonly string[] = Object.freeze([
   "visual-adapter.wash_bottle.v1",
   "visual-adapter.calorimeter.v1",
   "visual-adapter.thermometer.v1",
-  "visual-adapter.beaker.v1"
+  "visual-adapter.beaker.v1",
+  "visual-adapter.balance.v1",
+  "visual-adapter.weighing_boat.v1"
 ]);
 
 export interface VisualAdapterWiringGap {

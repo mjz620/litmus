@@ -249,6 +249,7 @@ export function ImmersiveSetupDrivenBench({
   const quality: GlassQuality = reducedGraphics ? "low" : autoQuality;
   const burette = configuration.projectedState?.burette;
   const flask = configuration.projectedState?.flask;
+  const beaker = configuration.projectedState?.beaker;
   const indicatorSelectionEnabled = Boolean(
     onIndicatorShelfSelect &&
       flask &&
@@ -524,6 +525,7 @@ export function ImmersiveSetupDrivenBench({
               buretteAvailableML={burette?.availableML ?? 0}
               buretteCapacityML={burette?.capacityML ?? 50}
               flaskLiquidColor={getFlaskLiquidColor(flask?.observableColor)}
+              beakerContentsColor={getFlaskLiquidColor(beaker?.observableColor)}
               selectedIndicator={null}
               indicatorSelectionEnabled={indicatorSelectionEnabled}
               indicatorAddition={null}

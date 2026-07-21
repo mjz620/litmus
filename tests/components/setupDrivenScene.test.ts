@@ -78,7 +78,9 @@ describe("setup-driven titration scene projection", () => {
         flask: {
           observableColor: "colorless",
           indicatorAdded: true
-        }
+        },
+        // The titration bench seats no beaker.
+        beaker: null
       }
     });
     expect(visibleControlGroupsForConfiguration(configuration, null)).toEqual([
@@ -100,9 +102,7 @@ describe("setup-driven titration scene projection", () => {
         reportedML: 22
       })
     );
-    const configuration = resolveLabSceneConfiguration(
-      runtime.getProjection()
-    );
+    const configuration = resolveLabSceneConfiguration(runtime.getProjection());
 
     expect(configuration.availableActionIds).toEqual(["action.dispense.v1"]);
     expect(configuration.availableControlGroups).toEqual(["deliver"]);
@@ -181,6 +181,7 @@ describe("setup-driven titration scene projection", () => {
 
   it("registers shared lab visual adapters for titration, dilution, and calorimetry", () => {
     expect(Object.keys(LAB_VISUAL_ADAPTERS).sort()).toEqual([
+      "visual-adapter.balance.v1",
       "visual-adapter.beaker.v1",
       "visual-adapter.burette.v1",
       "visual-adapter.calorimeter.v1",
@@ -190,7 +191,8 @@ describe("setup-driven titration scene projection", () => {
       "visual-adapter.thermometer.v1",
       "visual-adapter.volumetric_flask.v1",
       "visual-adapter.volumetric_pipette.v1",
-      "visual-adapter.wash_bottle.v1"
+      "visual-adapter.wash_bottle.v1",
+      "visual-adapter.weighing_boat.v1"
     ]);
     expect(
       LAB_VISUAL_ADAPTERS["visual-adapter.volumetric_pipette.v1"]
@@ -211,9 +213,7 @@ describe("setup-driven titration scene projection", () => {
       },
       workflow
     });
-    const configuration = resolveLabSceneConfiguration(
-      session.getProjection()
-    );
+    const configuration = resolveLabSceneConfiguration(session.getProjection());
     expect(configuration.projectedState?.burette).toBeNull();
     expect(configuration.projectedState?.flask).toBeNull();
     expect(configuration.selectableEquipmentIds).toEqual(

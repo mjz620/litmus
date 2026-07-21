@@ -16,7 +16,9 @@ export type EquipmentId =
   | "reagentBottle"
   | "calorimeter"
   | "thermometer"
-  | "beaker";
+  | "beaker"
+  | "balance"
+  | "weighingBoat";
 
 export type ControlGroupId =
   | "prepare"
@@ -24,7 +26,8 @@ export type ControlGroupId =
   | "indicator"
   | "reading"
   | "solution"
-  | "calorimetry";
+  | "calorimetry"
+  | "weighing";
 
 export interface EquipmentInfo {
   id: EquipmentId;
@@ -105,6 +108,18 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentInfo> = {
     name: "Beaker",
     purpose: "Receive poured solutions and observe the combined contents.",
     controlGroups: ["solution"]
+  },
+  balance: {
+    id: "balance",
+    name: "Laboratory balance",
+    purpose: "Place the weighing boat, tare, and record mass in grams.",
+    controlGroups: ["weighing"]
+  },
+  weighingBoat: {
+    id: "weighingBoat",
+    name: "Weighing boat",
+    purpose: "Hold a solid sample while it is weighed and transferred.",
+    controlGroups: ["weighing"]
   }
 };
 
@@ -120,7 +135,9 @@ export const EQUIPMENT_IDS: readonly EquipmentId[] = [
   "reagentBottle",
   "calorimeter",
   "thermometer",
-  "beaker"
+  "beaker",
+  "balance",
+  "weighingBoat"
 ];
 
 const ALL_CONTROL_GROUPS: readonly ControlGroupId[] = [
@@ -129,7 +146,8 @@ const ALL_CONTROL_GROUPS: readonly ControlGroupId[] = [
   "deliver",
   "reading",
   "solution",
-  "calorimetry"
+  "calorimetry",
+  "weighing"
 ];
 
 /**

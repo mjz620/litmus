@@ -11,6 +11,64 @@ interface LiquidFillProps {
   readonly quality?: GlassQuality;
 }
 
+/** Registered balance projection. Chemistry and mass stay in the engine. */
+export function LaboratoryBalance() {
+  return (
+    <group>
+      <mesh position={[0, 0.035, 0]}>
+        <boxGeometry args={[0.27, 0.07, 0.2]} />
+        <meshStandardMaterial color="#d8d9d3" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.09, 0.09, 0.018, 24]} />
+        <meshStandardMaterial
+          color="#aeb8b5"
+          metalness={0.35}
+          roughness={0.35}
+        />
+      </mesh>
+      <mesh position={[0, 0.052, 0.102]}>
+        <boxGeometry args={[0.12, 0.035, 0.012]} />
+        <meshStandardMaterial
+          color="#173d36"
+          emissive="#1d6a5d"
+          emissiveIntensity={0.2}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+export const LABORATORY_BALANCE_HIT = {
+  radius: 0.16,
+  height: 0.12,
+  centerY: 0.06,
+  labelY: 0.18
+} as const;
+
+/** Low-mass weighing vessel used for tare and transfer technique. */
+export function WeighingBoat() {
+  return (
+    <group>
+      <mesh position={[0, 0.018, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <boxGeometry args={[0.14, 0.025, 0.14]} />
+        <meshStandardMaterial color="#f5f1df" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.034, 0]}>
+        <sphereGeometry args={[0.045, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#f0efe9" roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+export const WEIGHING_BOAT_HIT = {
+  radius: 0.11,
+  height: 0.08,
+  centerY: 0.04,
+  labelY: 0.13
+} as const;
+
 /** Local-origin verified visual for the registered 10 mL volumetric pipette. */
 export function VolumetricPipette({
   fillFraction = 0,
@@ -222,7 +280,9 @@ export function Calorimeter({
       )}
 
       {!hideLid && (
-        <group position={[0, lidClosed ? CUP_RIM_Y + 0.012 : CUP_LID_OPEN_Y, 0]}>
+        <group
+          position={[0, lidClosed ? CUP_RIM_Y + 0.012 : CUP_LID_OPEN_Y, 0]}
+        >
           <mesh>
             <cylinderGeometry args={[0.103, 0.103, 0.012, 28]} />
             <meshStandardMaterial {...STYROFOAM_LID_MATERIAL} />

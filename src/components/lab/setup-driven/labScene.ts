@@ -20,7 +20,9 @@ export type LabVisualAdapterKind =
   | "reagent_bottle"
   | "calorimeter"
   | "thermometer"
-  | "beaker";
+  | "beaker"
+  | "balance"
+  | "weighing_boat";
 
 export interface LabVisualAdapterRegistration {
   readonly visualAdapterDefinitionId: string;
@@ -82,6 +84,16 @@ export const LAB_VISUAL_ADAPTERS: Readonly<
     visualAdapterDefinitionId: "visual-adapter.beaker.v1",
     kind: "beaker",
     selectableEquipmentIds: Object.freeze(["beaker"] as const)
+  }),
+  "visual-adapter.balance.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.balance.v1",
+    kind: "balance",
+    selectableEquipmentIds: Object.freeze(["balance"] as const)
+  }),
+  "visual-adapter.weighing_boat.v1": Object.freeze({
+    visualAdapterDefinitionId: "visual-adapter.weighing_boat.v1",
+    kind: "weighing_boat",
+    selectableEquipmentIds: Object.freeze(["weighingBoat"] as const)
   })
 });
 
@@ -102,7 +114,13 @@ const ACTION_CONTROL_GROUP: Readonly<Record<string, ControlGroupId>> =
     "action.set_calorimeter_lid.v1": "calorimetry",
     "action.place_thermometer.v1": "calorimetry",
     "action.remove_thermometer.v1": "calorimetry",
-    "action.read_temperature.v1": "calorimetry"
+    "action.read_temperature.v1": "calorimetry",
+    "action.tare_balance.v1": "weighing",
+    "action.place_on_balance.v1": "weighing",
+    "action.remove_from_balance.v1": "weighing",
+    "action.transfer_solid.v1": "weighing",
+    "action.collect_precipitate.v1": "weighing",
+    "action.read_balance.v1": "weighing"
   });
 
 export const SETUP_DRIVEN_SCENE_ERROR_CODES = Object.freeze({
@@ -156,8 +174,14 @@ export interface LabSceneConfiguration {
       readonly observableColor: string;
       readonly indicatorAdded: boolean;
     } | null;
+    readonly beaker: {
+      readonly observableColor: string;
+    } | null;
   } | null;
 }
+
+/** Registered chemistry observable carrying the precipitate appearance. */
+const PRECIPITATE_COLOR_OBSERVABLE_ID = "observable.precipitate_color.v1";
 
 const LEGACY_SCENE_CONFIGURATION: LabSceneConfiguration = Object.freeze({
   mode: "legacy",
@@ -271,16 +295,15 @@ export function resolveLabSceneConfiguration(
   const selectableEquipmentIds: EquipmentId[] = [];
   const equipmentPoses: ResolvedEquipmentPose[] = [];
   const equipmentFillFractions: Record<string, number> = {};
-  let buretteState:
-    | NonNullable<
-        NonNullable<LabSceneConfiguration["projectedState"]>["burette"]
-      >
-    | null = null;
-  let flaskState:
-    | NonNullable<
-        NonNullable<LabSceneConfiguration["projectedState"]>["flask"]
-      >
-    | null = null;
+  let buretteState: NonNullable<
+    NonNullable<LabSceneConfiguration["projectedState"]>["burette"]
+  > | null = null;
+  let flaskState: NonNullable<
+    NonNullable<LabSceneConfiguration["projectedState"]>["flask"]
+  > | null = null;
+  let beakerState: NonNullable<
+    NonNullable<LabSceneConfiguration["projectedState"]>["beaker"]
+  > | null = null;
   let hasBuretteAdapter = false;
   let hasFlaskAdapter = false;
   const equipmentIds = new Set(
@@ -334,6 +357,23 @@ export function resolveLabSceneConfiguration(
         indicatorAdded: booleanField(equipment, "indicatorAdded")
       });
     }
+    if (adapter.kind === "beaker") {
+      /*
+       * Precipitation runs in the beaker, and the precipitate colour is owned
+       * by the chemistry model rather than by the vessel, so it arrives as a
+       * registered observable. Fall back to the beaker's own field for
+       * workflows whose contents are apparatus-owned. Projecting this is what
+       * makes a precipitate visible at all.
+       */
+      const precipitateColor =
+        projection.observables[PRECIPITATE_COLOR_OBSERVABLE_ID];
+      beakerState = Object.freeze({
+        observableColor:
+          typeof precipitateColor === "string" && precipitateColor.length > 0
+            ? precipitateColor
+            : stringField(equipment, "observableColor")
+      });
+    }
   }
   for (const equipment of projection.equipment) {
     if (
@@ -356,7 +396,10 @@ export function resolveLabSceneConfiguration(
       selectableEquipmentIds.push(selectableId);
     }
   }
-  if (hasBuretteAdapter !== Boolean(buretteState) || hasFlaskAdapter !== Boolean(flaskState)) {
+  if (
+    hasBuretteAdapter !== Boolean(buretteState) ||
+    hasFlaskAdapter !== Boolean(flaskState)
+  ) {
     throw new SetupDrivenSceneError(
       SETUP_DRIVEN_SCENE_ERROR_CODES.equipmentStateInvalid,
       projection.workflowId,
@@ -449,7 +492,8 @@ export function resolveLabSceneConfiguration(
     equipmentFillFractions: Object.freeze(equipmentFillFractions),
     projectedState: Object.freeze({
       burette: buretteState,
-      flask: flaskState
+      flask: flaskState,
+      beaker: beakerState
     })
   });
 }
@@ -489,8 +533,6 @@ export function projectionActionsForEquipmentFocus(
     ) {
       return true;
     }
-    return action.targetEquipmentInstanceIds.some((id) =>
-      instanceIds.has(id)
-    );
+    return action.targetEquipmentInstanceIds.some((id) => instanceIds.has(id));
   });
 }

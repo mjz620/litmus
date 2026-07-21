@@ -34,6 +34,13 @@ export const LAB_PALETTE = {
   yellowLiquid: "#F0CF4A",
   greenLiquid: "#53AC75",
   redLiquid: "#DF5B5B",
+  /*
+   * Suspended precipitates. These read as opaque solids rather than tinted
+   * solutions, so they sit apart from the indicator liquids above.
+   */
+  whitePrecipitate: "#F2F5F3",
+  /* Lightened from a truer iron oxide so graduation ink stays legible over it. */
+  rustBrownPrecipitate: "#C0834A",
   muralCoral: "#EB7D75",
   muralBerry: "#A86FAE",
   muralBlue: "#65AFC7",
@@ -47,16 +54,26 @@ export const LAB_PALETTE = {
   sceneFallback: "#B9C978"
 } as const;
 
-/** Engine observation labels mapped only to their display colors. */
+/**
+ * Engine observation labels mapped only to their display colors.
+ *
+ * Every label any chemistry model can emit must appear here: an unmapped
+ * label silently falls back to colorless, which is how a precipitate can form
+ * with nothing visible happening in the scene. `clear` is the precipitation
+ * model's no-reaction label and maps to the same colorless liquid.
+ */
 export const LAB_LIQUID_COLORS = {
   colorless: LAB_PALETTE.colorlessLiquid,
+  clear: LAB_PALETTE.colorlessLiquid,
   "faint pink": LAB_PALETTE.faintPinkLiquid,
   pink: LAB_PALETTE.phenolphthalein,
   yellow: LAB_PALETTE.yellowLiquid,
   green: LAB_PALETTE.greenLiquid,
   blue: LAB_PALETTE.bromothymolBlue,
   red: LAB_PALETTE.redLiquid,
-  orange: LAB_PALETTE.methylOrange
+  orange: LAB_PALETTE.methylOrange,
+  white: LAB_PALETTE.whitePrecipitate,
+  "rust brown": LAB_PALETTE.rustBrownPrecipitate
 } as const;
 
 export type LabLiquidColorName = keyof typeof LAB_LIQUID_COLORS;

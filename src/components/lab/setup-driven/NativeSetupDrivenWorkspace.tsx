@@ -35,10 +35,7 @@ import { LabNotebook } from "../LabNotebook";
 import { nativeTitrationBenchFacts } from "./nativeTitrationFacts";
 import { PHCurve } from "../PHCurve";
 import { ProcedureGuide } from "../ProcedureGuide";
-import {
-  enumValueLabel,
-  registeredEnumParameters
-} from "./actionParameters";
+import { enumValueLabel, registeredEnumParameters } from "./actionParameters";
 import { procedureGuideStepsFromWorkflow } from "./procedureGuideSteps";
 import { ImmersiveSetupDrivenBench } from "./ImmersiveSetupDrivenBench";
 import { IndicatorSelectionDialog } from "./IndicatorSelectionDialog";
@@ -67,6 +64,8 @@ const PARAMETER_LABELS: Readonly<Record<string, string>> = Object.freeze({
   reportedC: "Reported temperature",
   durationS: "Delivery time (seconds)",
   reportedML: "Reported burette reading",
+  massG: "Mass to transfer",
+  reportedG: "Balance reading",
   solvent: "Rinse liquid",
   indicator: "Indicator"
 });
@@ -206,6 +205,18 @@ function actionLabel(
       return "Place the thermometer probe";
     case "action.read_temperature.v1":
       return "Read the calorimeter temperature";
+    case "action.place_on_balance.v1":
+      return "Place the weighing boat on the balance";
+    case "action.tare_balance.v1":
+      return "Tare the balance";
+    case "action.remove_from_balance.v1":
+      return "Remove the weighing boat from the balance";
+    case "action.transfer_solid.v1":
+      return transferPhrase(action, projection, "Transfer solid from");
+    case "action.collect_precipitate.v1":
+      return "Filter, dry, and collect the precipitate";
+    case "action.read_balance.v1":
+      return "Read the balance";
     case "action.transfer_liquid.v1": {
       const source = projection.equipment.find(
         ({ instanceId }) => instanceId === action.sourceEquipmentInstanceId
@@ -214,6 +225,26 @@ function actionLabel(
         ? "Deliver the aliquot into the flask"
         : "Measure stock solution into the pipette";
     }
+    /*
+     * Titration actions. Without these the switch fell through to the action
+     * registry's authoring prose — "Deliver a bounded titrant volume over a
+     * positive duration through the burette stopcock" — which is written for
+     * the Composer, not for a student. This string is also what the bench's
+     * aria-live region announces, so the jargon was the screen-reader
+     * experience too.
+     */
+    case "action.rinse.v1":
+      return "Rinse the burette with titrant";
+    case "action.fill.v1":
+      return "Fill the burette with titrant";
+    case "action.select_indicator.v1":
+      return "Choose an indicator";
+    case "action.add_indicator.v1":
+      return "Add indicator to the flask";
+    case "action.dispense.v1":
+      return "Add titrant to the flask";
+    case "action.read_volume.v1":
+      return "Read the burette";
     default:
       return actionRegistry.get(action.actionId).purpose;
   }
@@ -231,11 +262,41 @@ function equipmentSummary(
     case "component.wash_bottle.v1":
       return `${Number(value("availableML") ?? 0).toFixed(2)} mL water remaining`;
     case "component.reagent_bottle.v1":
-      return "Registered liquid ready";
+      return "Registered material ready";
     case "component.calorimeter.v1":
       return `${Number(value("totalVolumeML") ?? 0).toFixed(2)} mL · lid ${value("lidClosed") ? "closed" : "open"} · ${value("mixed") ? "mixed" : "not yet mixed"}`;
     case "component.thermometer.v1":
       return value("placed") ? "Probe inserted" : "Probe ready to place";
+    case "component.balance.v1":
+      return `Reads ${Number(value("currentReadingG") ?? 0).toFixed(2)} g · ${value("panEquipmentInstanceId") ? "item on pan" : "pan empty"} · ${Number(value("tareOffsetG") ?? 0) !== 0 ? "tared" : "not tared"}`;
+    case "component.weighing_boat.v1":
+      return `${Number(value("emptyMassG") ?? 0).toFixed(2)} g empty mass · ${Number(value("collectedPrecipitateMassG") ?? 0).toFixed(2)} g dry precipitate · ${value("onBalance") ? "on balance" : "off balance"}`;
+    /*
+     * The burette reading is the measurement this whole product is about, and
+     * it previously existed only as rendered pixels — both vessels fell to
+     * "Ready" here, so a student using a screen reader had no way to know what
+     * to enter when asked to report the reading. Volumes are read to the
+     * burette's 0.01 mL graduation.
+     */
+    case "component.burette.v1": {
+      const reading = Number(value("meniscusReadingML") ?? 0).toFixed(2);
+      const delivered = Number(value("deliveredML") ?? 0).toFixed(2);
+      const conditioned =
+        value("conditionedWith") === "titrant"
+          ? "conditioned with titrant"
+          : "not yet conditioned";
+      return `Reads ${reading} mL · ${delivered} mL delivered · ${conditioned}`;
+    }
+    case "component.erlenmeyer_flask.v1": {
+      const color = value("observableColor");
+      const appearance =
+        typeof color === "string" && color !== "unobserved"
+          ? `contents ${color}`
+          : "contents not yet observed";
+      return `${Number(value("totalVolumeML") ?? 0).toFixed(2)} mL · ${
+        value("indicatorAdded") ? "indicator added" : "no indicator yet"
+      } · ${appearance}`;
+    }
     default:
       return "Ready";
   }
@@ -252,6 +313,13 @@ function observableLabel(observableId: string): string {
     return "Calorimeter heat content";
   if (observableId === "observable.calorimeter_volume_ml.v1")
     return "Calorimeter volume";
+  if (observableId === "observable.balance_reading_g.v1")
+    return "Balance reading";
+  if (observableId === "observable.reacted_amount_mol.v1")
+    return "Amount dissolved";
+  if (observableId === "observable.reaction_heat_j.v1") return "Reaction heat";
+  if (observableId === "observable.measured_molar_enthalpy_kj_per_mol.v1")
+    return "Measured molar enthalpy";
   const entry = configurationRegistry
     .list()
     .find(({ id }) => id === observableId);
@@ -382,7 +450,8 @@ export function NativeSetupDrivenWorkspace({
       sessionId: `${prefix}-${run}`,
       getProjection: session.getProjection,
       getGenericState: session.getGenericState,
-      dispatch: (action: NormalizedLabAction) => session.dispatch(action).events,
+      dispatch: (action: NormalizedLabAction) =>
+        session.dispatch(action).events,
       restart: () => undefined
     };
   }, [sessionPort, localSession, prefix, run]);
@@ -523,9 +592,7 @@ export function NativeSetupDrivenWorkspace({
         typeof resolveLabSceneConfiguration
       >["equipmentPoses"] = [];
       try {
-        poses = resolveLabSceneConfiguration(
-          current.projection
-        ).equipmentPoses;
+        poses = resolveLabSceneConfiguration(current.projection).equipmentPoses;
       } catch {
         poses = [];
       }
@@ -582,7 +649,9 @@ export function NativeSetupDrivenWorkspace({
    * shared review dialog (transition range shown before one committed
    * addition); every other action dispatches directly.
    */
-  function requestDispatch(action: SetupDrivenLabProjection["actions"][number]) {
+  function requestDispatch(
+    action: SetupDrivenLabProjection["actions"][number]
+  ) {
     const hasIndicatorChoice = registeredEnumParameters(action.actionId).some(
       ({ key }) => key === "indicator"
     );
@@ -689,12 +758,8 @@ export function NativeSetupDrivenWorkspace({
       setControlsOpen(false);
       return;
     }
-    const {
-      lookActive,
-      focused,
-      setLookActive,
-      clearFocus
-    } = useLabUiStore.getState();
+    const { lookActive, focused, setLookActive, clearFocus } =
+      useLabUiStore.getState();
     if (lookActive) {
       event.preventDefault();
       event.stopPropagation();
@@ -729,13 +794,14 @@ export function NativeSetupDrivenWorkspace({
     () => procedureGuideStepsFromWorkflow(workflow, current.state.diagnoses),
     [workflow, current.state.diagnoses]
   );
-  const sceneConfiguration = useMemo((): Readonly<LabSceneConfiguration> | null => {
-    try {
-      return resolveLabSceneConfiguration(current.projection);
-    } catch {
-      return null;
-    }
-  }, [current.projection]);
+  const sceneConfiguration =
+    useMemo((): Readonly<LabSceneConfiguration> | null => {
+      try {
+        return resolveLabSceneConfiguration(current.projection);
+      } catch {
+        return null;
+      }
+    }, [current.projection]);
   const drawerActions = useMemo(() => {
     if (!sceneConfiguration) return current.projection.actions;
     const focus =
@@ -765,8 +831,7 @@ export function NativeSetupDrivenWorkspace({
       curvePoints: nativeTitrationCurvePoints(current.state),
       chartMaxVolumeML: Math.max(
         burette.capacityML,
-        Math.ceil(burette.deliveredML / burette.capacityML) *
-          burette.capacityML
+        Math.ceil(burette.deliveredML / burette.capacityML) * burette.capacityML
       ),
       facts: nativeTitrationBenchFacts(workflow, current.state),
       events: current.state.eventEnvelopes.map(({ payload }) => payload)
@@ -1006,7 +1071,10 @@ export function NativeSetupDrivenWorkspace({
                           <span>
                             <input
                               type="number"
-                              value={parameterValue(action, bounds.parameterKey)}
+                              value={parameterValue(
+                                action,
+                                bounds.parameterKey
+                              )}
                               min={bounds.effectiveMinimum ?? undefined}
                               max={bounds.effectiveMaximum ?? undefined}
                               step={
