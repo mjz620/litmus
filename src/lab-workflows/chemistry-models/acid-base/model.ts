@@ -21,7 +21,8 @@ export const ACID_BASE_TITRATION_MODEL_ID =
 export const ACID_BASE_TITRATION_OBSERVABLE_IDS = Object.freeze({
   pH: "observable.solution_ph.v1",
   observedColor: "observable.observed_color.v1",
-  endpointObserved: "observable.endpoint_observed.v1"
+  endpointObserved: "observable.endpoint_observed.v1",
+  indicatorSuitable: "observable.indicator_suitable.v1"
 } as const);
 
 export const ACID_BASE_TITRATION_ERROR_CODES = Object.freeze({
@@ -60,7 +61,13 @@ export type IndicatorId =
   | "phenolphthalein"
   | "bromothymol_blue"
   | "methyl_orange";
-export type AnalyteType = "strong_acid" | "weak_acid";
+export type AcidBaseSpeciesType =
+  | "strong_acid"
+  | "weak_acid"
+  | "strong_base"
+  | "weak_base";
+export type AnalyteType = AcidBaseSpeciesType;
+export type TitrantType = AcidBaseSpeciesType;
 
 /**
  * Minimal chemistry configuration for the relocated pure functions. The legacy
@@ -73,20 +80,88 @@ export interface AcidBaseTitrationChemistryConfig {
     concentrationM: number;
     volumeML: number;
     pKa?: number;
+    pKb?: number;
   };
   titrant: {
+    /** Legacy configurations omit this because the original titrant was NaOH. */
+    type?: TitrantType;
     concentrationM: number;
+    pKa?: number;
+    pKb?: number;
   };
 }
 
 const KW = 1e-14;
+
+/*
+ * Fixed iteration count for the weak-acid bisection. Chosen so the bracket
+ * below collapses to well under float precision; a fixed count (rather than a
+ * convergence tolerance) keeps the solve bit-identical across platforms, which
+ * the replay/determinism contract requires.
+ */
+const CHARGE_BALANCE_BISECTION_STEPS = 200;
+const H_BRACKET_LOW = 1e-20;
+const H_BRACKET_HIGH = 10;
+
+/**
+ * Hydrogen-ion concentration from the charge balance, including water
+ * autoionization and any registered weak acid/base pair.
+ *
+ * Strong acid, with `excess` the signed analytical excess of acid over added
+ * strong base, solves [H+]^2 - excess*[H+] - Kw = 0 exactly. Both branches sum
+ * positive quantities, so neither loses precision to cancellation, and they
+ * agree at excess = 0 (giving [H+] = 1e-7, pH 7) without a float-equality test.
+ *
+ * Weak species solve the full balance
+ *   [H+] + C(strong base) + Cb[H+]/([H+] + Ka_BH+)
+ *     = Kw/[H+] + C(strong acid) + CaKa/(Ka + [H+])
+ * whose left-minus-right is strictly increasing in [H+], so bisection converges
+ * on the unique root. This is continuous across the whole titration — initial
+ * point, buffer region, equivalence, and excess base — replacing the previous
+ * piecewise branches whose seams were discontinuous.
+ */
+function hydrogenConcentration(
+  strongAcidM: number,
+  strongBaseM: number,
+  weakAcidM: number,
+  weakAcidKa: number | null,
+  weakBaseM: number,
+  weakBaseConjugateAcidKa: number | null
+): number {
+  if (weakAcidKa === null && weakBaseConjugateAcidKa === null) {
+    const excess = strongAcidM - strongBaseM;
+    const root = Math.sqrt(excess * excess + 4 * KW);
+    if (excess >= 0) return (excess + root) / 2;
+    return KW / ((-excess + root) / 2);
+  }
+
+  const charge = (h: number): number =>
+    strongBaseM +
+    h -
+    KW / h -
+    strongAcidM +
+    (weakBaseConjugateAcidKa === null
+      ? 0
+      : (weakBaseM * h) / (h + weakBaseConjugateAcidKa)) -
+    (weakAcidKa === null ? 0 : (weakAcidM * weakAcidKa) / (weakAcidKa + h));
+
+  let low = H_BRACKET_LOW;
+  let high = H_BRACKET_HIGH;
+  for (let step = 0; step < CHARGE_BALANCE_BISECTION_STEPS; step += 1) {
+    const mid = (low + high) / 2;
+    if (charge(mid) < 0) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
 
 /**
  * Calculate pH as a deterministic function of total titrant added.
  *
  * This uses the source contract's AP/general-chemistry approximations:
  * monoprotic analyte, strong-base titrant, 25 °C, and activity approximately
- * equal to concentration.
+ * equal to concentration. Water autoionization is carried explicitly so the
+ * curve stays finite and monotonic through the equivalence point.
  */
 export function computePH(
   config: AcidBaseTitrationChemistryConfig,
@@ -94,52 +169,68 @@ export function computePH(
   dilutionFactor: number
 ): number {
   const { analyte, titrant } = config;
-  const analyteConcentration = analyte.concentrationM;
   const analyteVolumeL = analyte.volumeML / 1000;
   const titrantConcentration = titrant.concentrationM * dilutionFactor;
   const titrantVolumeL = totalTitrantML / 1000;
 
-  const acidMoles = analyteConcentration * analyteVolumeL;
-  const baseMoles = titrantConcentration * titrantVolumeL;
+  const analyteMoles = analyte.concentrationM * analyteVolumeL;
+  const titrantMoles = titrantConcentration * titrantVolumeL;
   const totalVolumeL = analyteVolumeL + titrantVolumeL;
 
-  if (analyte.type === "strong_acid") {
-    if (baseMoles < acidMoles) {
-      return -Math.log10((acidMoles - baseMoles) / totalVolumeL);
+  const titrantType = titrant.type ?? "strong_base";
+  const species = [
+    {
+      type: analyte.type,
+      concentrationM: analyteMoles / totalVolumeL,
+      pKa: analyte.pKa,
+      pKb: analyte.pKb
+    },
+    {
+      type: titrantType,
+      concentrationM: titrantMoles / totalVolumeL,
+      pKa: titrant.pKa,
+      pKb: titrant.pKb
     }
-    if (baseMoles > acidMoles) {
-      return 14 + Math.log10((baseMoles - acidMoles) / totalVolumeL);
+  ] as const;
+  let strongAcidM = 0;
+  let strongBaseM = 0;
+  let weakAcidM = 0;
+  let weakAcidKa: number | null = null;
+  let weakBaseM = 0;
+  let weakBaseConjugateAcidKa: number | null = null;
+  for (const entry of species) {
+    switch (entry.type) {
+      case "strong_acid":
+        strongAcidM += entry.concentrationM;
+        break;
+      case "strong_base":
+        strongBaseM += entry.concentrationM;
+        break;
+      case "weak_acid":
+        if (entry.pKa === undefined)
+          throw new Error("A weak acid requires a registered pKa.");
+        weakAcidM += entry.concentrationM;
+        weakAcidKa = 10 ** -entry.pKa;
+        break;
+      case "weak_base":
+        if (entry.pKb === undefined)
+          throw new Error("A weak base requires a registered pKb.");
+        weakBaseM += entry.concentrationM;
+        weakBaseConjugateAcidKa = KW / 10 ** -entry.pKb;
+        break;
     }
-    return 7;
   }
 
-  const acidDissociationConstant = Math.pow(10, -(analyte.pKa ?? 4.76));
-  const pKa = -Math.log10(acidDissociationConstant);
-
-  if (baseMoles <= 0) {
-    const hydrogenConcentration =
-      (-acidDissociationConstant +
-        Math.sqrt(
-          acidDissociationConstant * acidDissociationConstant +
-            4 * acidDissociationConstant * analyteConcentration
-        )) /
-      2;
-    return -Math.log10(hydrogenConcentration);
-  }
-
-  if (baseMoles < acidMoles) {
-    return pKa + Math.log10(baseMoles / (acidMoles - baseMoles));
-  }
-
-  if (baseMoles === acidMoles) {
-    const conjugateBaseConcentration = acidMoles / totalVolumeL;
-    const hydroxideConcentration = Math.sqrt(
-      (KW / acidDissociationConstant) * conjugateBaseConcentration
-    );
-    return 14 + Math.log10(hydroxideConcentration);
-  }
-
-  return 14 + Math.log10((baseMoles - acidMoles) / totalVolumeL);
+  return -Math.log10(
+    hydrogenConcentration(
+      strongAcidM,
+      strongBaseM,
+      weakAcidM,
+      weakAcidKa,
+      weakBaseM,
+      weakBaseConjugateAcidKa
+    )
+  );
 }
 
 /** Volume of titrant in mL required to reach the equivalence point. */
@@ -147,11 +238,11 @@ export function equivalenceVolumeML(
   config: AcidBaseTitrationChemistryConfig,
   dilutionFactor = 1
 ): number {
-  const acidMoles =
+  const analyteMoles =
     config.analyte.concentrationM * (config.analyte.volumeML / 1000);
   const effectiveTitrantConcentration =
     config.titrant.concentrationM * dilutionFactor;
-  return (acidMoles / effectiveTitrantConcentration) * 1000;
+  return (analyteMoles / effectiveTitrantConcentration) * 1000;
 }
 
 export interface IndicatorSpecification {
@@ -200,6 +291,70 @@ export const FAST_RATE_ML_PER_S = 0.5;
 export const OVERSHOOT_TOLERANCE_ML = 0.3;
 export const WATER_RINSE_DILUTION = 0.98;
 
+const INDICATOR_VOLUME_BISECTION_STEPS = 160;
+export const INDICATOR_ENDPOINT_TOLERANCE_ML = OVERSHOOT_TOLERANCE_ML;
+
+function analyteIsAcid(config: AcidBaseTitrationChemistryConfig): boolean {
+  return config.analyte.type.endsWith("_acid");
+}
+
+function hasWeakSpecies(config: AcidBaseTitrationChemistryConfig): boolean {
+  return (
+    config.analyte.type.startsWith("weak_") ||
+    (config.titrant.type ?? "strong_base").startsWith("weak_")
+  );
+}
+
+/**
+ * Locates the midpoint of an indicator transition on the deterministic
+ * titration curve. The curve is monotonic for an opposing monoprotic pair, so
+ * fixed-step bisection converges on its unique crossing without a tolerance or
+ * wall-clock-dependent exit.
+ */
+export function indicatorTransitionVolumeML(
+  config: AcidBaseTitrationChemistryConfig,
+  indicator: IndicatorId,
+  dilutionFactor = 1
+): number | null {
+  const targetPH =
+    (INDICATOR_SPECIFICATIONS[indicator].lowMax +
+      INDICATOR_SPECIFICATIONS[indicator].highMin) /
+    2;
+  let low = 0;
+  let high = equivalenceVolumeML(config, dilutionFactor) * 2;
+  const lowPH = computePH(config, low, dilutionFactor);
+  const highPH = computePH(config, high, dilutionFactor);
+  if (targetPH < Math.min(lowPH, highPH) || targetPH > Math.max(lowPH, highPH))
+    return null;
+  const increases = analyteIsAcid(config);
+  for (let step = 0; step < INDICATOR_VOLUME_BISECTION_STEPS; step += 1) {
+    const mid = (low + high) / 2;
+    const pH = computePH(config, mid, dilutionFactor);
+    if ((increases && pH < targetPH) || (!increases && pH > targetPH))
+      low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
+
+export function indicatorIsSuitable(
+  config: AcidBaseTitrationChemistryConfig,
+  indicator: IndicatorId,
+  dilutionFactor = 1
+): boolean {
+  const transitionVolumeML = indicatorTransitionVolumeML(
+    config,
+    indicator,
+    dilutionFactor
+  );
+  return (
+    transitionVolumeML !== null &&
+    Math.abs(
+      transitionVolumeML - equivalenceVolumeML(config, dilutionFactor)
+    ) <= INDICATOR_ENDPOINT_TOLERANCE_ML
+  );
+}
+
 /*
  * ----------------------------------------------------------------------------
  * Deterministic generic chemistry module.
@@ -213,6 +368,7 @@ const ACID_BASE_CAPABILITY_ID = "chemistry.acid_base_equilibrium.v1";
 const INDICATOR_CAPABILITY_ID = "chemistry.indicator_response.v1";
 const ML_UNIT_ID = "unit.ml.v1";
 const CONCENTRATION_SCALE = 1_000_000;
+const PK_SCALE = 1_000;
 const DILUTION_SCALE = 10_000;
 const TIME_SCALE = 100;
 
@@ -226,17 +382,26 @@ const FIELD = Object.freeze({
   flaskEquipmentInstanceId: "flaskEquipmentInstanceId",
   buretteEquipmentInstanceId: "buretteEquipmentInstanceId",
   titrantMaterialInstanceId: "titrantMaterialInstanceId",
+  analyteSpeciesType: "analyteSpeciesType",
+  analytePKMilli: "analytePKMilli",
   analyteConcentrationMicromolar: "analyteConcentrationMicromolar",
   analyteVolumeUnits: "analyteVolumeUnits",
+  titrantSpeciesType: "titrantSpeciesType",
+  titrantPKMilli: "titrantPKMilli",
   titrantConcentrationMicromolar: "titrantConcentrationMicromolar",
   deliveredTitrantUnits: "deliveredTitrantUnits",
   /*
    * Legacy-parity floating-point accumulation of delivered titrant. The
-   * legacy engine accumulated raw double additions (before + volumeML), and
-   * the parity oracle pins the knife-edge behavior of that arithmetic — for
-   * example a pinned pH of -2.11 where exact accumulation lands on the
-   * equivalence point. The integer-unit field stays the ledger-consistent
-   * measure; these two fields reproduce the legacy float path exactly.
+   * legacy engine accumulated raw double additions (before + volumeML), so
+   * these fields reproduce that float path exactly while the integer-unit
+   * field stays the ledger-consistent measure.
+   *
+   * The accumulated value lands near but rarely exactly on the equivalence
+   * point (25.000000000000085 after 250 additions of 0.1 mL). computePH now
+   * carries water autoionization through the charge balance, so that residue
+   * resolves to pH 7 instead of diverging; the oracle previously pinned a pH
+   * of -2.11 here, which was a defect in the solver rather than behavior
+   * worth preserving.
    */
   deliveredTitrantMLRaw: "deliveredTitrantMLRaw",
   deliveredTitrantMLRawBefore: "deliveredTitrantMLRawBefore",
@@ -325,6 +490,34 @@ function indicatorField(fields: readonly GenericStateField[]): IndicatorId {
   return value as IndicatorId;
 }
 
+function speciesTypeField(
+  fields: readonly GenericStateField[],
+  key: string
+): AcidBaseSpeciesType {
+  const value = stringField(fields, key);
+  if (
+    value !== "strong_acid" &&
+    value !== "weak_acid" &&
+    value !== "strong_base" &&
+    value !== "weak_base"
+  ) {
+    fail(
+      ACID_BASE_TITRATION_ERROR_CODES.invalidState,
+      `${key} is not a registered acid/base species type.`
+    );
+  }
+  return value;
+}
+
+function dissociationFields(
+  type: AcidBaseSpeciesType,
+  pKMilli: number
+): { readonly pKa?: number; readonly pKb?: number } {
+  if (type === "weak_acid") return { pKa: pKMilli / PK_SCALE };
+  if (type === "weak_base") return { pKb: pKMilli / PK_SCALE };
+  return {};
+}
+
 function equipmentStateField(
   equipment: readonly Readonly<GenericEquipmentState>[],
   instanceId: string,
@@ -385,6 +578,22 @@ function scaledConcentration(concentrationM: number): number {
   return scaled;
 }
 
+function scaledPK(value: number): number {
+  const scaled = Math.round(value * PK_SCALE);
+  if (
+    !Number.isFinite(value) ||
+    value <= 0 ||
+    !Number.isSafeInteger(scaled) ||
+    Math.abs(scaled / PK_SCALE - value) > Number.EPSILON * 32
+  ) {
+    fail(
+      ACID_BASE_TITRATION_ERROR_CODES.unsupportedMaterial,
+      "The registered dissociation value is outside the exact supported precision."
+    );
+  }
+  return scaled;
+}
+
 function scaledCentiseconds(durationS: number): number {
   const scaled = Math.round(durationS * TIME_SCALE);
   const tolerance = Math.max(
@@ -428,6 +637,8 @@ function view(state: readonly GenericStateField[]): AcidBaseModelView {
     state,
     FIELD.deliveredTitrantUnits
   );
+  const analyteType = speciesTypeField(state, FIELD.analyteSpeciesType);
+  const titrantType = speciesTypeField(state, FIELD.titrantSpeciesType);
   return {
     flaskEquipmentInstanceId: stringField(
       state,
@@ -442,23 +653,29 @@ function view(state: readonly GenericStateField[]): AcidBaseModelView {
       FIELD.titrantMaterialInstanceId
     ),
     config: {
-      // Registered reagent profiles carry no weak-acid pKa metadata, so the
-      // native model supports strong monoprotic analytes only; initialization
-      // fails closed for anything else.
       analyte: {
-        type: "strong_acid",
+        type: analyteType,
         concentrationM:
           integerField(state, FIELD.analyteConcentrationMicromolar) /
           CONCENTRATION_SCALE,
         volumeML: integerUnitsToQuantity(
           integerField(state, FIELD.analyteVolumeUnits),
           ML_UNIT_ID
+        ),
+        ...dissociationFields(
+          analyteType,
+          integerField(state, FIELD.analytePKMilli)
         )
       },
       titrant: {
+        type: titrantType,
         concentrationM:
           integerField(state, FIELD.titrantConcentrationMicromolar) /
-          CONCENTRATION_SCALE
+          CONCENTRATION_SCALE,
+        ...dissociationFields(
+          titrantType,
+          integerField(state, FIELD.titrantPKMilli)
+        )
       }
     },
     deliveredTitrantML: nonNegativeNumberField(
@@ -553,6 +770,22 @@ function initialState(
       );
     }
   }
+  const analyteDissociation = analyte.acidBaseDissociation;
+  const titrantDissociation = titrant.acidBaseDissociation;
+  if (!analyteDissociation || !titrantDissociation) {
+    fail(
+      ACID_BASE_TITRATION_ERROR_CODES.unsupportedMaterial,
+      "The analyte and titrant must carry registered acid/base dissociation metadata."
+    );
+  }
+  const analyteIsAcid = analyteDissociation.type.endsWith("_acid");
+  const titrantIsAcid = titrantDissociation.type.endsWith("_acid");
+  if (analyteIsAcid === titrantIsAcid) {
+    fail(
+      ACID_BASE_TITRATION_ERROR_CODES.unsupportedMaterial,
+      "The registered analyte and titrant must be an opposing acid/base pair."
+    );
+  }
   if (
     waters.some(
       (binding) =>
@@ -645,10 +878,36 @@ function initialState(
     { key: FIELD.buretteEquipmentInstanceId, value: burette.instanceId },
     { key: FIELD.titrantMaterialInstanceId, value: titrant.instanceId },
     {
+      key: FIELD.analyteSpeciesType,
+      value: analyteDissociation.type
+    },
+    {
+      key: FIELD.analytePKMilli,
+      value:
+        analyteDissociation.type === "weak_acid"
+          ? scaledPK(analyteDissociation.pKa25C)
+          : analyteDissociation.type === "weak_base"
+            ? scaledPK(analyteDissociation.pKb25C)
+            : 0
+    },
+    {
       key: FIELD.analyteConcentrationMicromolar,
       value: scaledConcentration(analyte.initialConcentrationM!)
     },
     { key: FIELD.analyteVolumeUnits, value: analyteVolumeUnits },
+    {
+      key: FIELD.titrantSpeciesType,
+      value: titrantDissociation.type
+    },
+    {
+      key: FIELD.titrantPKMilli,
+      value:
+        titrantDissociation.type === "weak_acid"
+          ? scaledPK(titrantDissociation.pKa25C)
+          : titrantDissociation.type === "weak_base"
+            ? scaledPK(titrantDissociation.pKb25C)
+            : 0
+    },
     {
       key: FIELD.titrantConcentrationMicromolar,
       value: scaledConcentration(titrant.initialConcentrationM!)
@@ -916,12 +1175,28 @@ function annotateEvents(
         };
       }
       case "select_indicator": {
+        const suitable = indicatorIsSuitable(
+          model.config,
+          model.indicator,
+          model.dilutionFactor
+        );
         return {
           type: event.type,
           tSim: model.tSim,
           observation: { indicator: model.indicator },
-          flags: [],
-          evidence: []
+          flags: suitable ? [] : ["indicator_unsuitable"],
+          evidence:
+            suitable && !hasWeakSpecies(model.config)
+              ? []
+              : [
+                  {
+                    skillId: "endpoint_control",
+                    delta: suitable ? 0.4 : -0.8,
+                    reason: suitable
+                      ? "indicator_suitable_for_equivalence"
+                      : "indicator_unsuitable_for_equivalence"
+                  }
+                ]
         };
       }
       case "add_titrant": {
@@ -1016,10 +1291,7 @@ function annotateEvents(
           model.buretteEquipmentInstanceId
         );
         const reportedML = numberParameter(context.action, "reportedML");
-        const trueReading = numericEquipmentField(
-          burette,
-          "meniscusReadingML"
-        );
+        const trueReading = numericEquipmentField(burette, "meniscusReadingML");
         const errorML = reportedML - trueReading;
         const withinTolerance = Math.abs(errorML) <= 0.05;
         return {
@@ -1068,10 +1340,21 @@ function observables(
   const color = delivered
     ? observedColor(model.indicator, pH)
     : "not yet observed";
+  const transitionVolumeML = indicatorTransitionVolumeML(
+    model.config,
+    model.indicator,
+    model.dilutionFactor
+  );
+  const indicatorSuitable = indicatorIsSuitable(
+    model.config,
+    model.indicator,
+    model.dilutionFactor
+  );
   const endpointObserved =
     delivered &&
-    observedColor(model.indicator, pH) !==
-      INDICATOR_SPECIFICATIONS[model.indicator].low;
+    indicatorSuitable &&
+    transitionVolumeML !== null &&
+    model.deliveredTitrantML >= transitionVolumeML;
   // observable.burette_reading_ml.v1 is deliberately not derived here: the
   // burette reading is equipment truth, not solution chemistry, and needs an
   // equipment-owned projection home in the native runtime (Phase 2/3).
@@ -1084,6 +1367,14 @@ function observables(
       observableId: ACID_BASE_TITRATION_OBSERVABLE_IDS.observedColor,
       value: color
     },
+    ...(hasWeakSpecies(model.config)
+      ? [
+          {
+            observableId: ACID_BASE_TITRATION_OBSERVABLE_IDS.indicatorSuitable,
+            value: indicatorSuitable
+          }
+        ]
+      : []),
     {
       observableId: ACID_BASE_TITRATION_OBSERVABLE_IDS.pH,
       value: round(pH, 2)

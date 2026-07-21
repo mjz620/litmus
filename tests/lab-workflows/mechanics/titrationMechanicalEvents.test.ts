@@ -99,6 +99,7 @@ function materialBinding(
     materialPhase: profile.phase,
     initialConcentrationM: profile.concentrationM,
     initialTemperatureC: profile.initialTemperatureC,
+    acidBaseDissociation: profile.acidBaseDissociation ?? null,
     initializationPresetSchemaId: profile.initializationPresetSchemaId,
     providedChemistryCapabilityIds: [...profile.providedChemistryCapabilityIds],
     requiredContainerCapabilityIds: [

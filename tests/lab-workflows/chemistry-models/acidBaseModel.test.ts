@@ -19,6 +19,8 @@ import {
   WATER_RINSE_DILUTION,
   computePH,
   equivalenceVolumeML,
+  indicatorIsSuitable,
+  indicatorTransitionVolumeML,
   observedColor,
   type AcidBaseTitrationChemistryConfig
 } from "../../../src/lab-workflows/chemistry-models/acid-base";
@@ -72,8 +74,26 @@ const STRONG: AcidBaseTitrationChemistryConfig = {
   titrant: { concentrationM: 0.1 }
 };
 const WEAK: AcidBaseTitrationChemistryConfig = {
-  analyte: { type: "weak_acid", concentrationM: 0.1, volumeML: 25, pKa: 4.76 },
+  analyte: {
+    type: "weak_acid",
+    concentrationM: 0.1,
+    volumeML: 25,
+    pKa: 4.756
+  },
   titrant: { concentrationM: 0.1 }
+};
+const WEAK_BASE: AcidBaseTitrationChemistryConfig = {
+  analyte: {
+    type: "weak_base",
+    concentrationM: 0.1,
+    volumeML: 25,
+    pKb: 4.751
+  },
+  titrant: { type: "strong_acid", concentrationM: 0.1 }
+};
+const WEAK_ACID_WEAK_BASE: AcidBaseTitrationChemistryConfig = {
+  analyte: { ...WEAK.analyte },
+  titrant: { type: "weak_base", concentrationM: 0.1, pKb: 4.751 }
 };
 
 function equipmentBinding(
@@ -129,6 +149,7 @@ function materialBinding(
     materialPhase: profile.phase,
     initialConcentrationM: profile.concentrationM,
     initialTemperatureC: profile.initialTemperatureC,
+    acidBaseDissociation: profile.acidBaseDissociation ?? null,
     initializationPresetSchemaId: profile.initializationPresetSchemaId,
     providedChemistryCapabilityIds: [...profile.providedChemistryCapabilityIds],
     requiredContainerCapabilityIds: [
@@ -139,7 +160,16 @@ function materialBinding(
   };
 }
 
-function setup() {
+function setup(
+  options: {
+    readonly analyteProfileId?: ReagentRegistryId;
+    readonly analyteQuantityPresetId?: string;
+    readonly titrantProfileId?: ReagentRegistryId;
+    readonly titrantQuantityPresetId?: string;
+    readonly indicatorProfileId?: ReagentRegistryId;
+    readonly indicatorQuantityPresetId?: string;
+  } = {}
+) {
   const equipmentBindings = [
     equipmentBinding(BURETTE, "component.burette.v1"),
     equipmentBinding(FLASK, "component.erlenmeyer_flask.v1"),
@@ -149,21 +179,24 @@ function setup() {
   const materialBindings = [
     materialBinding(
       ANALYTE,
-      "reagent.hydrochloric_acid_0_100m.v1",
+      options.analyteProfileId ?? "reagent.hydrochloric_acid_0_100m.v1",
       FLASK,
-      "quantity-preset.hydrochloric_acid_0_100m_25ml.v1"
+      options.analyteQuantityPresetId ??
+        "quantity-preset.hydrochloric_acid_0_100m_25ml.v1"
     ),
     materialBinding(
       TITRANT,
-      "reagent.sodium_hydroxide_0_100m.v1",
+      options.titrantProfileId ?? "reagent.sodium_hydroxide_0_100m.v1",
       TITRANT_BOTTLE,
-      "quantity-preset.sodium_hydroxide_0_100m_50ml.v1"
+      options.titrantQuantityPresetId ??
+        "quantity-preset.sodium_hydroxide_0_100m_50ml.v1"
     ),
     materialBinding(
       INDICATOR,
-      "reagent.phenolphthalein.v1",
+      options.indicatorProfileId ?? "reagent.phenolphthalein.v1",
       INDICATOR_BOTTLE,
-      "quantity-preset.phenolphthalein_2_drops.v1"
+      options.indicatorQuantityPresetId ??
+        "quantity-preset.phenolphthalein_2_drops.v1"
     )
   ];
   const materialLedger = initializeMaterialLedger(
@@ -358,6 +391,56 @@ describe("relocated pure acid-base chemistry", () => {
     }
   });
 
+  /*
+   * The loop above walks exact volumes, but the runtime accumulates raw double
+   * additions, so it reaches values a grid never constructs. A solver without
+   * a water term diverges on that residue: this suite passed while the parity
+   * oracle recorded pH -2.11 at the equivalence point. These tests walk the
+   * accumulation path itself.
+   */
+  it.each([
+    ["strong acid / strong base", STRONG, "increasing"],
+    ["weak acid / strong base", WEAK, "increasing"],
+    ["weak base / strong acid", WEAK_BASE, "decreasing"],
+    ["weak acid / weak base", WEAK_ACID_WEAK_BASE, "increasing"]
+  ] as const)(
+    "stays bounded and monotonic for %s across accumulated 0.1 mL additions",
+    (_label, config, direction) => {
+      let previous = computePH(config, 0, 1);
+      let deliveredML = 0;
+      for (let addition = 0; addition < 450; addition += 1) {
+        deliveredML = deliveredML + 0.1;
+        const pH = computePH(config, deliveredML, 1);
+        expect(Number.isFinite(pH)).toBe(true);
+        expect(pH).toBeGreaterThan(0);
+        expect(pH).toBeLessThan(14);
+        if (direction === "increasing") expect(pH).toBeGreaterThan(previous);
+        else expect(pH).toBeLessThan(previous);
+        previous = pH;
+      }
+    }
+  );
+
+  it("resolves accumulated float residue at equivalence to pH 7", () => {
+    let deliveredML = 0;
+    for (let addition = 0; addition < 250; addition += 1) {
+      deliveredML = deliveredML + 0.1;
+    }
+    // Accumulation overshoots exact equality; the water term still lands on 7.
+    expect(deliveredML).not.toBe(25);
+    expect(computePH(STRONG, deliveredML, 1)).toBeCloseTo(7, 6);
+  });
+
+  it("keeps a very dilute strong acid acidic rather than neutral", () => {
+    const dilute = {
+      ...STRONG,
+      analyte: { ...STRONG.analyte, concentrationM: 1e-7 }
+    };
+    const pH = computePH(dilute, 0, 1);
+    expect(pH).toBeGreaterThan(6.5);
+    expect(pH).toBeLessThan(7);
+  });
+
   it("sets strong-acid/strong-base equivalence to pH 7", () => {
     expect(computePH(STRONG, 25, 1)).toBeCloseTo(7, 5);
   });
@@ -366,8 +449,57 @@ describe("relocated pure acid-base chemistry", () => {
     expect(computePH(WEAK, 12.5, 1)).toBeCloseTo(WEAK.analyte.pKa!, 2);
   });
 
+  it("sets weak-base half-equivalence pOH to pKb", () => {
+    const pH = computePH(WEAK_BASE, 12.5, 1);
+    expect(14 - pH).toBeCloseTo(WEAK_BASE.analyte.pKb!, 2);
+  });
+
   it("sets the weak-acid equivalence point above pH 7", () => {
     expect(computePH(WEAK, 25, 1)).toBeGreaterThan(7);
+  });
+
+  it("sets the weak-base equivalence point below pH 7", () => {
+    expect(computePH(WEAK_BASE, 25, 1)).toBeLessThan(7);
+  });
+
+  it.each([
+    ["weak acid", WEAK, "acid"],
+    ["weak base", WEAK_BASE, "base"]
+  ] as const)(
+    "matches the closed-form initial pH for a monoprotic %s",
+    (_label, config, kind) => {
+      const pK = kind === "acid" ? config.analyte.pKa! : config.analyte.pKb!;
+      const k = 10 ** -pK;
+      const concentrationM = config.analyte.concentrationM;
+      const dissociated = (-k + Math.sqrt(k * k + 4 * k * concentrationM)) / 2;
+      const expected =
+        kind === "acid"
+          ? -Math.log10(dissociated)
+          : 14 + Math.log10(dissociated);
+      expect(computePH(config, 0, 1)).toBeCloseTo(expected, 5);
+    }
+  );
+
+  it("keeps repeated generalized solves bit-identical", () => {
+    const first = [STRONG, WEAK, WEAK_BASE, WEAK_ACID_WEAK_BASE].map((config) =>
+      computePH(config, 24.70000000000008, 1)
+    );
+    for (let replay = 0; replay < 20; replay += 1) {
+      expect(
+        [STRONG, WEAK, WEAK_BASE, WEAK_ACID_WEAK_BASE].map((config) =>
+          computePH(config, 24.70000000000008, 1)
+        )
+      ).toEqual(first);
+    }
+  });
+
+  it("makes indicator selection depend on the modeled equivalence region", () => {
+    expect(indicatorIsSuitable(WEAK, "phenolphthalein")).toBe(true);
+    expect(indicatorIsSuitable(WEAK, "methyl_orange")).toBe(false);
+    expect(indicatorTransitionVolumeML(WEAK, "phenolphthalein")).toBeCloseTo(
+      25,
+      0
+    );
   });
 
   it("shows phenolphthalein as colorless in acid and pink in base", () => {
@@ -432,6 +564,74 @@ describe("acid-base titration chemistry module", () => {
     expect(fieldValue(state, "titrantMaterialInstanceId")).toBe(TITRANT);
   });
 
+  it.each([
+    [
+      "weak acid / strong base",
+      {
+        analyteProfileId: "reagent.acetic_acid_0_100m.v1",
+        analyteQuantityPresetId: "quantity-preset.acetic_acid_0_100m_25ml.v1"
+      },
+      WEAK
+    ],
+    [
+      "weak base / strong acid",
+      {
+        analyteProfileId: "reagent.ammonia_0_100m.v1",
+        analyteQuantityPresetId: "quantity-preset.ammonia_0_100m_25ml.v1",
+        titrantProfileId: "reagent.hydrochloric_acid_titrant_0_100m.v1",
+        titrantQuantityPresetId:
+          "quantity-preset.hydrochloric_acid_0_100m_50ml.v1"
+      },
+      WEAK_BASE
+    ],
+    [
+      "weak acid / weak base",
+      {
+        analyteProfileId: "reagent.acetic_acid_0_100m.v1",
+        analyteQuantityPresetId: "quantity-preset.acetic_acid_0_100m_25ml.v1",
+        titrantProfileId: "reagent.ammonia_0_100m.v1",
+        titrantQuantityPresetId: "quantity-preset.ammonia_0_100m_50ml.v1"
+      },
+      WEAK_ACID_WEAK_BASE
+    ]
+  ] as const)(
+    "initializes registered metadata for %s",
+    (_label, options, expectedConfig) => {
+      const fixture = setup(options);
+      const state = ACID_BASE_TITRATION_MODULE.initialize(fixture);
+      const pH = ACID_BASE_TITRATION_MODULE.deriveObservables(state).find(
+        ({ observableId }) =>
+          observableId === ACID_BASE_TITRATION_OBSERVABLE_IDS.pH
+      )?.value;
+      expect(pH).toBeCloseTo(computePH(expectedConfig, 0, 1), 2);
+    }
+  );
+
+  it("blocks a wrong weak-acid indicator endpoint and exposes suitability", () => {
+    const fixture = setup({
+      analyteProfileId: "reagent.acetic_acid_0_100m.v1",
+      analyteQuantityPresetId: "quantity-preset.acetic_acid_0_100m_25ml.v1",
+      indicatorProfileId: "reagent.methyl_orange.v1",
+      indicatorQuantityPresetId: "quantity-preset.methyl_orange_2_drops.v1"
+    });
+    const state = stateAfter(fixture, [
+      { action: indicatorAction("methyl_orange") },
+      { action: dispenseAction(25.1, 60) }
+    ]);
+    expect(ACID_BASE_TITRATION_MODULE.deriveObservables(state)).toEqual(
+      expect.arrayContaining([
+        {
+          observableId: ACID_BASE_TITRATION_OBSERVABLE_IDS.indicatorSuitable,
+          value: false
+        },
+        {
+          observableId: ACID_BASE_TITRATION_OBSERVABLE_IDS.endpointObserved,
+          value: false
+        }
+      ])
+    );
+  });
+
   it("fails closed for unsupported setups and materials", () => {
     const fixture = setup();
     expect(() =>
@@ -452,6 +652,34 @@ describe("acid-base titration chemistry module", () => {
         ...fixture,
         materialBindings: fixture.materialBindings.filter(
           ({ instanceId }) => instanceId !== INDICATOR
+        )
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: ACID_BASE_TITRATION_ERROR_CODES.unsupportedMaterial
+      })
+    );
+    expect(() =>
+      ACID_BASE_TITRATION_MODULE.initialize({
+        ...fixture,
+        materialBindings: fixture.materialBindings.map((binding) =>
+          binding.instanceId === ANALYTE
+            ? { ...binding, acidBaseDissociation: null }
+            : binding
+        )
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: ACID_BASE_TITRATION_ERROR_CODES.unsupportedMaterial
+      })
+    );
+    expect(() =>
+      ACID_BASE_TITRATION_MODULE.initialize({
+        ...fixture,
+        materialBindings: fixture.materialBindings.map((binding) =>
+          binding.instanceId === TITRANT
+            ? { ...binding, acidBaseDissociation: { type: "strong_acid" } }
+            : binding
         )
       })
     ).toThrowError(
@@ -690,6 +918,55 @@ describe("acid-base event annotation", () => {
         evidence: []
       }
     ]);
+  });
+
+  it("flags an unsuitable weak-acid indicator and stays silent for phenolphthalein", () => {
+    const options = {
+      analyteProfileId: "reagent.acetic_acid_0_100m.v1" as const,
+      analyteQuantityPresetId: "quantity-preset.acetic_acid_0_100m_25ml.v1"
+    };
+    const wrongFixture = setup({
+      ...options,
+      indicatorProfileId: "reagent.methyl_orange.v1",
+      indicatorQuantityPresetId: "quantity-preset.methyl_orange_2_drops.v1"
+    });
+    const wrong = stateAfter(wrongFixture, [
+      { action: indicatorAction("methyl_orange") }
+    ]);
+    expect(
+      annotate(wrong, indicatorAction("methyl_orange"), [
+        blankEvent("select_indicator")
+      ])
+    ).toEqual([
+      expect.objectContaining({
+        flags: ["indicator_unsuitable"],
+        evidence: [
+          expect.objectContaining({
+            delta: -0.8,
+            reason: "indicator_unsuitable_for_equivalence"
+          })
+        ]
+      })
+    ]);
+
+    const suitableFixture = setup(options);
+    const suitable = stateAfter(suitableFixture, [
+      { action: indicatorAction("phenolphthalein") }
+    ]);
+    expect(
+      annotate(suitable, indicatorAction("phenolphthalein"), [
+        blankEvent("select_indicator")
+      ])[0]
+    ).toMatchObject({
+      flags: [],
+      evidence: [
+        {
+          delta: 0.4,
+          reason: "indicator_suitable_for_equivalence",
+          skillId: "endpoint_control"
+        }
+      ]
+    });
   });
 
   it("reproduces the pinned legacy first-delivery observation exactly", () => {

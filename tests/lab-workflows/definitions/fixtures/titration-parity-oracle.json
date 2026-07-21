@@ -9473,7 +9473,7 @@
                 "currentReadingML": 25,
                 "availableML": 25,
                 "rateMlPerS": 0.02,
-                "pH": -2.28,
+                "pH": 7,
                 "observedColor": "colorless",
                 "equivalenceML": 25
               },
@@ -19363,7 +19363,7 @@
                 "currentReadingML": 25,
                 "availableML": 25,
                 "rateMlPerS": 0.02,
-                "pH": -2.28,
+                "pH": 7,
                 "observedColor": "colorless",
                 "equivalenceML": 25
               },
@@ -30174,7 +30174,7 @@
                 "currentReadingML": 25,
                 "availableML": 25,
                 "rateMlPerS": 0.02,
-                "pH": -2.11,
+                "pH": 7,
                 "observedColor": "colorless",
                 "equivalenceML": 25
               },
